@@ -1,16 +1,9 @@
-from dataclasses import dataclass, field
-from .units.unit import Unit, SimpleUnit
-from .units.unit_quantity import CanonicalQuantity, SimpleCanonicalQuantity
-from .units.named_canonical_quantities import NamedCanonicalQuantity
-import math
-from .utils import str_to_float
-from typing import Union, TypeAlias, cast
+from dataclasses import dataclass
+from ..utils import JSONable, HDF5able
 from abc import ABC
-import h5py
-import numpy as np
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(ABC):
+class UnitedScalar(ABC, JSONable, HDF5able):
     
     def __add__(self, other: "UnitedScalar") -> "UnitedScalar":
         raise NotImplementedError("Operation on the abstract base class called!")

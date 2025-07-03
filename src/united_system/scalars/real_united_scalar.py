@@ -1,18 +1,16 @@
 from dataclasses import dataclass
 from .united_scalar import UnitedScalar
-from .unit import Unit
-from .named_canonical_quantities import NamedCanonicalQuantity
-from .utils import str_to_float
+from ..utils import str_to_float
 import math
-
-
-
-
-
-
+from ..units.unit import Unit
+from ..units.named_simple_unit_quantities import NamedSimpleUnitQuantity
+from ..units.unit_quantity import UnitQuantity
+from ..units.simple_unit import SimpleUnit
+from ..units.simple_unit_quantity import SimpleUnitQuantity
+import h5py
 
 @dataclass(frozen=True, slots=True)
-class SimpleUnitedScalar(UnitedScalar):
+class RealUnitedScalar(UnitedScalar):
     """United value with automatic unit conversion support.
     
     This class stores values in canonical units internally and provides unit-aware operations.
@@ -38,7 +36,7 @@ class SimpleUnitedScalar(UnitedScalar):
     with NO_NUMBER unit.
     """
     canonical_value: float
-    canonical_quantity: CanonicalQuantity
+    canonical_quantity: UnitQuantity
     display_unit: Unit|None
 
     def __post_init__(self):
@@ -50,10 +48,10 @@ class SimpleUnitedScalar(UnitedScalar):
         """
         This is the safest way to create a numerical United_Value.
         """
-        return cls(unit.to_canonical_value(value), unit.canonical_quantity, unit)
+        return cls(unit.to_canonical_value(value), unit.unit_quantity, unit)
     
     @classmethod
-    def create_from_canonical_value(cls, canonical_value: float, quantity: CanonicalQuantity, display_unit: Unit|None=None) -> "UnitedScalar":
+    def create_from_canonical_value(cls, canonical_value: float, quantity: UnitQuantity, display_unit: Unit|None=None) -> "UnitedScalar":
         """
         This is the safest way to create a numerical United_Value from a canonical float.
         """
@@ -64,7 +62,7 @@ class SimpleUnitedScalar(UnitedScalar):
         split_string: list[str] = united_value_string.strip().split(" ")
         if len(split_string) == 1:
             # Just a number as string
-            return cls(str_to_float(split_string[0]), NamedCanonicalQuantity.NUMBER.canonical_quantity, NamedCanonicalQuantity.NUMBER.canonical_unit)
+            return cls(str_to_float(split_string[0]), NamedSimpleUnitQuantity.NUMBER.simple_unit_quantity, NamedSimpleUnitQuantity.NUMBER.canonical_unit)
         elif len(split_string) == 2:
             # Number and unit string
             if split_string[0] == "nan":
@@ -74,7 +72,7 @@ class SimpleUnitedScalar(UnitedScalar):
             unit_string: str = split_string[1]
             parsed_unit: Unit = SimpleUnit.parse(unit_string)
             canonical_value: float = parsed_unit.to_canonical_value(value)
-            return cls(canonical_value, parsed_unit.canonical_quantity, parsed_unit)
+            return cls(canonical_value, parsed_unit.unit_quantity, parsed_unit)
         else:
             raise ValueError(f"Invalid united number: {united_value_string}")
 
@@ -105,14 +103,14 @@ class SimpleUnitedScalar(UnitedScalar):
         else:
             return self.display_unit.from_canonical_value(self.canonical_value)
 
-    def change_display_unit(self, new_display_unit: Unit) -> "SimpleUnitedScalar":
+    def change_display_unit(self, new_display_unit: Unit) -> "RealUnitedScalar":
         """Convert to a different unit. Only works for numeric values."""
         if new_display_unit.compatible_to(self.canonical_quantity):
-            return SimpleUnitedScalar(self.canonical_value, self.canonical_quantity, new_display_unit)
+            return RealUnitedScalar(self.canonical_value, self.canonical_quantity, new_display_unit)
         else:
             raise ValueError(f"The suggested display unit {new_display_unit.nice_string} is not compatible with the canonical quantity {self.canonical_quantity}")
     
-    def change_display_unit_to_canonical(self) -> "SimpleUnitedScalar":
+    def change_display_unit_to_canonical(self) -> "RealUnitedScalar":
         """Convert to canonical unit."""
         raise NotImplementedError("Not implemented")
     
@@ -133,212 +131,212 @@ class SimpleUnitedScalar(UnitedScalar):
             raise ValueError(f"The suggested display unit {unit.nice_string} is not compatible with the canonical quantity {self.canonical_quantity}")
         return complex(unit.from_canonical_value(self.canonical_value))
 
-    def __le__(self, other: "SimpleUnitedScalar") -> bool:
+    def __le__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self <= other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value <= other.canonical_value
     
-    def __ge__(self, other: "SimpleUnitedScalar") -> bool:
+    def __ge__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self >= other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value >= other.canonical_value # type: ignore
     
-    def __lt__(self, other: "SimpleUnitedScalar") -> bool:
+    def __lt__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self < other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value < other.canonical_value # type: ignore
     
-    def __gt__(self, other: "SimpleUnitedScalar") -> bool:
+    def __gt__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self > other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value > other.canonical_value # type: ignore
     
-    def __eq__(self, other: "SimpleUnitedScalar") -> bool:
+    def __eq__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self == other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value == other.canonical_value # type: ignore
     
-    def __ne__(self, other: "SimpleUnitedScalar") -> bool:
+    def __ne__(self, other: "RealUnitedScalar") -> bool:
         """Evaluates to: self != other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot compare units of different types: {self.display_unit} and {other.display_unit}")
         return self.canonical_value != other.canonical_value # type: ignore
     
-    def __add__(self, other: "SimpleUnitedScalar") -> "SimpleUnitedScalar":
+    def __add__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Evaluates to: self + other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot add units of different types: {self.display_unit} and {other.display_unit}")
-        return SimpleUnitedScalar(self.canonical_value + other.canonical_value, self.canonical_quantity, self.display_unit)
+        return RealUnitedScalar(self.canonical_value + other.canonical_value, self.canonical_quantity, self.display_unit)
     
-    def __radd__(self, other: "SimpleUnitedScalar") -> "SimpleUnitedScalar":
+    def __radd__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Evaluates to: other + self."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot add units of different types: {self.display_unit} and {other.display_unit}")
-        return SimpleUnitedScalar(other.canonical_value + self.canonical_value, other.canonical_quantity, other.display_unit)
+        return RealUnitedScalar(other.canonical_value + self.canonical_value, other.canonical_quantity, other.display_unit)
     
-    def __sub__(self, other: "SimpleUnitedScalar") -> "SimpleUnitedScalar":
+    def __sub__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Evaluates to: self - other."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot subtract units of different types: {self.display_unit} and {other.display_unit}")
-        return SimpleUnitedScalar(self.canonical_value - other.canonical_value, self.canonical_quantity, self.display_unit)
+        return RealUnitedScalar(self.canonical_value - other.canonical_value, self.canonical_quantity, self.display_unit)
     
-    def __rsub__(self, other: "SimpleUnitedScalar") -> "SimpleUnitedScalar":
+    def __rsub__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Evaluates to: other - self."""
         if not self.compatible_to(other):
             raise ValueError(f"Cannot subtract units of different types: {self.display_unit} and {other.display_unit}")
-        return SimpleUnitedScalar(other.canonical_value - self.canonical_value, other.canonical_quantity, other.display_unit)
+        return RealUnitedScalar(other.canonical_value - self.canonical_value, other.canonical_quantity, other.display_unit)
     
-    def __truediv__(self, other: "SimpleUnitedScalar|float|int") -> "SimpleUnitedScalar":
+    def __truediv__(self, other: "RealUnitedScalar|float|int") -> "RealUnitedScalar":
         """Evaluates to: self / other."""
         if self.is_nan():
-            return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
-        if isinstance(other, SimpleUnitedScalar):
+            return RealUnitedScalar(math.nan, self.canonical_quantity, None)
+        if isinstance(other, RealUnitedScalar):
             if math.isnan(other.canonical_value):
-                return SimpleUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
+                return RealUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
             match math.isfinite(self.canonical_value), math.isfinite(other.canonical_value):
                 case True, True:
                     match self.canonical_value, other.canonical_value:
                         case 0, 0:
                             # 0 divided by 0 is nan
-                            return SimpleUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
+                            return RealUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
                         case 0, _:
                             # 0 divided by finite is 0
-                            return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
                         case _, 0:
                             # finite divided by 0 is inf or -inf
-                            return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
                         case _, _:
                             # finite divided by finite is finite
-                            return SimpleUnitedScalar(self.canonical_value / other.canonical_value, self.canonical_quantity - other.canonical_quantity, None)
+                            return RealUnitedScalar(self.canonical_value / other.canonical_value, self.canonical_quantity - other.canonical_quantity, None)
                 case True, False:
                     # finite divided by inf is 0
-                    return SimpleUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                    return RealUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
                 case False, False:
                     # inf divided by inf is nan
-                    return SimpleUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
+                    return RealUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
                 case _, _:
                     raise ValueError(f"Cannot divide non-numeric values: {self.canonical_value} and {other.canonical_value}")
         elif isinstance(other, float|int):
             if math.isnan(other):
-                return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                return RealUnitedScalar(math.nan, self.canonical_quantity, None)
             match math.isfinite(self.canonical_value), math.isfinite(other) == 0:
                 case True, True:
                     match self.canonical_value, other:
                         case 0, 0:
                             # 0 divided by 0 is nan
-                            return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                            return RealUnitedScalar(math.nan, self.canonical_quantity, None)
                         case 0, _:
                             # 0 divided by finite is 0
-                            return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
                         case _, 0:
                             # finite divided by 0 is inf or -inf
-                            return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
                         case _, _:
                             # finite divided by finite is finite
-                            return SimpleUnitedScalar(self.canonical_value / other, self.canonical_quantity, None)
+                            return RealUnitedScalar(self.canonical_value / other, self.canonical_quantity, None)
                 case True, False:
                     # finite divided by inf is 0
-                    return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                    return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
                 case False, False:
                     # inf divided by inf is nan
-                    return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                    return RealUnitedScalar(math.nan, self.canonical_quantity, None)
                 case _, _:
                     raise ValueError(f"Cannot divide non-numeric values: {self.canonical_value} and {other}")
 
-    def __rtruediv__(self, other: float|int) -> "SimpleUnitedScalar":
+    def __rtruediv__(self, other: float|int) -> "RealUnitedScalar":
         """Evaluates to: other / self."""
         if self.is_nan():
-            return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+            return RealUnitedScalar(math.nan, self.canonical_quantity, None)
         if math.isnan(other):
-            return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+            return RealUnitedScalar(math.nan, self.canonical_quantity, None)
         match math.isfinite(self.canonical_value), math.isfinite(other):
             case True, True:
                 match self.canonical_value, other:
                     case 0, 0:
                         # 0 divided by 0 is nan
-                        return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                        return RealUnitedScalar(math.nan, self.canonical_quantity, None)
                     case 0, _:
                         # 0 divided by finite is 0
-                        return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                        return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
                     case _, 0:
                         # finite divided by 0 is inf or -inf
-                        return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
+                        return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity, self.display_unit)
                     case _, _:
                         # finite divided by finite is finite
-                        return SimpleUnitedScalar(other / self.canonical_value, self.canonical_quantity, None)
+                        return RealUnitedScalar(other / self.canonical_value, self.canonical_quantity, None)
             case True, False:
                 # finite divided by inf is 0
-                return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
             case False, False:
                 # inf divided by inf is nan
-                return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                return RealUnitedScalar(math.nan, self.canonical_quantity, None)
             case _, _:
                 raise ValueError(f"Cannot divide non-numeric values: {other} and {self.canonical_value}")
 
-    def __mul__(self, other: "SimpleUnitedScalar|float|int") -> "SimpleUnitedScalar":
+    def __mul__(self, other: "RealUnitedScalar|float|int") -> "RealUnitedScalar":
         """Evaluates to: self * other."""
         if self.is_nan():
-            return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
-        if isinstance(other, SimpleUnitedScalar):
+            return RealUnitedScalar(math.nan, self.canonical_quantity, None)
+        if isinstance(other, RealUnitedScalar):
             if math.isnan(other.canonical_value):
-                return SimpleUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
+                return RealUnitedScalar(math.nan, self.canonical_quantity - other.canonical_quantity, None)
             match math.isfinite(self.canonical_value), math.isfinite(other.canonical_value):
                 case True, True:
                     match self.canonical_value, other.canonical_value:
                         case 0, 0:
                             # 0 * 0 is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, None)
+                            return RealUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, None)
                         case 0, _:
                             # 0 * finite is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
                         case _, 0:
                             # finite * 0 is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(0, self.canonical_quantity - other.canonical_quantity, self.display_unit)
                         case _, _:
                             # finite * finite is finite
-                            return SimpleUnitedScalar(self.canonical_value * other.canonical_value, self.canonical_quantity - other.canonical_quantity, None)
+                            return RealUnitedScalar(self.canonical_value * other.canonical_value, self.canonical_quantity - other.canonical_quantity, None)
                 case True, False:
                     # finite * inf is inf
-                    return SimpleUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
+                    return RealUnitedScalar(float('inf') if self.canonical_value > 0 else float('-inf'), self.canonical_quantity - other.canonical_quantity, self.display_unit)
                 case False, False:
                     # inf * inf is nan
-                    return SimpleUnitedScalar(float('inf') if (self.canonical_value > 0 and other.canonical_value > 0) or (self.canonical_value < 0 and other.canonical_value < 0) else float('-inf'), self.canonical_quantity - other.canonical_quantity, None)
+                    return RealUnitedScalar(float('inf') if (self.canonical_value > 0 and other.canonical_value > 0) or (self.canonical_value < 0 and other.canonical_value < 0) else float('-inf'), self.canonical_quantity - other.canonical_quantity, None)
                 case _, _:
                     raise ValueError(f"Cannot multiply non-numeric values: {self.canonical_value} and {other.canonical_value}")
         elif isinstance(other, float|int):
             if math.isnan(other):
-                return SimpleUnitedScalar(math.nan, self.canonical_quantity, None)
+                return RealUnitedScalar(math.nan, self.canonical_quantity, None)
             match math.isfinite(self.canonical_value), math.isfinite(other) == 0:
                 case True, True:
                     match self.canonical_value, other:
                         case 0, 0:
                             # 0 * 0 is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity, None)
+                            return RealUnitedScalar(0, self.canonical_quantity, None)
                         case 0, _:
                             # 0 * finite is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
                         case _, 0:
                             # finite * 0 is 0
-                            return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                            return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
                         case _, _:
                             # finite * finite is finite
-                            return SimpleUnitedScalar(self.canonical_value * other, self.canonical_quantity, None)
+                            return RealUnitedScalar(self.canonical_value * other, self.canonical_quantity, None)
                 case True, False:
                     # finite * inf is inf
-                    return SimpleUnitedScalar(0, self.canonical_quantity, self.display_unit)
+                    return RealUnitedScalar(0, self.canonical_quantity, self.display_unit)
                 case False, False:
                     # inf * inf is inf
-                    return SimpleUnitedScalar(float('inf') if (self.canonical_value > 0 and other > 0) or (self.canonical_value < 0 and other < 0) else float('-inf'), self.canonical_quantity, None)
+                    return RealUnitedScalar(float('inf') if (self.canonical_value > 0 and other > 0) or (self.canonical_value < 0 and other < 0) else float('-inf'), self.canonical_quantity, None)
                 case _, _:
                     raise ValueError(f"Cannot multiply non-numeric values: {self.canonical_value} and {other}")
         
     
-    def __rmul__(self, other: float|int) -> "SimpleUnitedScalar":
+    def __rmul__(self, other: float|int) -> "RealUnitedScalar":
         """Evaluates to: other * self"""
         return self * other
         
@@ -385,7 +383,7 @@ class SimpleUnitedScalar(UnitedScalar):
     def format(self, unit: str|SimpleUnit|None=None, decimals: int = 0, do_not_print_unit: bool = False) -> str:
 
         if unit is None:
-            if isinstance(self.canonical_quantity, SimpleCanonicalQuantity):
+            if isinstance(self.canonical_quantity, SimpleUnitQuantity):
                 _unit = SimpleUnit.suggest_unit_from_named_units(self.canonical_quantity, self.canonical_value)
             else:
                 raise NotImplementedError("Not implemented to format with non-simple canonical quantity")
@@ -402,7 +400,7 @@ class SimpleUnitedScalar(UnitedScalar):
         else:
             return f"{self.canonical_value:.{decimals}f} {_unit.nice_string}"
         
-    def compatible_to(self, *args: "SimpleUnitedScalar") -> bool:
+    def compatible_to(self, *args: "RealUnitedScalar") -> bool:
         """Evaluated if the quantities are the same"""
         if len(args) == 0:
             return True
@@ -419,10 +417,10 @@ class SimpleUnitedScalar(UnitedScalar):
     
     def __reduce__(self):
         """Custom serialization for multiprocessing."""
-        return (SimpleUnitedScalar, (self.canonical_value, self.canonical_quantity, self.display_unit))
+        return (RealUnitedScalar, (self.canonical_value, self.canonical_quantity, self.display_unit))
     
     @classmethod
-    def sum(cls, values: list["SimpleUnitedScalar"]) -> "UnitedScalar":
+    def sum(cls, values: list["RealUnitedScalar"]) -> "UnitedScalar":
         """Sum a list of United_Value objects. All values must be compatible and numeric."""
         if not values:
             raise ValueError("Cannot sum empty list of United_Value objects")
@@ -434,7 +432,7 @@ class SimpleUnitedScalar(UnitedScalar):
         return cls(total_canonical, values[0].canonical_quantity, values[0].display_unit)
 
     @classmethod
-    def mean(cls, values: list["SimpleUnitedScalar"]) -> "UnitedScalar":
+    def mean(cls, values: list["RealUnitedScalar"]) -> "UnitedScalar":
         """Calculate mean of a list of United_Value objects. All values must be compatible and numeric."""
         if not values:
             raise ValueError("Cannot calculate mean of empty list of United_Value objects")
@@ -445,7 +443,7 @@ class SimpleUnitedScalar(UnitedScalar):
         total_canonical = sum(uv.canonical_value for uv in values) # type: ignore
         return cls(total_canonical / len(values), values[0].canonical_quantity, values[0].display_unit)
 
-    def is_in_range(self, min_val: "SimpleUnitedScalar", max_val: "SimpleUnitedScalar") -> bool:
+    def is_in_range(self, min_val: "RealUnitedScalar", max_val: "RealUnitedScalar") -> bool:
         """Check if this value is within the specified range (inclusive)."""
         if not self.compatible_to(min_val, max_val):
             raise ValueError("Cannot check range with incompatible units")
@@ -453,7 +451,7 @@ class SimpleUnitedScalar(UnitedScalar):
             raise ValueError("Cannot check range for non-numeric values")
         return min_val <= self <= max_val
     
-    def clamp(self, min_val: "SimpleUnitedScalar", max_val: "SimpleUnitedScalar") -> "SimpleUnitedScalar":
+    def clamp(self, min_val: "RealUnitedScalar", max_val: "RealUnitedScalar") -> "RealUnitedScalar":
         """
         Clamp this value to the specified range.
         
@@ -515,9 +513,9 @@ class SimpleUnitedScalar(UnitedScalar):
         }
     
     @classmethod
-    def from_json(cls, data: dict) -> "SimpleUnitedScalar":
+    def from_json(cls, data: dict) -> "RealUnitedScalar":
         """Create from JSON-serializable dictionary."""
-        return cls(data["canonical_value"], SimpleCanonicalQuantity.from_json(data["canonical_quantity"]), SimpleUnit.parse(data["unit"]) if data["unit"] is not None else None)
+        return cls(data["canonical_value"], SimpleUnitQuantity.from_json(data["canonical_quantity"]), SimpleUnit.parse(data["unit"]) if data["unit"] is not None else None)
     
     def to_hdf5(self, group: h5py.Group) -> None:
         group.attrs["class"] = "UnitedSimpleValue"
@@ -527,11 +525,11 @@ class SimpleUnitedScalar(UnitedScalar):
         group.create_dataset("display_unit", data=self.display_unit.nice_string if self.display_unit is not None else None, dtype=dt)
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group) -> "SimpleUnitedScalar":
+    def from_hdf5(cls, group: h5py.Group) -> "RealUnitedScalar":
 
         canonical_value: float = group.get("canonical_value", None) # type: ignore
         canonical_quantity_as_unit_string: str = group.get("canonical_quantity_as_unit_string", None) # type: ignore
-        canonical_quantity: SimpleCanonicalQuantity = SimpleUnit.parse(canonical_quantity_as_unit_string).canonical_quantity
+        canonical_quantity: SimpleUnitQuantity = SimpleUnit.parse(canonical_quantity_as_unit_string).unit_quantity
         display_unit_as_string: str|None = group.get("display_unit", None) if group.get("display_unit", None) is not None else None # type: ignore
         display_unit: Unit|None = SimpleUnit.parse(display_unit_as_string) if display_unit_as_string is not None else None
 
