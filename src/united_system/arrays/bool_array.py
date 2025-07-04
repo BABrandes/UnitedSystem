@@ -1,6 +1,8 @@
 from typing import Any, Iterator
 from .utils import ArrayLike
 from dataclasses import dataclass
+import h5py
+import numpy as np
 
 @dataclass(frozen=True, slots=True)
 class BoolArray(ArrayLike[bool]):
@@ -28,5 +30,16 @@ class BoolArray(ArrayLike[bool]):
         return {"bool_array": self.bool_array}
     
     @staticmethod
-    def from_json(json: dict[str, Any]) -> "BoolArray":
+    def from_json(json: dict[str, Any]) -> "BoolArray": 
         return BoolArray(bool_array=tuple(json["bool_array"]))
+    
+    def to_hdf5(self, hdf5_group: h5py.Group) -> None:
+        hdf5_group.create_dataset("bool_array", data=self.bool_array)
+    
+    @staticmethod
+    def from_hdf5(hdf5_group: h5py.Group) -> "BoolArray":
+        return BoolArray(bool_array=tuple(hdf5_group["bool_array"][()]))
+    
+    @classmethod
+    def create(cls, values: np.ndarray) -> "BoolArray":
+        return cls(bool_array=tuple(values.astype(bool)))

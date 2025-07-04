@@ -1,9 +1,15 @@
 from dataclasses import dataclass
 from ..utils import JSONable, HDF5able
+from ..units.utils import United
 from abc import ABC
+from ..units.unit import UnitQuantity
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(ABC, JSONable, HDF5able):
+class UnitedScalar(ABC, JSONable, HDF5able, United):
+
+    @property
+    def unit_quantity(self) -> UnitQuantity:
+        raise NotImplementedError("Operation on the abstract base class called!")
     
     def __add__(self, other: "UnitedScalar") -> "UnitedScalar":
         raise NotImplementedError("Operation on the abstract base class called!")

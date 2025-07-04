@@ -1,9 +1,9 @@
-from typing import Protocol, Type, runtime_checkable, NamedTuple, Any, Callable
+from typing import Protocol, Type, runtime_checkable, NamedTuple, Any, Callable, Generic, TypeVar, TypeAlias, Literal, overload
 from ..units.unit import Unit
 import pandas as pd
 from dataclasses import dataclass
 from enum import Enum
-from pandas import Dtype
+from pandas._typing import Dtype
 from ..scalars.united_scalar import UnitedScalar
 from ..arrays.utils import ArrayLike
 from ..scalars.real_united_scalar import RealUnitedScalar
@@ -18,6 +18,10 @@ from ..arrays.timestamp_array import TimestampArray
 from pandas import Timestamp
 import numpy as np
 import math
+from ..units.unit_quantity import UnitQuantity
+from ..united_dataframe.united_dataframe import United_Dataframe
+from ..units.simple_unit import SimpleUnit
+from .column_type import ColumnType
 
 @runtime_checkable
 class Column_Key(Protocol):
@@ -28,38 +32,70 @@ class Column_Key(Protocol):
         ...
 
 @dataclass(frozen=True, slots=True)
-class ColumnTypeInformation(NamedTuple):
-    name: str
-    has_unit: bool
-    scalar_type: type[UnitedScalar]
-    array_type: type[ArrayLike]
-    dataframe_storage_type: Dtype
-    array_storage_type: Dtype|type
-    numpy_storage_options: np.dtype
-    none_value: Any
-    precision: int|None
+class Column_Information():
+    unit_quantity: UnitQuantity|None
+    column_type: ColumnType
+    display_unit: Unit|None
 
-class ColumnType(Enum):
-    value: ColumnTypeInformation    
-    REAL_NUMBER_64 = ColumnTypeInformation(         name="Real United Numbers (64bit)",     has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_types=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options={np.float64, np.float32, np.float16},     none_value=pd.NA,       precision=64)
-    REAL_NUMBER_32 = ColumnTypeInformation(         name="Real United Numbers (32bit)",     has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_types=pd.Float32Dtype(),  array_storage_type=float,       numpy_storage_options={np.float32, np.float64, np.float16},     none_value=pd.NA,       precision=32)
-    COMPLEX_NUMBER_128 = ColumnTypeInformation(     name="Complex United Numbers (128bit)", has_unit=True,  scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_types=np.complex128,      array_storage_type=complex,     numpy_storage_options={np.complex128, np.complex64},            none_value=math.nan+1j, precision=128)
-    STRING = ColumnTypeInformation(                 name="Strings",                         has_unit=False, scalar_type=str,                    array_type=StringArray,         dataframe_storage_types=pd.StringDtype,     array_storage_type=str,         numpy_storage_options={np.str_},                                none_value=pd.NA,       precision=None)
-    INTEGER_64 = ColumnTypeInformation(             name="Integers",                        has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_types=pd.Int64Dtype(),    array_storage_type=int,         numpy_storage_options={np.int64, np.int32, np.int16, np.int8},  none_value=pd.NA,       precision=64)
-    INTEGER_32 = ColumnTypeInformation(             name="Integers",                        has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_types=pd.Int32Dtype(),    array_storage_type=int,         numpy_storage_options={np.int32, np.int64, np.int16, np.int8},  none_value=pd.NA,       precision=32)
-    INTEGER_16 = ColumnTypeInformation(             name="Integers",                        has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_types=pd.Int16Dtype(),    array_storage_type=int,         numpy_storage_options={np.int16, np.int64, np.int32, np.int8},  none_value=pd.NA,       precision=16)
-    INTEGER_8 = ColumnTypeInformation(              name="Integers",                        has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_types=pd.Int8Dtype(),     array_storage_type=int,         numpy_storage_options={np.int8, np.int64, np.int32, np.int16},  none_value=pd.NA,       precision=8)
-    FLOAT_64 = ColumnTypeInformation(               name="Floats (64bit)",                  has_unit=True,  scalar_type=float,                  array_type=FloatArray,          dataframe_storage_types=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options={np.float64, np.float32, np.float16},     none_value=pd.NA,       precision=64)
-    FLOAT_32 = ColumnTypeInformation(               name="Floats (32bit)",                  has_unit=True,  scalar_type=float,                  array_type=FloatArray,          dataframe_storage_types=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options={np.float32, np.float64, np.float16},     none_value=pd.NA,       precision=32)
-    COMPLEX_128 = ColumnTypeInformation(            name="Complex (128bit)",                has_unit=True,  scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_types=np.complex128,      array_storage_type=complex,     numpy_storage_options={np.complex128, np.complex64},            none_value=math.nan+1j, precision=128)
-    BOOL = ColumnTypeInformation(                   name="Bools",                           has_unit=False, scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_types=pd.BooleanDtype(),  array_storage_type=bool,        numpy_storage_options={np.bool_},                               none_value=pd.NA,       precision=None)
-    TIMESTAMP = ColumnTypeInformation(              name="Timestamps",                      has_unit=False, scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_types=pd.Timestamp(),     array_storage_type=Timestamp,   numpy_storage_options={np.datetime64},                          none_value=pd.NA,       precision=None)
+    def __postinit__(self):
+        if self.unit_quantity is None:
+            if self.display_unit is not None:
+                raise ValueError(f"When the unit quantity is None, the display unit must also be None")
+        else:
+            if self.display_unit is None:
+                self.display_unit = self.unit_quantity.canonical_unit()
+            if not self.display_unit.compatible_to(self.unit_quantity):
+                raise ValueError(f"Display unit {self.display_unit} is not compatible with unit quantity {self.unit_quantity}")
 
-class Series_With_Unit(NamedTuple):
-    series: pd.Series
-    unit: Unit
+    def internal_dataframe_column_name(self, column_key: Column_Key|str, internal_column_name_formatter: "InternalDataFrameNameFormatter[CK]" = "SIMPLE_INTERNAL_NAME_FORMATTER") -> str:
+        return internal_column_name_formatter.create_internal_dataframe_column_name(column_key, self)
 
-SIMPLE_UNITED_FORMATTER: Callable[[Column_Key|str, Unit, ColumnType], str] = lambda name, unit, _: f"{name} [{unit}]" if unit != None else f"{name} [-]"
+    @classmethod
+    def create(
+        cls,
+        unit_quantity: UnitQuantity|None,
+        column_type: ColumnType,
+        display_unit: Unit|None=None) -> "Column_Information":
+        return cls(unit_quantity, column_type, display_unit)
+
+CK = TypeVar("CK", bound=Column_Key|str, default=str)
+class InternalDataFrameNameFormatter(Protocol, Generic[CK]):
+    def create_internal_dataframe_column_name(self, column_key: CK, column_information: Column_Information[CK]) -> str:
+        ...
+    @classmethod
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, Column_Information[CK]]:
+        ...
+
+def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, Column_Information[CK]]:
+    # Find the indices of '[' and ']' in the internal_dataframe_column_name, looking from the end of the string
+    internal_dataframe_column_name = internal_dataframe_column_name.strip()
+    index_bracket_close: int = internal_dataframe_column_name.rfind(']')
+    index_bracket_open: int = internal_dataframe_column_name[index_bracket_close:].rfind('[')
+    display_unit: str = internal_dataframe_column_name[index_bracket_open+1:index_bracket_close]
+    # Make sure there is a space before the '['
+    if index_bracket_open > 0 and internal_dataframe_column_name[index_bracket_open-1] != ' ':
+        raise ValueError(f"Invalid internal dataframe column name: {internal_dataframe_column_name}")
+    # Get the rest of ths string, but without space
+    column_key_str = internal_dataframe_column_name[:index_bracket_open-1]
+    if display_unit == "-":
+        display_unit: Unit|None = None
+    else:
+        display_unit: Unit = SimpleUnit.parse(display_unit)
+    if CK == str:
+        column_key: CK = column_key_str
+    else:
+        column_key: CK = column_key_constructor
+    column_information: Column_Information = Column_Information.create(
+        unit_quantity=display_unit.unit_quantity() if display_unit is not None else None,
+        column_type=ColumnType.value,
+        display_unit=display_unit if display_unit is not None else None
+    )
+    return column_key, column_information
+SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER: InternalDataFrameNameFormatter[CK] = InternalDataFrameNameFormatter[CK](
+    create_internal_dataframe_column_name=lambda column_key, column_information: f"{column_key} [{column_information.display_unit}]" if column_information.display_unit != None else f"{column_key} [-]",
+    retrieve_from_internal_dataframe_column_name=lambda internal_dataframe_column_name, dtype, column_key_constructor: x(internal_dataframe_column_name, dtype, column_key_constructor))
+
+
 
 # @dataclass(frozen=True, slots=True)
 # class Value_Type_Information(NamedTuple):

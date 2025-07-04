@@ -21,10 +21,10 @@ class _ColumnAccessor(Generic[CK]):
         self._column_key: CK = column_key
         
     def __getitem__(self, row: int) -> UnitedScalar:
-        return self._parent.get_cell_value(row, self._column_key)
+        return self._parent.cell_value_get(row, self._column_key)
     
     def __setitem__(self, row: int, value: UnitedScalar):
-        self._parent.set_cell_value(row, self._column_key, value)
+        self._parent.cell_value_set(row, self._column_key, value)
 
     def __len__(self) -> int:
         return len(self._parent)
@@ -44,7 +44,7 @@ class _ColumnAccessor(Generic[CK]):
     def as_united_array(self, display_unit: Unit|None=None) -> UnitedArray:
         if display_unit is None:
             display_unit = self._parent.display_unit(self._column_key)
-        return self._parent.column_values_as_united_array(self._column_key, display_unit)
+        return self._parent.column_values_as_array(self._column_key, display_unit)
 
     def sum(self) -> UnitedScalar:
         return self._parent.colfun_sum(self._column_key)

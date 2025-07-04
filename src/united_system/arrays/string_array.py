@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Iterator, Any
 import h5py
 from .utils import ArrayLike
+import numpy as np
+import pandas as pd
 
 @dataclass(frozen=True, slots=True)
 class StringArray(ArrayLike[str]):
@@ -38,3 +40,12 @@ class StringArray(ArrayLike[str]):
     @staticmethod
     def from_hdf5(hdf5_group: h5py.Group) -> "StringArray":
         return StringArray(text_array=hdf5_group["text_array"][()])
+    
+    @classmethod
+    def create(cls, values: np.ndarray|pd.Series) -> "StringArray":
+        if isinstance(values, np.ndarray):
+            return cls(text_array=tuple(values.astype(str)))
+        elif isinstance(values, pd.Series):
+            return cls(text_array=tuple(values.astype(str)))
+        else:
+            raise ValueError(f"Invalid values type: {type(values)}")

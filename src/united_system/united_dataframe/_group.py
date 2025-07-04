@@ -215,7 +215,7 @@ class GroupBy(Generic[CK]):
             
             # Create United_Dataframe for result
             result_column_keys_final: list[CK] = self._dataframe.column_keys.copy()
-            result_si_quantities: dict[CK, UnitQuantity] = self._dataframe.si_quantities.copy()
+            result_si_quantities: dict[CK, UnitQuantity] = self._dataframe.unit_quantities.copy()
             result_display_units: dict[CK, Unit] = self._dataframe.display_units.copy()
             result_value_types: dict[CK, Value_Type] = self._dataframe.value_types.copy()
             
@@ -289,7 +289,7 @@ class GroupBy(Generic[CK]):
             
             # Create United_Dataframe for result
             result_column_keys_final: list[CK] = self._dataframe.column_keys.copy()
-            result_si_quantities: dict[CK, UnitQuantity] = self._dataframe.si_quantities.copy()
+            result_si_quantities: dict[CK, UnitQuantity] = self._dataframe.unit_quantities.copy()
             result_display_units: dict[CK, Unit] = self._dataframe.display_units.copy()
             result_value_types: dict[CK, Value_Type] = self._dataframe.value_types.copy()
             
@@ -412,7 +412,7 @@ class GroupBy(Generic[CK]):
             
             # Create United_Dataframe for result
             result_column_keys = self._dataframe.column_keys.copy()
-            result_si_quantities = self._dataframe.si_quantities.copy()
+            result_si_quantities = self._dataframe.unit_quantities.copy()
             result_display_units = self._dataframe.display_units.copy()
             result_value_types = self._dataframe.value_types.copy()
             
@@ -468,7 +468,7 @@ class GroupBy(Generic[CK]):
                 return United_Dataframe[CK].concatenate_dataframes(all_head_rows[0], *all_head_rows[1:])
             else:
                 # Return empty dataframe with same structure
-                return United_Dataframe[CK].create_empty_dataframe(
+                return United_Dataframe[CK].create_empty(
                     self._dataframe._column_keys,
                     self._dataframe._display_units,
                     self._dataframe._value_types
@@ -507,7 +507,7 @@ class GroupBy(Generic[CK]):
                 return United_Dataframe[CK].concatenate_dataframes(all_first_rows[0], *all_first_rows[1:])
             else:
                 # Return empty dataframe with same structure
-                return United_Dataframe[CK].create_empty_dataframe(
+                return United_Dataframe[CK].create_empty(
                     self._dataframe._column_keys,
                     self._dataframe._display_units,
                     self._dataframe._value_types
@@ -554,7 +554,7 @@ class GroupBy(Generic[CK]):
                 return United_Dataframe[CK].concatenate_dataframes(all_tail_rows[0], *all_tail_rows[1:])
             else:
                 # Return empty dataframe with same structure
-                return United_Dataframe[CK].create_empty_dataframe(
+                return United_Dataframe[CK].create_empty(
                     self._dataframe._column_keys,
                     self._dataframe._display_units,
                     self._dataframe._value_types
@@ -593,7 +593,7 @@ class GroupBy(Generic[CK]):
                 return United_Dataframe[CK].concatenate_dataframes(all_last_rows[0], *all_last_rows[1:])
             else:
                 # Return empty dataframe with same structure
-                return United_Dataframe[CK].create_empty_dataframe(
+                return United_Dataframe[CK].create_empty(
                     self._dataframe._column_keys,
                     self._dataframe._display_units,
                     self._dataframe._value_types
@@ -652,7 +652,7 @@ class GroupBy(Generic[CK]):
                 return GroupBy[CK](filtered_dataframe, self._by)
             else:
                 # If no groups remain after filtering, return an empty GroupBy
-                empty_dataframe = United_Dataframe[CK].create_empty_dataframe(
+                empty_dataframe = United_Dataframe[CK].create_empty(
                     self._dataframe._column_keys,
                     self._dataframe._display_units,
                     self._dataframe._value_types
