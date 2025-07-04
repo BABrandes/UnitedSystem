@@ -1,3 +1,4 @@
+from h5py._hl.group import Group
 from ..units.unit import Unit, UnitQuantity
 from ..scalars.united_scalar import UnitedScalar
 import pandas as pd
@@ -31,15 +32,15 @@ from ..arrays.bool_array import BoolArray
 from ..arrays.timestamp_array import TimestampArray
 from ..arrays.complex_array import ComplexArray
 from pandas import Timestamp
-from .utils import Column_Key, Column_Information, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
+from .utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
 from .column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
 
-CK = TypeVar("CK", bound=Column_Key|str, default=str)
-CK_I2 = TypeVar("CK_I2", bound=Column_Key|str, default=str)
+CK = TypeVar("CK", bound=ColumnKey|str, default=str)
+CK_I2 = TypeVar("CK_I2", bound=ColumnKey|str, default=str)
 
-CK_CF = TypeVar("CK_CF", bound=Column_Key|str, default=str)
+CK_CF = TypeVar("CK_CF", bound=ColumnKey|str, default=str)
 
-class United_Dataframe(JSONable, HDF5able, Generic[CK]):
+class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
     """
     A unit-aware DataFrame that maintains type safety and thread safety.
     
@@ -59,7 +60,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
     
     def __init__(self,
                  internal_canonical_dataframe: pd.DataFrame,
-                 column_information: dict[CK, Column_Information],
+                 column_information: dict[CK, ColumnInformation],
                  internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter[CK] = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER):
         """
         **This method is not meant to be called by the user.**
@@ -85,7 +86,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
 
         # Step 1: Set the fields from the constructor
         self._internal_canonical_dataframe: pd.DataFrame = internal_canonical_dataframe
-        self._column_information: dict[CK, Column_Information] = column_information.copy()
+        self._column_information: dict[CK, ColumnInformation] = column_information.copy()
         self._internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter[CK] = internal_dataframe_column_name_formatter
 
         # Step 2: Check that each dataframe column has a corresponding column information
@@ -146,7 +147,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         Returns:
             str: The internal dataframe column name for the column
         """
-        if isinstance(column_key, Column_Key):
+        if isinstance(column_key, ColumnKey):
             column_key_str: str = column_key.to_string()
         else:
             column_key_str: str = column_key
@@ -154,14 +155,14 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
 
     @staticmethod
     def column_key_to_string(column_key: CK) -> str:
-        if isinstance(column_key, Column_Key):
+        if isinstance(column_key, ColumnKey):
             return column_key.to_string()
         else:
             return column_key
 
-    def column_information(self, column_key: CK) -> Column_Information[CK]:
+    def column_information(self, column_key: CK) -> ColumnInformation[CK]:
         with self._rlock:
-            return Column_Information(column_key, self._unit_quantities[column_key], self._value_types[column_key])
+            return ColumnInformation(column_key, self._unit_quantities[column_key], self._value_types[column_key])
         
     def compatible_with_column(self, column_key: CK, value: SCALAR_TYPE|ARRAY_TYPE|np.ndarray|pd.Series) -> bool:
         """Check if a value is compatible with a value type and /or unit."""
@@ -199,7 +200,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return self._internal_canonical_dataframe.copy(deep=True)
 
-    def copy(self, deep: bool = True) -> "United_Dataframe[CK]":
+    def copy(self, deep: bool = True) -> "UnitedDataframe[CK]":
         """
         Create a deep copy of the United_Dataframe.
         
@@ -207,7 +208,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             United_Dataframe: A new instance with copied data and metadata
         """
         with self._rlock:
-            new_df: United_Dataframe[CK] = United_Dataframe(
+            new_df: UnitedDataframe[CK] = UnitedDataframe(
                 self._internal_canonical_dataframe.copy(deep=deep),
                 self._column_information,
                 self._column_types,
@@ -320,7 +321,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         with self._rlock:
             match column_keys:
-                case Column_Key()|str():
+                case ColumnKey()|str():
                     if len(more_column_keys) == 0:
                         return self._value_types[column_keys]
                     else:
@@ -384,7 +385,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         with self._rlock:
             match column_keys:
-                case Column_Key()|str():
+                case ColumnKey()|str():
                     if len(more_column_keys) == 0:
                         return self._display_units[column_keys]
                     else:
@@ -448,7 +449,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         with self._rlock:
             match column_keys:
-                case Column_Key()|str():
+                case ColumnKey()|str():
                     if len(more_column_keys) == 0:
                         return self._unit_quantities[column_keys]
                     else:
@@ -512,7 +513,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         with self._rlock:
             match column_keys:
-                case Column_Key()|str():
+                case ColumnKey()|str():
                     if len(more_column_keys) == 0:
                         return self._internal_dataframe_column_strings[column_keys]
                     else:
@@ -543,24 +544,24 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
     
     # ----------- Column Information ------------
 
-    def get_column_information_dict(self) -> dict[CK, Column_Information[CK]]:
+    def get_column_information_dict(self) -> dict[CK, ColumnInformation[CK]]:
         """
         Get the column information list.
         """
         with self._rlock:
-            return {column_key: Column_Information[CK](column_key, self._unit_quantities[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
+            return {column_key: ColumnInformation[CK](column_key, self._unit_quantities[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
 
-    def column_information_of_type(self, *column_key_types: type[CK_CF]) -> list[tuple[CK_CF, Column_Information[CK_CF]]]:
+    def column_information_of_type(self, *column_key_types: type[CK_CF]) -> list[tuple[CK_CF, ColumnInformation[CK_CF]]]:
         """
         Filter the dataframe by column key type.
         """
         with self._rlock:
 
-            column_information_of_type: list[Column_Information[CK_CF]] = []
+            column_information_of_type: list[ColumnInformation[CK_CF]] = []
             for column_key in self._column_keys:
                 column_key_filtered_type: CK = column_key
                 if isinstance(column_key_filtered_type, tuple(column_key_types)):
-                    column_information_of_type.append(Column_Information[CK_CF](
+                    column_information_of_type.append(ColumnInformation[CK_CF](
                         column_key_filtered_type,
                         self._unit_quantities[column_key],
                         self._column_types[column_key],
@@ -581,18 +582,18 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             str: The string representation of the column key
         """
         match column_key:
-            case Column_Key():
+            case ColumnKey():
                 return column_key.to_string()
             case str():
                 return column_key
             case _:
                 raise ValueError(f"Invalid column key: {column_key}.")
 
-    def _get_dataframe_with_new_canonical_dataframe(self, new_canonical_dataframe: pd.DataFrame) -> "United_Dataframe[CK]":
+    def _get_dataframe_with_new_canonical_dataframe(self, new_canonical_dataframe: pd.DataFrame) -> "UnitedDataframe[CK]":
         """
         Get a new United_Dataframe with a new canonical dataframe, but using the same column information.
         """
-        return United_Dataframe[CK].create_from_dataframe_and_column_information_list(
+        return UnitedDataframe[CK].create_from_dataframe_and_column_information_list(
             new_canonical_dataframe,
             self._column_information,
             self._column_types,
@@ -883,7 +884,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             if dataframe_column_name in self._internal_canonical_dataframe.columns:
                 raise ValueError(f"Column key {column_key} already exists in the dataframe.")
             self._internal_canonical_dataframe[dataframe_column_name] = pd.Series([pd.NA] * len(self._internal_canonical_dataframe), dtype=value_type.value.corresponding_pandas_type)
-            self._column_information[column_key] = Column_Information(unit_quantity, value_type, display_unit)
+            self._column_information[column_key] = ColumnInformation(unit_quantity, value_type, display_unit)
             self._column_keys.append(column_key)
             self._internal_dataframe_column_strings.append(dataframe_column_name)
             self._unit_quantities[column_key] = unit_quantity
@@ -1222,7 +1223,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         ...
 
     @overload
-    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: list[CK]|set[CK]) -> "United_Dataframe[CK]":
+    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: list[CK]|set[CK]) -> "UnitedDataframe[CK]":
         """
         Get a new dataframe with the selected columns.
         
@@ -1235,7 +1236,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         ...
 
     @overload
-    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: list[int]|set[int]|slice) -> "United_Dataframe[CK]":
+    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: list[int]|set[int]|slice) -> "UnitedDataframe[CK]":
         """
         Get a new dataframe with the selected rows.
         """
@@ -1248,7 +1249,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         ...
 
-    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: int|CK|list[int]|set[int]|slice|list[CK]|set[CK]|tuple[int, CK]|tuple[CK, int]) -> "_ColumnAccessor[CK] | _RowAccessor[CK] | United_Dataframe[CK] | UnitedScalar":
+    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: int|CK|list[int]|set[int]|slice|list[CK]|set[CK]|tuple[int, CK]|tuple[CK, int]) -> "_ColumnAccessor[CK] | _RowAccessor[CK] | UnitedDataframe[CK] | UnitedScalar":
         """
         Get a column accessor for pandas-like column access.
         
@@ -1266,7 +1267,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             match column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position:
                 case int():
                     return _RowAccessor(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position)
-                case Column_Key()|str():
+                case ColumnKey()|str():
                     return _ColumnAccessor(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position)
                 case slice():
                     new_united_dataframe = self.copy(deep=True)
@@ -1274,12 +1275,12 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
                     return new_united_dataframe
                 case list() | set():
                     if len(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position) == 0:
-                        return United_Dataframe[CK].create_empty([], [], [], 0, self._internal_column_name_formatter)
+                        return UnitedDataframe[CK].create_empty([], [], [], 0, self._internal_column_name_formatter)
                     if isinstance(next(iter(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position)), int):
                         new_united_dataframe = self.copy(deep=True)
                         new_united_dataframe.remove_rows(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position) # type: ignore[arg-type]
                         return new_united_dataframe
-                    elif isinstance(next(iter(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position)), Column_Key|str):
+                    elif isinstance(next(iter(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position)), ColumnKey|str):
                         new_united_dataframe = self.copy(deep=True)
                         new_united_dataframe.remove_columns(column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position) # type: ignore[arg-type]
                         return new_united_dataframe
@@ -1287,11 +1288,11 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
                         raise ValueError(f"Invalid key: {column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position}. Use df[key][row] for column access or df.loc[row, key] for row/column access.")
                 case tuple():
                     match column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[0], column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[1]:
-                        case int(), Column_Key()|str():
+                        case int(), ColumnKey()|str():
                             row_index: int = column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[0] # type: ignore[assignment]
                             column_key: CK = column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[1] # type: ignore[assignment]
                             return self.cell_value_get(row_index, column_key)
-                        case Column_Key()|str(), int():
+                        case ColumnKey()|str(), int():
                             column_key: CK = column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[0] # type: ignore[assignment]
                             row_index: int = column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position[1] # type: ignore[assignment]
                             return self.cell_value_get(row_index, column_key)
@@ -1360,10 +1361,10 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             match cell_position:
-                case int(), Column_Key()|str():
+                case int(), ColumnKey()|str():
                     row_index: int = cell_position[0]
                     column_key: CK = cell_position[1]
-                case Column_Key()|str(), int():
+                case ColumnKey()|str(), int():
                     column_key: CK = cell_position[0]
                     row_index: int = cell_position[1]
                 case _:
@@ -1821,7 +1822,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         def __ne__(self, other): return self._wrap(operator.ne, other)
 
     def _convert_filter(self, filter_function: Callable[[UnitedScalar], bool]) -> Callable[[np.ndarray], np.ndarray]:
-        proxy: United_Dataframe._UnitedScalar_Proxy = United_Dataframe._UnitedScalar_Proxy()
+        proxy: UnitedDataframe._UnitedScalar_Proxy = UnitedDataframe._UnitedScalar_Proxy()
         scalar_filter: bool = filter_function(proxy) # type: ignore[arg-type]
 
         if not callable(scalar_filter):
@@ -1877,7 +1878,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
 
             return mask_of_dataframe
         
-    def maskfun_apply_mask(self, mask: np.ndarray) -> "United_Dataframe[CK]":
+    def maskfun_apply_mask(self, mask: np.ndarray) -> "UnitedDataframe[CK]":
         """
         Get a new dataframe with the rows that satisfy the numpy mask.
 
@@ -1904,7 +1905,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
                 raise ValueError(f"The mask must be a boolean array. The mask has dtype {mask.dtype}.")
 
             # Create a new dataframe with the rows that satisfy the mask
-            return United_Dataframe[CK].create_from_dataframe_and_column_information_list(
+            return UnitedDataframe[CK].create_from_dataframe_and_column_information_list(
                 self._internal_canonical_dataframe[mask],
                 None,
                 self.get_column_information_list(),
@@ -1955,7 +1956,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return self._internal_canonical_dataframe.empty
 
-    def rowfun_head(self, n: int = 1) -> "United_Dataframe[CK]":
+    def rowfun_head(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the first n rows of the dataframe.
         
@@ -1986,12 +1987,12 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             actual_n = min(n, len(self._internal_canonical_dataframe))
             head_df = self._internal_canonical_dataframe.head(actual_n)
             
-            return United_Dataframe[CK](
+            return UnitedDataframe[CK](
                 head_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_first(self) -> "United_Dataframe[CK]":
+    def rowfun_first(self) -> "UnitedDataframe[CK]":
         """
         Get the first row of the dataframe.
         
@@ -2014,12 +2015,12 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             
             first_df = self._internal_canonical_dataframe.head(1)
             
-            return United_Dataframe(
+            return UnitedDataframe(
                 first_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_tail(self, n: int = 1) -> "United_Dataframe[CK]":
+    def rowfun_tail(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the last n rows of the dataframe.
         
@@ -2050,12 +2051,12 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             actual_n = min(n, len(self._internal_canonical_dataframe))
             tail_df = self._internal_canonical_dataframe.tail(actual_n)
             
-            return United_Dataframe(
+            return UnitedDataframe(
                 tail_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_last(self) -> "United_Dataframe[CK]":
+    def rowfun_last(self) -> "UnitedDataframe[CK]":
         """
         Get the last row of the dataframe.
         
@@ -2078,7 +2079,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             
             last_df = self._internal_canonical_dataframe.tail(1)
             
-            return United_Dataframe(
+            return UnitedDataframe(
                 last_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
@@ -2135,7 +2136,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
                 memory_usage_bytes = self._internal_canonical_dataframe.memory_usage(deep=True).sum()
                 print(f"memory usage: {memory_usage_bytes} bytes")
 
-    def sample(self, n: int | None = None, frac: float | None = None, random_state: int | None = None) -> "United_Dataframe[CK]":
+    def sample(self, n: int | None = None, frac: float | None = None, random_state: int | None = None) -> "UnitedDataframe[CK]":
         """
         Get a random sample of rows from the dataframe.
         
@@ -2157,12 +2158,12 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
                 raise ValueError("Cannot specify both n and frac")
             
             sampled_df = self._internal_canonical_dataframe.sample(n=n, frac=frac, random_state=random_state)
-            return United_Dataframe(
+            return UnitedDataframe(
                 sampled_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def dropna(self, subset: list[CK] | None = None) -> "United_Dataframe[CK]":
+    def dropna(self, subset: list[CK] | None = None) -> "UnitedDataframe[CK]":
         """
         Remove rows with missing values.
         
@@ -2176,16 +2177,16 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             dataframe_column_names: list[str] = self.internal_dataframe_column_strings(subset) if subset is not None else self.internal_dataframe_column_strings()
             cleaned_df = self._internal_canonical_dataframe.dropna(subset=dataframe_column_names)
             
-            return United_Dataframe(
+            return UnitedDataframe(
                 cleaned_df,
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def fillna(self, value: UnitedScalar, subset: list[CK] | None = None) -> "United_Dataframe[CK]":
+    def fillna(self, value: UnitedScalar, subset: list[CK] | None = None) -> "UnitedDataframe[CK]":
         raise NotImplementedError("Not implemented")
 
     @classmethod
-    def dataframes_can_concatenate(cls, *dataframes: "United_Dataframe[CK]") -> bool:
+    def dataframes_can_concatenate(cls, *dataframes: "UnitedDataframe[CK]") -> bool:
         """
         Check if multiple dataframes can be concatenated.
         
@@ -2206,7 +2207,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         return True
     
     @classmethod
-    def concatenate_dataframes(cls, dataframe: "United_Dataframe[CK]", *dataframes: "United_Dataframe[CK]") -> "United_Dataframe[CK]":
+    def concatenate_dataframes(cls, dataframe: "UnitedDataframe[CK]", *dataframes: "UnitedDataframe[CK]") -> "UnitedDataframe[CK]":
         """
         Concatenate multiple dataframes vertically.
         
@@ -2293,14 +2294,14 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- Column and Row Filtering ------------
 
-    def filterfun_get_by_column_key_types(self, *column_key_types: type[CK_CF]) -> "United_Dataframe[CK_CF]":
+    def filterfun_get_by_column_key_types(self, *column_key_types: type[CK_CF]) -> "UnitedDataframe[CK_CF]":
         """
         Filter the dataframe by column key type.
         """
         with self._rlock:
 
-            column_information_of_type: list[Column_Information[CK_CF]] = self.column_information_of_type(*column_key_types)
-            return United_Dataframe[CK_CF].create_from_dataframe_and_column_information_list(
+            column_information_of_type: list[ColumnInformation[CK_CF]] = self.column_information_of_type(*column_key_types)
+            return UnitedDataframe[CK_CF].create_from_dataframe_and_column_information_list(
                 self._internal_canonical_dataframe,
                 None,
                 column_information_of_type,
@@ -2320,7 +2321,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             for column_key in column_keys_to_remove:
                 self.remove_column(column_key)
 
-    def filterfun_by_filterdict(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "United_Dataframe[CK]":
+    def filterfun_by_filterdict(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "UnitedDataframe[CK]":
         """
         Filter the dataframe by a dictionary of column keys and values.
 
@@ -2360,7 +2361,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         raise NotImplementedError("Serialization to JSON is not implemented yet.")
 
     @classmethod
-    def from_json(cls, data: dict) -> "United_Dataframe":
+    def from_json(cls, data: dict) -> "UnitedDataframe":
         """
         Deserialize a United_Dataframe from a JSON-serializable dict.
         
@@ -2375,6 +2376,37 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         """
         raise NotImplementedError("Deserialization from JSON is not implemented yet.")
     
+    def to_hdf5(self, hdf5_group: Group) -> None:
+        hdf5_group.create_dataset("internal_canonical_dataframe", data=self._internal_canonical_dataframe)
+    
+    @classmethod
+    def from_hdf5(
+        cls,
+        hdf5_group: Group,
+        retrieve_column_key_callable: Callable[[str], CK]|None = None,
+        internal_column_name_formatter: InternalDataFrameNameFormatter[CK] = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER) -> "UnitedDataframe[CK]":
+
+        dataframe: pd.DataFrame = pd.read_hdf(hdf5_group["internal_canonical_dataframe"])
+
+        column_information: dict[CK, ColumnInformation[CK]] = {}
+        for internal_column_name in dataframe.columns:
+            d_type: Dtype = dataframe.dtypes[internal_column_name]
+            if retrieve_column_key_callable is None:
+                # Assuming that the column keys are strings
+                column_key, column_information = internal_column_name_formatter.retrieve_from_internal_dataframe_column_name(internal_column_name, d_type, lambda x: x)
+            else:
+                column_key, column_information = internal_column_name_formatter.retrieve_from_internal_dataframe_column_name(internal_column_name, d_type, retrieve_column_key_callable)
+            column_information[column_key] = column_information
+
+        united_dataframe: UnitedDataframe[CK] = cls(
+            dataframe,
+            column_information,
+            internal_column_name_formatter,
+            deepcopy_dataframe=False
+        )
+
+        return united_dataframe
+    
     # ----------- Constructors ------------
 
     @classmethod
@@ -2382,16 +2414,16 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         cls,
         dataframe: pd.DataFrame,
         dataframe_column_names: dict[CK, str],
-        column_information: dict[CK, Column_Information[CK]],
+        column_information: dict[CK, ColumnInformation[CK]],
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
-        deepcopy_dataframe: bool = True) -> "United_Dataframe[CK]":
+        deepcopy_dataframe: bool = True) -> "UnitedDataframe[CK]":
 
         # Rename the columns
         renaming_dict: dict[str, str] = {dataframe_column_name: internal_column_name_formatter(column_key, column_information[column_key].display_unit, column_information[column_key].value_type) for column_key, dataframe_column_name in dataframe_column_names.items()}
         dataframe.rename(columns=renaming_dict, inplace=True)
 
         # Create the United_Dataframe
-        return United_Dataframe[CK](
+        return UnitedDataframe[CK](
             dataframe,
             column_information,
             internal_column_name_formatter,
@@ -2407,7 +2439,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         value_types: list[ColumnType]|dict[CK, ColumnType] = [],
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
         deepcopy_dataframe: bool = True,
-        ) -> "United_Dataframe[CK]":
+        ) -> "UnitedDataframe[CK]":
 
         # Check that the number of columns is the same for all inputs
         number_of_columns: int = len(column_keys)
@@ -2415,7 +2447,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             raise ValueError(f"The number of column keys, units, and value types must be the same. Got {number_of_columns} columns, {len(dataframe_column_names)} dataframe column names, {len(units)} units, and {len(value_types)} value types.")
         
         # Create the column information dict
-        column_information: dict[CK, Column_Information[CK]] = {column_key: Column_Information(unit, column_type) for column_key, unit, column_type in zip(column_keys, units, value_types)}
+        column_information: dict[CK, ColumnInformation[CK]] = {column_key: ColumnInformation(unit, column_type) for column_key, unit, column_type in zip(column_keys, units, value_types)}
 
         # Create the United_Dataframe
         return cls.create_from_pandas_dataframe_and_column_information(
@@ -2425,6 +2457,13 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             internal_column_name_formatter,
             deepcopy_dataframe)
     
+    def create_empty(self) -> "UnitedDataframe[CK]":
+        return UnitedDataframe[CK](
+            pd.DataFrame(data={col: [pd.NA] * 0 for col in self._column_keys}),
+            self._column_information,
+            self._internal_dataframe_column_name_formatter
+        )
+
     @classmethod
     def create_empty(
         cls,
@@ -2433,9 +2472,9 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
         column_types: list[ColumnType]|dict[CK, ColumnType] = [],
         initial_number_of_rows: int = 0,
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-        ) -> "United_Dataframe[CK]":
+        ) -> "UnitedDataframe[CK]":
 
-        column_information: dict[CK, Column_Information[CK]] = {column_key: Column_Information(unit, column_type) for column_key, unit, column_type in zip(column_keys, units, column_types)}
+        column_information: dict[CK, ColumnInformation[CK]] = {column_key: ColumnInformation(unit, column_type) for column_key, unit, column_type in zip(column_keys, units, column_types)}
         column_names: list[str] = [internal_column_name_formatter.create_internal_dataframe_column_name(column_key, column_information[column_key]) for column_key in column_keys]
         empty_dataframe: pd.DataFrame = pd.DataFrame(data={col: [pd.NA] * initial_number_of_rows for col in column_names})
 
@@ -2447,10 +2486,10 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
     
     def create_empty_from_column_information(
         self,
-        column_information: dict[CK, Column_Information[CK]],
+        column_information: dict[CK, ColumnInformation[CK]],
         initial_number_of_rows: int = 0,
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-    ) -> "United_Dataframe[CK]":
+    ) -> "UnitedDataframe[CK]":
         
         column_names: list[str] = [internal_column_name_formatter.create_internal_dataframe_column_name(column_key, column_information[column_key]) for column_key in column_information.keys()]
         empty_dataframe: pd.DataFrame = pd.DataFrame(data={col: [pd.NA] * initial_number_of_rows for col in column_names})
@@ -2464,10 +2503,10 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
     def create_from_row_values_and_column_information(
         self,
         row_values: list[dict[CK, SCALAR_TYPE]],
-        column_information: dict[CK, Column_Information[CK]],
+        column_information: dict[CK, ColumnInformation[CK]],
         initial_number_of_rows: int = 0,
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-    ) -> "United_Dataframe[CK]":
+    ) -> "UnitedDataframe[CK]":
         
         column_names: list[str] = [internal_column_name_formatter.create_internal_dataframe_column_name(column_key, column_information[column_key]) for column_key in column_information.keys()]
         empty_dataframe: pd.DataFrame = pd.DataFrame(data={col: [pd.NA] * initial_number_of_rows for col in column_names})
@@ -2509,7 +2548,7 @@ class United_Dataframe(JSONable, HDF5able, Generic[CK]):
             grouped = df.groupby(0)
         """
         with self._rlock:
-            if isinstance(by, (Column_Key, str)):
+            if isinstance(by, (ColumnKey, str)):
                 by = [by]
             
             # Validate all grouping columns exist

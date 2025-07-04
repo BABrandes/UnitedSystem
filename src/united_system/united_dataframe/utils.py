@@ -19,20 +19,20 @@ from pandas import Timestamp
 import numpy as np
 import math
 from ..units.unit_quantity import UnitQuantity
-from ..united_dataframe.united_dataframe import United_Dataframe
+from ..united_dataframe.united_dataframe import UnitedDataframe
 from ..units.simple_unit import SimpleUnit
 from .column_type import ColumnType
 
 @runtime_checkable
-class Column_Key(Protocol):
+class ColumnKey(Protocol):
     def to_string(self) -> str:
         ...
     @classmethod
-    def from_string(cls: Type['Column_Key'], string: str) -> 'Column_Key':
+    def from_string(cls: Type['ColumnKey'], string: str) -> 'ColumnKey':
         ...
 
 @dataclass(frozen=True, slots=True)
-class Column_Information():
+class ColumnInformation():
     unit_quantity: UnitQuantity|None
     column_type: ColumnType
     display_unit: Unit|None
@@ -47,7 +47,7 @@ class Column_Information():
             if not self.display_unit.compatible_to(self.unit_quantity):
                 raise ValueError(f"Display unit {self.display_unit} is not compatible with unit quantity {self.unit_quantity}")
 
-    def internal_dataframe_column_name(self, column_key: Column_Key|str, internal_column_name_formatter: "InternalDataFrameNameFormatter[CK]" = "SIMPLE_INTERNAL_NAME_FORMATTER") -> str:
+    def internal_dataframe_column_name(self, column_key: ColumnKey|str, internal_column_name_formatter: "InternalDataFrameNameFormatter[CK]" = "SIMPLE_INTERNAL_NAME_FORMATTER") -> str:
         return internal_column_name_formatter.create_internal_dataframe_column_name(column_key, self)
 
     @classmethod
@@ -55,18 +55,18 @@ class Column_Information():
         cls,
         unit_quantity: UnitQuantity|None,
         column_type: ColumnType,
-        display_unit: Unit|None=None) -> "Column_Information":
+        display_unit: Unit|None=None) -> "ColumnInformation":
         return cls(unit_quantity, column_type, display_unit)
 
-CK = TypeVar("CK", bound=Column_Key|str, default=str)
+CK = TypeVar("CK", bound=ColumnKey|str, default=str)
 class InternalDataFrameNameFormatter(Protocol, Generic[CK]):
-    def create_internal_dataframe_column_name(self, column_key: CK, column_information: Column_Information[CK]) -> str:
+    def create_internal_dataframe_column_name(self, column_key: CK, column_information: ColumnInformation[CK]) -> str:
         ...
     @classmethod
-    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, Column_Information[CK]]:
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation[CK]]:
         ...
 
-def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, Column_Information[CK]]:
+def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation[CK]]:
     # Find the indices of '[' and ']' in the internal_dataframe_column_name, looking from the end of the string
     internal_dataframe_column_name = internal_dataframe_column_name.strip()
     index_bracket_close: int = internal_dataframe_column_name.rfind(']')
@@ -85,7 +85,7 @@ def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor:
         column_key: CK = column_key_str
     else:
         column_key: CK = column_key_constructor
-    column_information: Column_Information = Column_Information.create(
+    column_information: ColumnInformation = ColumnInformation.create(
         unit_quantity=display_unit.unit_quantity() if display_unit is not None else None,
         column_type=ColumnType.value,
         display_unit=display_unit if display_unit is not None else None

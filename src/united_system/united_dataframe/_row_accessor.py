@@ -1,9 +1,9 @@
 from typing import Generic, Iterator, TypeVar
 from ..united_dataframe import United_Dataframe
 from ..scalars.united_scalar import UnitedScalar
-from ..united_dataframe.united_dataframe import Column_Key
+from ..united_dataframe.united_dataframe import ColumnKey
 
-CK = TypeVar("CK", bound=Column_Key|str)
+CK = TypeVar("CK", bound=ColumnKey|str)
 
 class _RowAccessor(Generic[CK]):
     """
