@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Final, Tuple, List, overload
+from typing import Final, Tuple, List, overload, Union
 import re
 import math
 import numpy as np
@@ -7,19 +7,21 @@ from itertools import product
 
 from .unit import Unit, _PREFIX_PAIRS
 from .unit_symbol import UnitSymbol
-from .unit_quantity import SimpleCanonicalQuantity, UnitQuantity
+from .unit_quantity import UnitQuantity
+from .simple_unit_quantity import SimpleUnitQuantity
 from .named_units import NamedUnit
 from .named_simple_unit_quantities import NamedSimpleUnitQuantity
 
+# Cache for parsed units (outside the dataclass to avoid slots conflict)
+_SIMPLE_UNIT_CACHE: dict[str, "SimpleUnit"] = {}
+
 @dataclass(frozen=True, slots=True)
 class SimpleUnit(Unit):
-    unit_quantity: SimpleCanonicalQuantity = field(init=False, hash=False, repr=False, compare=False)
+    unit_quantity: UnitQuantity = field(init=False, hash=False, repr=False, compare=False)
     unit_prefix_and_symbol_and_exponent_pairs: Final[tuple[(tuple[str, UnitSymbol, float], ...)]] = field()
 
     factor: float = field(init=False, hash=False, repr=False, compare=False)
     offset: float = field(init=False, hash=False, repr=False, compare=False)
-
-    _CACHE: Final[dict[str, "SimpleUnit"]] = {}
 
     def __post_init__(self):
         quantity_exponents: list[float] = [0.0] * 7
@@ -27,20 +29,26 @@ class SimpleUnit(Unit):
         factor: float = 1
         offset: float = 0
         for prefix_and_symbol_and_exponent_pair in self.unit_prefix_and_symbol_and_exponent_pairs:
-            if prefix_and_symbol_and_exponent_pair[0] != "":
-                unit_symbol: UnitSymbol = prefix_and_symbol_and_exponent_pair[1]
-                factor *= (_PREFIX_PAIRS[prefix_and_symbol_and_exponent_pair[0]] * unit_symbol.factor) ** prefix_and_symbol_and_exponent_pair[2]
-                for exponent_index, exponent in enumerate(unit_symbol.named_simple_unit_quantity.simple_unit_quantity.quantity_exponents):
-                    quantity_exponents[exponent_index] += exponent
-                for exponent_index, exponent in enumerate(unit_symbol.named_simple_unit_quantity.simple_unit_quantity.pseudo_quantity_exponents):
-                    pseudo_quantity_exponents[exponent_index] += exponent
+            prefix: str = prefix_and_symbol_and_exponent_pair[0]
+            unit_symbol: UnitSymbol = prefix_and_symbol_and_exponent_pair[1]
+            exponent: float = prefix_and_symbol_and_exponent_pair[2]
+            
+            # Calculate factor (including prefix multiplier if present)
+            prefix_multiplier = _PREFIX_PAIRS.get(prefix, 1.0) if prefix else 1.0
+            factor *= (prefix_multiplier * unit_symbol.factor) ** exponent
+            
+            # Add quantity exponents (regardless of prefix)
+            for exponent_index, qty_exp in enumerate(unit_symbol.named_simple_unit_quantity.simple_unit_quantity.quantity_exponents):
+                quantity_exponents[exponent_index] += qty_exp * exponent
+            for exponent_index, pseudo_exp in enumerate(unit_symbol.named_simple_unit_quantity.simple_unit_quantity.pseudo_quantity_exponents):
+                pseudo_quantity_exponents[exponent_index] += pseudo_exp * exponent
 
             if prefix_and_symbol_and_exponent_pair[1].offset != 0:
                 if offset != 0:
                     raise ValueError("Cannot have two non-zero offsets in the same unit")
                 offset = prefix_and_symbol_and_exponent_pair[1].offset
 
-        object.__setattr__(self, "quantity", SimpleCanonicalQuantity.create(quantity_exponents, pseudo_quantity_exponents))
+        object.__setattr__(self, "unit_quantity", SimpleUnitQuantity.create(quantity_exponents, pseudo_quantity_exponents))
         object.__setattr__(self, "factor", factor)
         object.__setattr__(self, "offset", offset)
 
@@ -54,10 +62,10 @@ class SimpleUnit(Unit):
         ...
     @overload
     @classmethod
-    def create(cls, arg: List["SimpleUnit"]|set["SimpleUnit"]) -> "SimpleUnit":
+    def create(cls, arg: Union[List["SimpleUnit"], set["SimpleUnit"]]) -> "SimpleUnit":
         ...
     @classmethod
-    def create(cls, arg: tuple[str, UnitSymbol, float]|"SimpleUnit"|List["SimpleUnit"]|set["SimpleUnit"], *args: None|tuple[str, UnitSymbol, float]|"SimpleUnit") -> "SimpleUnit":
+    def create(cls, arg: Union[tuple[str, UnitSymbol, float], "SimpleUnit", List["SimpleUnit"], set["SimpleUnit"]], *args: Union[None, tuple[str, UnitSymbol, float], "SimpleUnit"]) -> "SimpleUnit":
 
         items: list[tuple[str, UnitSymbol, float]] = []
         match arg:
@@ -95,8 +103,8 @@ class SimpleUnit(Unit):
         - "V*m/ns^2" -> Simple_Unit(("", {"volt"}, 1), ("meter", {"meter"}, 1), ("n", {"second"}, -2))
         """
 
-        if unit_string in cls._CACHE:
-            return cls._CACHE[unit_string]
+        if unit_string in _SIMPLE_UNIT_CACHE:
+            return _SIMPLE_UNIT_CACHE[unit_string]
 
         unit_string = unit_string.strip()
         if unit_string == "":
@@ -128,27 +136,30 @@ class SimpleUnit(Unit):
                 # find the first letter from the end of the string that is not a number or a dot or a minus sign
                 for i in range(len(unit_string_part) - 1, -1, -1):
                     if not unit_string_part[i].isdigit() and unit_string_part[i] != "." and unit_string_part[i] != "-":
-                        exponent *= float(unit_string_part[i:])
-                        unit_string_part = unit_string_part[:i]
+                        exponent_part = unit_string_part[i+1:]
+                        if exponent_part:  # Only try to convert if there's actually a numeric part
+                            exponent *= float(exponent_part)
+                            unit_string_part = unit_string_part[:i+1]
                         break
 
-            retrieved_unit_symbol: UnitSymbol|None = UnitSymbol.find_unit_symbol(unit_string_part)
+            retrieved_unit_symbol: Union[UnitSymbol, None] = UnitSymbol.find_unit_symbol(unit_string_part)
             if retrieved_unit_symbol is not None:
-                unit_prefix_and_symbol_and_exponent_pairs.append((prefix, retrieved_unit_symbol, exponent))
+                unit_prefix_and_symbol_and_exponent_pairs.append(("", retrieved_unit_symbol, exponent))
             else:
-                for prefix in _PREFIX_PAIRS:
+                # Sort prefixes by length (longest first) to prioritize "da" over "d", etc.
+                for prefix in sorted(_PREFIX_PAIRS.keys(), key=len, reverse=True):
                     if unit_string_part.startswith(prefix):
-                        retrieved_unit_symbol: UnitSymbol|None = UnitSymbol.find_unit_symbol(unit_string_part[len(prefix):])
+                        retrieved_unit_symbol: Union[UnitSymbol, None] = UnitSymbol.find_unit_symbol(unit_string_part[len(prefix):])
                         if retrieved_unit_symbol is not None:
                             unit_prefix_and_symbol_and_exponent_pairs.append((prefix, retrieved_unit_symbol, exponent))
                             break
                 else:
                     raise ValueError(f"Invalid unit string: {unit_string}")
         simple_unit: SimpleUnit = cls(tuple(unit_prefix_and_symbol_and_exponent_pairs))
-        cls._CACHE[unit_string] = simple_unit
+        _SIMPLE_UNIT_CACHE[unit_string] = simple_unit
         return simple_unit
 
-    def compatible_to(self, other: "Unit|UnitQuantity") -> bool:
+    def compatible_to(self, other: Union["Unit", "UnitQuantity"]) -> bool:
         if isinstance(other, UnitQuantity):
             return self.unit_quantity == other
         elif isinstance(other, SimpleUnit):
@@ -297,7 +308,7 @@ class SimpleUnit(Unit):
         return nice_string
     
     @staticmethod
-    def suggest_unit_from_named_units(quantity: SimpleCanonicalQuantity, canonical_value: float|None) -> "SimpleUnit":
+    def suggest_unit_from_named_units(quantity: UnitQuantity, canonical_value: float|None) -> "SimpleUnit":
         """
         Suggest a unit for a given quantity and value.
 
@@ -342,7 +353,7 @@ class SimpleUnit(Unit):
             return canonical_unit
 
     @staticmethod
-    def suggest_units(quantity: SimpleCanonicalQuantity, value: float|None, must_include: set["SimpleUnit"]|list["SimpleUnit"]=set(), n: int = 1000) ->  Tuple["SimpleUnit", list["SimpleUnit"]]:
+    def suggest_units(quantity: UnitQuantity, value: float|None, must_include: set["SimpleUnit"]|list["SimpleUnit"]=set(), n: int = 1000) ->  Tuple["SimpleUnit", list["SimpleUnit"]]:
         """
         Suggest units for a given quantity and value.
 
@@ -364,7 +375,7 @@ class SimpleUnit(Unit):
         pseudo_quantity_exponents: list[float] = list(quantity.pseudo_quantity_exponents)
 
         units: set["SimpleUnit"] = set()
-        quantity_to_get_to_zero: SimpleCanonicalQuantity = quantity
+        quantity_to_get_to_zero: UnitQuantity = quantity
         for unit in must_include:
             units.add(unit)
             quantity_to_get_to_zero -= unit.unit_quantity

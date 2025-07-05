@@ -3,7 +3,10 @@ from dataclasses import dataclass, field
 from .named_simple_unit_quantities import NamedSimpleUnitQuantity
 from .unit import Unit, UnitQuantity
 from .simple_unit_quantity import SimpleUnitQuantity
-from .simple_unit import SimpleUnit
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .simple_unit import SimpleUnit
 
 FORBIDDEN_STRINGS_IN_UNIT_NAME: set[str] = {"|", ":", "__"}
 
@@ -14,15 +17,23 @@ def special_character_to_unicode_replacement(string: str) -> str:
 
 @dataclass
 class NamedUnitInformation:
-    unit: SimpleUnit
+    unit_string: str
     named_simple_unit_quantity: NamedSimpleUnitQuantity = field(repr=False, compare=False, hash=False)
+    _unit: "SimpleUnit|None" = field(default=None, repr=False, compare=False, hash=False)
 
     @classmethod
     def create(cls, unit_string: str, named_simple_unit_quantity: NamedSimpleUnitQuantity) -> "NamedUnitInformation":
-        unit: SimpleUnit = SimpleUnit.parse(unit_string)
-        if unit.unit_quantity != named_simple_unit_quantity.simple_unit_quantity:
-            raise ValueError(f"Unit {unit_string} has canonical quantity {unit.unit_quantity} but expected {named_simple_unit_quantity.simple_unit_quantity}")
-        return cls(unit, named_simple_unit_quantity)
+        return cls(unit_string, named_simple_unit_quantity)
+
+    @property
+    def unit(self) -> "SimpleUnit":
+        if self._unit is None:
+            from .simple_unit import SimpleUnit
+            unit: SimpleUnit = SimpleUnit.parse(self.unit_string)
+            if unit.unit_quantity != self.named_simple_unit_quantity.simple_unit_quantity:
+                raise ValueError(f"Unit {self.unit_string} has canonical quantity {unit.unit_quantity} but expected {self.named_simple_unit_quantity.simple_unit_quantity}")
+            object.__setattr__(self, '_unit', unit)
+        return self._unit
 
 class NamedUnit(Enum):
     value: NamedUnitInformation
@@ -132,7 +143,7 @@ class NamedUnit(Enum):
     aC_per_m2 = NamedUnitInformation.create(        "aC/m2",        NamedSimpleUnitQuantity.CHARGE_DENSITY)
 
     @property
-    def unit(self) -> SimpleUnit:
+    def unit(self) -> "SimpleUnit":
         return self.value.unit
 
     @property

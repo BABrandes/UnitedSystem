@@ -1,17 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Final, overload, List, Set, Tuple
-from itertools import product
+from typing import Final, overload
 from dataclasses import dataclass, field
-from .unit_quantity import UnitQuantity, SimpleCanonicalQuantity
-from .unit_symbol import UnitSymbol
-from .named_simple_unit_quantities import NamedSimpleUnitQuantity
-from .named_units import NamedUnit
-from bidict import bidict
-import re
-import math
+from ..units.unit_quantity import UnitQuantity
 import numpy as np
 
-_PREFIX_PAIRS: Final[bidict[str, float]] = bidict({
+_PREFIX_PAIRS: Final[dict[str, float]] = {
     "Y": 10**24,
     "Z": 10**21,
     "E": 10**18,
@@ -25,12 +18,15 @@ _PREFIX_PAIRS: Final[bidict[str, float]] = bidict({
     "d": 10**-1,
     "c": 10**-2,
     "m": 10**-3,
-    "µ": 10**-6,
+    "µ": 10**-6,  # Micro Sign (U+00B5)
+    "μ": 10**-6,  # Greek Small Letter Mu (U+03BC) - same value as µ
     "n": 10**-9,
     "p": 10**-12,
     "f": 10**-15,
     "a": 10**-18,
-})
+    "z": 10**-21,
+    "y": 10**-24,
+}
 
 @dataclass(frozen=True, slots=True)
 class Unit(ABC):

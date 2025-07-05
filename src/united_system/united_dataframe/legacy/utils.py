@@ -1,26 +1,26 @@
 from typing import Protocol, Type, runtime_checkable, NamedTuple, Any, Callable, Generic, TypeVar, TypeAlias, Literal, overload
-from ..units.unit import Unit
+from ...units.unit import Unit
 import pandas as pd
 from dataclasses import dataclass
 from enum import Enum
 from pandas._typing import Dtype
-from ..scalars.united_scalar import UnitedScalar
-from ..arrays.utils import ArrayLike
-from ..scalars.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar import ComplexUnitedScalar
-from ..arrays.real_united_array import RealUnitedArray
-from ..arrays.complex_united_array import ComplexUnitedArray
-from ..arrays.string_array import StringArray
-from ..arrays.int_array import IntArray
-from ..arrays.float_array import FloatArray
-from ..arrays.bool_array import BoolArray
-from ..arrays.timestamp_array import TimestampArray
+from ...scalars.united_scalar import UnitedScalar
+from ...arrays.utils import ArrayLike
+from ...scalars.real_united_scalar import RealUnitedScalar
+from ...scalars.complex_united_scalar import ComplexUnitedScalar
+from ...arrays.real_united_array import RealUnitedArray
+from ...arrays.complex_united_array import ComplexUnitedArray
+from ...arrays.string_array import StringArray
+from ...arrays.int_array import IntArray
+from ...arrays.float_array import FloatArray
+from ...arrays.bool_array import BoolArray
+from ...arrays.timestamp_array import TimestampArray
 from pandas import Timestamp
 import numpy as np
 import math
-from ..units.unit_quantity import UnitQuantity
-from ..united_dataframe.united_dataframe import UnitedDataframe
-from ..units.simple_unit import SimpleUnit
+from ...units.unit_quantity import UnitQuantity
+# from ..united_dataframe.united_dataframe import UnitedDataframe  # Avoid circular import
+from ...units.simple_unit import SimpleUnit
 from .column_type import ColumnType
 
 @runtime_checkable

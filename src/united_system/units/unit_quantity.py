@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Final, cast
+from typing import TYPE_CHECKING
 from abc import ABC, abstractmethod
+
+if TYPE_CHECKING:
+    from .unit import Unit
 
 MASS_INDEX: int = 0
 TIME_INDEX: int = 1
@@ -57,7 +60,6 @@ class UnitQuantity(ABC):
     def from_json(self, json: dict) -> "UnitQuantity":
         raise NotImplementedError
     
-    from .unit import Unit
     @abstractmethod
     def canonical_unit(self) -> "Unit":
         raise NotImplementedError

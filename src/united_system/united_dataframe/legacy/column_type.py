@@ -3,17 +3,17 @@ from enum import Enum
 from dataclasses import dataclass
 import pandas as pd
 from pandas._typing import Dtype
-from ..scalars.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar import ComplexUnitedScalar
-from ..arrays.real_united_array import RealUnitedArray
-from ..arrays.complex_united_array import ComplexUnitedArray
-from ..arrays.string_array import StringArray
-from ..arrays.int_array import IntArray
-from ..arrays.float_array import FloatArray
-from ..arrays.bool_array import BoolArray
-from ..arrays.timestamp_array import TimestampArray
+from ...scalars.real_united_scalar import RealUnitedScalar
+from ...scalars.complex_united_scalar import ComplexUnitedScalar
+from ...arrays.real_united_array import RealUnitedArray
+from ...arrays.complex_united_array import ComplexUnitedArray
+from ...arrays.string_array import StringArray
+from ...arrays.int_array import IntArray
+from ...arrays.float_array import FloatArray
+from ...arrays.bool_array import BoolArray
+from ...arrays.timestamp_array import TimestampArray
 from pandas import Timestamp
-from ..units.unit import Unit
+from ...units.unit import Unit
 import numpy as np
 import math
 

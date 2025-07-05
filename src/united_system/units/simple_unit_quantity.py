@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-from typing import Final, Tuple, List, cast
+from typing import Final, Tuple, List, cast, TYPE_CHECKING
 from .unit_quantity import UnitQuantity
+
+if TYPE_CHECKING:
+    from .unit import SimpleUnit
 
 @dataclass(frozen=True, slots=True)
 class SimpleUnitQuantity(UnitQuantity):
@@ -71,7 +74,6 @@ class SimpleUnitQuantity(UnitQuantity):
         from .unit import SimpleUnit
         return SimpleUnit.parse(json["canonical_unit"]).canonical_quantity
     
-    from .unit import SimpleUnit
     def canonical_unit(self) -> "SimpleUnit":
         from .unit import SimpleUnit
         unit: SimpleUnit = SimpleUnit.suggest_unit_from_named_units(self, None)

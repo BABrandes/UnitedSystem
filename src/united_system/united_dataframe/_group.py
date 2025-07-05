@@ -3,7 +3,7 @@ from ..united_dataframe.united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
 from ..units.unit_quantity import UnitQuantity
 from ..units.unit import Unit
-from .column_type import SCALAR_TYPE
+from ..united_dataframe.core.base import SCALAR_TYPE
 from ..united_dataframe.united_dataframe import ColumnInformation
 from ..united_dataframe.united_dataframe import ColumnType
 from ..scalars.real_united_scalar import RealUnitedScalar
