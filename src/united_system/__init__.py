@@ -10,7 +10,7 @@ from .real_united_array import RealUnitedArray
 from .dimension import Dimension
 from .unit import Unit
 from .named_dimensions import NamedDimension, DimensionExponents
-from .united_dataframe_original import UnitedDataframe
+from .dataframe import UnitedDataframe  # Import from new modular dataframe package
 from .arrays.int_array import IntArray
 from .arrays.string_array import StringArray
 from .arrays.timestamp_array import TimestampArray

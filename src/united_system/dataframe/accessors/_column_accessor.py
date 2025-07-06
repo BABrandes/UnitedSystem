@@ -1,7 +1,7 @@
 from typing import Generic, TypeVar, Iterator, overload, Literal
 from ...scalars.united_scalar import UnitedScalar
 from ...units.base_classes.base_unit import BaseUnit
-from ...united_dataframe_original import UnitedDataframe, ColumnKey
+from ...united_dataframe import UnitedDataframe, ColumnKey
 from ..column_type import ARRAY_TYPE, ColumnType
 from ...dimension import Dimension
 from ...unit import Unit

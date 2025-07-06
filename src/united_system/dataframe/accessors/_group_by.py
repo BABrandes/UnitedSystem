@@ -1,5 +1,5 @@
-from typing import Generic, Callable, TypeVar, Type
-from ...united_dataframe_original import UnitedDataframe, ColumnKey
+from typing import Generic, Callable, TypeVar
+from ...united_dataframe import UnitedDataframe, ColumnKey
 from ...real_united_scalar import RealUnitedScalar
 from ...complex_united_scalar import ComplexUnitedScalar
 from ...unit import Unit
