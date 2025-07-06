@@ -1,13 +1,11 @@
 from typing import Generic, Callable, TypeVar, Type
-from ..united_dataframe import UnitedDataframe, ColumnKey
-from ..scalars.united_scalar import UnitedScalar
-from ..units.unit_quantity import UnitQuantity
-from ..units.base_classes.base_unit import BaseUnit
-from ..united_dataframe import SCALAR_TYPE
-from ..united_dataframe import ColumnInformation
-from ..united_dataframe import ColumnType
-from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
+from ...united_dataframe_original import UnitedDataframe, ColumnKey
+from ...real_united_scalar import RealUnitedScalar
+from ...complex_united_scalar import ComplexUnitedScalar
+from ...unit import Unit
+from ...dimension import Dimension
+from ..column_type import SCALAR_TYPE, ColumnType
+from ..column_information import ColumnInformation
 import pandas as pd
 import numpy as np
 
@@ -360,8 +358,8 @@ class _GroupBy(Generic[CK]):
             group_data = []
 
             result: RealUnitedScalar|ComplexUnitedScalar|None = None
-            result_quantity: UnitQuantity|None = None
-            result_display_unit: BaseUnit|None = None
+            result_dimension: Dimension|None = None
+            result_display_unit: Unit|None = None
             
             for key in self.group_keys:
                 group_df = self.groups[key]
@@ -376,11 +374,11 @@ class _GroupBy(Generic[CK]):
                 result: RealUnitedScalar|ComplexUnitedScalar = func(group_df)
 
                 # Get the result quantity and display unit, if present, check if they are the same!
-                if result_quantity is not None:
-                    if result_quantity != result.quantity:
-                        raise ValueError(f"Result quantity {result_quantity} does not match the result quantity {result.quantity}")
+                if result_dimension is not None:
+                    if result_dimension != result.quantity:
+                        raise ValueError(f"Result quantity {result_dimension} does not match the result quantity {result.quantity}")
                 else:
-                    result_quantity = result.quantity
+                    result_dimension = result.quantity
                 if result_display_unit is not None:
                     if result_display_unit != result.display_unit:
                         raise ValueError(f"Result display unit {result_display_unit} does not match the result display unit {result.display_unit}")
@@ -400,9 +398,9 @@ class _GroupBy(Generic[CK]):
             result_column_information: dict[CK, ColumnInformation[CK]] = self._dataframe.column_information.copy()
             match type(result):
                 case RealUnitedScalar():
-                    result_column_information[result_column_key] = ColumnInformation(result_quantity, ColumnType.REAL_NUMBER_64, result_display_unit)
+                    result_column_information[result_column_key] = ColumnInformation(result_dimension, ColumnType.REAL_NUMBER_64, result_display_unit)
                 case ComplexUnitedScalar():
-                    result_column_information[result_column_key] = ColumnInformation(result_quantity, ColumnType.COMPLEX_NUMBER_128, result_display_unit)
+                    result_column_information[result_column_key] = ColumnInformation(result_dimension, ColumnType.COMPLEX_NUMBER_128, result_display_unit)
                 case _:
                     raise ValueError(f"Function must return a RealUnitedScalar or ComplexUnitedScalar, got {type(result)}")
             

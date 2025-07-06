@@ -1,17 +1,10 @@
-from typing import Protocol, Type, runtime_checkable, Callable, Generic, TypeVar
+from typing import Protocol, Callable, Generic, TypeVar
 from dataclasses import dataclass
 from pandas._typing import Dtype
 from ..unit import Unit
 from ..dimension import Dimension
 from .column_type import ColumnType
-
-@runtime_checkable
-class ColumnKey(Protocol):
-    def to_string(self) -> str:
-        ...
-    @classmethod
-    def from_string(cls: Type['ColumnKey'], string: str) -> 'ColumnKey':
-        ...
+from .column_key import ColumnKey
 
 @dataclass(frozen=True, slots=True)
 class ColumnInformation():

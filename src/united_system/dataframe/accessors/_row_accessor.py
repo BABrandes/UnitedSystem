@@ -1,8 +1,8 @@
 from typing import Generic, Iterator, TypeVar
-from ..united_dataframe_original import UnitedDataframe
-from ..real_united_scalar import RealUnitedScalar
-from ..united_dataframe_original import ColumnKey
-from ..dataframe.column_type import SCALAR_TYPE
+from ...united_dataframe_original import UnitedDataframe
+from ...real_united_scalar import RealUnitedScalar
+from ...united_dataframe_original import ColumnKey
+from ..column_type import SCALAR_TYPE
 
 CK = TypeVar("CK", bound=ColumnKey|str)
 

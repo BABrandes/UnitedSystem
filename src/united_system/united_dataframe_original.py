@@ -26,10 +26,10 @@ from .complex_array import ComplexArray
 from .utils import JSONable, HDF5able
 from .units.united import United
 from .dataframe.column_type import ColumnType, ARRAY_TYPE, SCALAR_TYPE, UNITED_ARRAY_TYPE, ARRAY_STORAGE_TYPE, NUMPY_STORAGE_TYPE, UNITED_SCALAR_TYPE, NUMERIC_SCALAR_TYPE
-from .dataframe.utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-from .dataframe._column_accessor import _ColumnAccessor
-from .dataframe._row_accessor import _RowAccessor
-from .dataframe._group_by import _GroupBy
+from .dataframe.column_information import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
+from .dataframe.accessors._column_accessor import _ColumnAccessor
+from .dataframe.accessors._row_accessor import _RowAccessor
+from .dataframe.accessors._group_by import _GroupBy
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
 CK_CF = TypeVar("CK_CF", bound=ColumnKey|str, default=str)
