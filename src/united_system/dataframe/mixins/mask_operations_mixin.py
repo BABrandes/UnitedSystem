@@ -7,10 +7,13 @@ including mask creation, application, and filtering.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Union, Any, List
+from typing import Union, Any, List, TYPE_CHECKING
 import numpy as np
 from .dataframe_protocol import UnitedDataframeMixin, CK
 from ...bool_array import BoolArray
+
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe
 
 class MaskOperationsMixin(UnitedDataframeMixin[CK]):
     """
@@ -160,7 +163,7 @@ class MaskOperationsMixin(UnitedDataframeMixin[CK]):
 
     # ----------- Mask Operations: Application ------------
 
-    def mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe":
+    def mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe[CK]":
         """
         Apply a boolean mask to the dataframe, returning a new filtered dataframe.
         
