@@ -10,7 +10,7 @@ import pandas as pd
 from pandas._typing import Dtype
 from typing import Literal
 
-from ...units.unit import Unit, UnitQuantity
+from ...units.base_classes.base_unit import BaseUnit, UnitQuantity
 from ...scalars.united_scalar import UnitedScalar
 from ...utils import JSONable, HDF5able
 from ...units.utils import United

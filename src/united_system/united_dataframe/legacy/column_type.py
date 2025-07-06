@@ -3,9 +3,9 @@ from enum import Enum
 from dataclasses import dataclass
 import pandas as pd
 from pandas._typing import Dtype
-from ...scalars.real_united_scalar import RealUnitedScalar
-from ...scalars.complex_united_scalar import ComplexUnitedScalar
-from ...arrays.real_united_array import RealUnitedArray
+from ...scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+from ...scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
+from ...arrays.real_united_array.real_united_array import RealUnitedArray
 from ...arrays.complex_united_array import ComplexUnitedArray
 from ...arrays.string_array import StringArray
 from ...arrays.int_array import IntArray
@@ -13,12 +13,11 @@ from ...arrays.float_array import FloatArray
 from ...arrays.bool_array import BoolArray
 from ...arrays.timestamp_array import TimestampArray
 from pandas import Timestamp
-from ...units.unit import Unit
+from ...units.base_classes.base_unit import BaseUnit
 import numpy as np
 import math
 
 PYTHON_SCALAR_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
-SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar|str|bool|int|float|Timestamp
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray
 UNITED_ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray
 ARRAY_STORAGE_TYPE: TypeAlias = float|complex|str|int|bool|Timestamp
@@ -155,7 +154,7 @@ class ColumnType(Enum):
                 case ColumnType.REAL_NUMBER_64:
                     return value.canonical_value
                 case ColumnType.REAL_NUMBER_32:
-                    return np.float32(value.canonical_float)
+                    return np.float32(value.float_value_canoninical_units)
                 case ColumnType.COMPLEX_NUMBER_128:
                     return value.canonical_value
                 case ColumnType.INTEGER_64:
@@ -277,13 +276,13 @@ class ColumnType(Enum):
             or scalar_or_array_type == self.value.array_type
         )
     
-    def create_scalar_from_value(self, value: Any, display_unit: Unit|None = None) -> SCALAR_TYPE:
+    def create_scalar_from_value(self, value: Any, display_unit: BaseUnit|None = None) -> SCALAR_TYPE:
         if display_unit is not None:
             if not self.value.has_unit:
                 raise ValueError(f"The column type {self.name} does not have a unit, so a display unit cannot be set.")
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return RealUnitedScalar.create(value, display_unit)
+                return RealUnitedScalar.create_converted_to_unit(value, display_unit)
             case ColumnType.COMPLEX_NUMBER_128:
                 return ComplexUnitedScalar.create(value, display_unit)
             case ColumnType.STRING:

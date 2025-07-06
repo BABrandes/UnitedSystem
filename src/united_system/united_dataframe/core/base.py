@@ -12,10 +12,10 @@ from readerwriterlock import rwlock
 from datetime import datetime
 from h5py._hl.group import Group
 
-from ...units.unit import Unit, UnitQuantity
+from ...units.base_classes.base_unit import BaseUnit, UnitQuantity
 from ...scalars.united_scalar import UnitedScalar
-from ...scalars.real_united_scalar import RealUnitedScalar
-from ...scalars.complex_united_scalar import ComplexUnitedScalar
+from ...scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+from ...scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
 from ...utils import JSONable, HDF5able
 from ...units.utils import United
 from ...arrays.utils import ArrayLike
@@ -82,7 +82,7 @@ class UnitedDataframeCore(JSONable, HDF5able, Generic[CK]):
             col_key: col_info.unit_quantity 
             for col_key, col_info in self._column_information.items()
         }
-        self._display_units: Dict[CK, Optional[Unit]] = {
+        self._display_units: Dict[CK, Optional[BaseUnit]] = {
             col_key: col_info.display_unit 
             for col_key, col_info in self._column_information.items()
         }
@@ -205,7 +205,7 @@ class UnitedDataframeCore(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return self._column_types[column_key]
     
-    def display_unit(self, column_key: CK) -> Optional[Unit]:
+    def display_unit(self, column_key: CK) -> Optional[BaseUnit]:
         """Get the display unit for a column."""
         with self._rlock:
             return self._display_units[column_key]

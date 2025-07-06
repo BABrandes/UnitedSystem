@@ -1,25 +1,20 @@
-from dataclasses import dataclass
-from typing import cast
-from .united_array import UnitedArray
-from ..scalars.real_united_scalar import RealUnitedScalar
-from ..units.unit import Unit
-from ..units.unit_quantity import UnitQuantity
-from enum import Enum
+from ..units.simple.simple_unit import SimpleUnit
 import numpy as np
+from ..arrays.base_classes.base_united_array.base_united_array import BaseUnitedArray
+from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+from ..units.simple.simple_dimension import SimpleDimension
+from dataclasses import dataclass, field
 
 @dataclass(frozen=True, slots=True)
-class RealUnitedArray(UnitedArray[RealUnitedScalar]):
+class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, SimpleUnit, SimpleDimension, float]):
+    """Array of real numbers with units."""
 
-    def __getitem__(self, index_key: int|slice) -> "RealUnitedArray":
-        return cast(RealUnitedArray, super().__getitem__(index_key))
+    def get_scalar(self, index: int) -> RealUnitedScalar:
+        canonical_value: float = self.canonical_np_array[index]
+        dimension: SimpleDimension = self.dimension
+        display_unit: SimpleUnit|None = self.display_unit
+        return RealUnitedScalar(
+            canonical_value=canonical_value,
+            display_unit=display_unit,
+            dimension=dimension)
     
-    def get_float(self, index: int) -> float:
-        return self.canonical_np_array[index]
-    
-    @classmethod
-    def create(cls, values: np.ndarray, display_unit: Unit|None=None) -> "RealUnitedArray":
-        unit_quantity: UnitQuantity = UnitQuantity.create(display_unit)
-        real_united_array: RealUnitedArray = cls(values, float, unit_quantity)
-        if display_unit is not None:
-            real_united_array.set_display_unit(display_unit)
-        return real_united_array

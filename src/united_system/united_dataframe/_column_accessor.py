@@ -1,9 +1,9 @@
 from typing import Generic, TypeVar, Iterator, overload, Literal
 from ..united_dataframe.united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
-from ..arrays.united_array import UnitedArray
+from ..arrays.united_array.united_array import UnitedArray
 from ..units.unit_quantity import UnitQuantity
-from ..units.unit import Unit
+from ..units.base_classes.base_unit import BaseUnit
 from ..united_dataframe.united_dataframe import Value_Type
 import pandas as pd
 import numpy as np
@@ -35,13 +35,13 @@ class _ColumnAccessor(Generic[CK]):
     def __contains__(self, value: UnitedScalar) -> bool:
         return value in self._parent.get_iterator_for_column(self._column_key)
     
-    def as_numpy_array(self, unit: Unit) -> np.ndarray:
+    def as_numpy_array(self, unit: BaseUnit) -> np.ndarray:
         return self._parent.column_values_as_numpy_array(self._column_key, unit)
     
-    def as_pandas_series(self, unit: Unit) -> pd.Series:
+    def as_pandas_series(self, unit: BaseUnit) -> pd.Series:
         return self._parent.column_values_as_pandas_series(self._column_key, unit)
     
-    def as_united_array(self, display_unit: Unit|None=None) -> UnitedArray:
+    def as_united_array(self, display_unit: BaseUnit|None=None) -> UnitedArray:
         if display_unit is None:
             display_unit = self._parent.display_unit(self._column_key)
         return self._parent.column_values_as_array(self._column_key, display_unit)
@@ -197,7 +197,7 @@ class _ColumnAccessor(Generic[CK]):
         return self._parent.maskfun_get_from_filter({self._column_key: lambda x: x < other})
     
     @property
-    def display_unit(self) -> Unit:
+    def display_unit(self) -> BaseUnit:
         return self._parent.display_unit(self._column_key)
     
     @property

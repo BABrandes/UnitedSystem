@@ -1,45 +1,6 @@
-from typing import Any, Iterator
-from .utils import ArrayLike
+from .base_classes.non_united_array import NonUnitedArray
 from dataclasses import dataclass
-import h5py
-import numpy as np
 
 @dataclass(frozen=True, slots=True)
-class BoolArray(ArrayLike[bool]):
-    bool_array: tuple[bool, ...]
-
-    def __getitem__(self, index_key: int|slice) -> bool:
-        return self.bool_array[index_key]
-    
-    def get_bool(self, index: int) -> bool:
-        return self.bool_array[index]
-    
-    def __len__(self) -> int:
-        return len(self.bool_array)
-    
-    def __iter__(self) -> Iterator[bool]:
-        return iter(self.bool_array)
-    
-    def __next__(self) -> bool:
-        return next(self.bool_array)
-    
-    def __contains__(self, item: bool) -> bool:
-        return item in self.bool_array
-    
-    def to_json(self) -> dict[str, Any]:
-        return {"bool_array": self.bool_array}
-    
-    @staticmethod
-    def from_json(json: dict[str, Any]) -> "BoolArray": 
-        return BoolArray(bool_array=tuple(json["bool_array"]))
-    
-    def to_hdf5(self, hdf5_group: h5py.Group) -> None:
-        hdf5_group.create_dataset("bool_array", data=self.bool_array)
-    
-    @staticmethod
-    def from_hdf5(hdf5_group: h5py.Group) -> "BoolArray":
-        return BoolArray(bool_array=tuple(hdf5_group["bool_array"][()]))
-    
-    @classmethod
-    def create(cls, values: np.ndarray) -> "BoolArray":
-        return cls(bool_array=tuple(values.astype(bool)))
+class BoolArray(NonUnitedArray[bool, "BoolArray"]):
+    pass

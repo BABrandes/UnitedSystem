@@ -1,24 +1,26 @@
 import numpy as np
-from typing import Type, Protocol, runtime_checkable
+from typing import Type, Protocol, runtime_checkable, TypeVar, Any
 from enum import Enum
 from typing import Callable
 import locale
 import h5py
 
+JSONableType = TypeVar("JSONableType", bound="JSONable")
 @runtime_checkable
 class JSONable(Protocol):
-    def to_json(self) -> dict:
+    def to_json(self) -> dict[str, Any]:
         ...
     @classmethod
-    def from_json(cls: Type['JSONable'], data: dict) -> 'JSONable':
+    def from_json(cls: Type[JSONableType], data: dict[str, Any], **type_parameters: Type) -> JSONableType:
         ...
 
+HDF5ableType = TypeVar("HDF5ableType", bound="HDF5able")
 @runtime_checkable
 class HDF5able(Protocol):
     def to_hdf5(self, hdf5_group: h5py.Group) -> None:
         ...
     @classmethod
-    def from_hdf5(cls: Type['HDF5able'], hdf5_group: h5py.Group) -> 'HDF5able':
+    def from_hdf5(cls: Type[HDF5ableType], hdf5_group: h5py.Group, **type_parameters: Type) -> HDF5ableType:
         ...
 
 class Standard_Shape_Conserving_Filters(Enum):

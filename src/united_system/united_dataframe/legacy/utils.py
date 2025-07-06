@@ -1,14 +1,14 @@
 from typing import Protocol, Type, runtime_checkable, NamedTuple, Any, Callable, Generic, TypeVar, TypeAlias, Literal, overload
-from ...units.unit import Unit
+from ...units.base_classes.base_unit import BaseUnit
 import pandas as pd
 from dataclasses import dataclass
 from enum import Enum
 from pandas._typing import Dtype
 from ...scalars.united_scalar import UnitedScalar
 from ...arrays.utils import ArrayLike
-from ...scalars.real_united_scalar import RealUnitedScalar
-from ...scalars.complex_united_scalar import ComplexUnitedScalar
-from ...arrays.real_united_array import RealUnitedArray
+from ...scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+from ...scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
+from ...arrays.real_united_array.real_united_array import RealUnitedArray
 from ...arrays.complex_united_array import ComplexUnitedArray
 from ...arrays.string_array import StringArray
 from ...arrays.int_array import IntArray
@@ -20,7 +20,7 @@ import numpy as np
 import math
 from ...units.unit_quantity import UnitQuantity
 # from ..united_dataframe.united_dataframe import UnitedDataframe  # Avoid circular import
-from ...units.simple_unit import SimpleUnit
+from ...units.simple.simple_unit import SimpleUnit
 from .column_type import ColumnType
 
 @runtime_checkable
@@ -35,7 +35,7 @@ class ColumnKey(Protocol):
 class ColumnInformation():
     unit_quantity: UnitQuantity|None
     column_type: ColumnType
-    display_unit: Unit|None
+    display_unit: BaseUnit|None
 
     def __postinit__(self):
         if self.unit_quantity is None:
@@ -55,7 +55,7 @@ class ColumnInformation():
         cls,
         unit_quantity: UnitQuantity|None,
         column_type: ColumnType,
-        display_unit: Unit|None=None) -> "ColumnInformation":
+        display_unit: BaseUnit|None=None) -> "ColumnInformation":
         return cls(unit_quantity, column_type, display_unit)
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
@@ -78,9 +78,9 @@ def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor:
     # Get the rest of ths string, but without space
     column_key_str = internal_dataframe_column_name[:index_bracket_open-1]
     if display_unit == "-":
-        display_unit: Unit|None = None
+        display_unit: BaseUnit|None = None
     else:
-        display_unit: Unit = SimpleUnit.parse(display_unit)
+        display_unit: BaseUnit = SimpleUnit.parse_string(display_unit)
     if CK == str:
         column_key: CK = column_key_str
     else:

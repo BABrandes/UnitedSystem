@@ -2,12 +2,12 @@ from typing import Generic, Callable, TypeVar, Type
 from ..united_dataframe.united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
 from ..units.unit_quantity import UnitQuantity
-from ..units.unit import Unit
+from ..units.base_classes.base_unit import BaseUnit
 from ..united_dataframe.core.base import SCALAR_TYPE
 from ..united_dataframe.united_dataframe import ColumnInformation
 from ..united_dataframe.united_dataframe import ColumnType
-from ..scalars.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar import ComplexUnitedScalar
+from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
 import pandas as pd
 import numpy as np
 
@@ -361,7 +361,7 @@ class GroupBy(Generic[CK]):
 
             result: RealUnitedScalar|ComplexUnitedScalar|None = None
             result_quantity: UnitQuantity|None = None
-            result_display_unit: Unit|None = None
+            result_display_unit: BaseUnit|None = None
             
             for key in self.group_keys:
                 group_df = self.groups[key]
