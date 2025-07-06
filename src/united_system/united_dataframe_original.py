@@ -716,57 +716,18 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             display_unit (Unit|None): The display unit to use. If None, the column's display unit is used.
             
         Returns:
-            United_Array: The column data as a United_Array with the column's display unit
+            Array: The column data as an Array with the column's display unit
             
         Raises:
             ValueError: If the column doesn't exist
         """
         with self._rlock:
-            column_type: ColumnType = self._column_types[column_key]
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            match column_type.value.array_type:
-                case RealUnitedArray():
-                    return RealUnitedArray.create(self.column_values_as_numpy_array(column_key, display_unit), display_unit)
-                case ComplexUnitedArray():
-                    return ComplexUnitedArray.create(self.column_values_as_numpy_array(column_key, display_unit), display_unit)
-                case StringArray():
-                    if self._internal_canonical_dataframe[dataframe_column_name].hasnans:
-                        raise ValueError(f"Column {column_key} contains NaN values.")
-                    return StringArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case BoolArray():
-                    if self._internal_canonical_dataframe[dataframe_column_name].hasnans:
-                        raise ValueError(f"Column {column_key} contains NaN values.")
-                    return BoolArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case TimestampArray():
-                    return TimestampArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case IntArray():
-                    if self._internal_canonical_dataframe[dataframe_column_name].hasnans:
-                        raise ValueError(f"Column {column_key} contains NaN values.")
-                    return IntArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case FloatArray():
-                    return FloatArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case ComplexArray():
-                    return ComplexArray.create(self._internal_canonical_dataframe[dataframe_column_name])
-                case _:
-                    raise ValueError(f"Column {column_key} is not a United_Array of type {column_type.value.array_type}.")
 
-    def column_values_as_real_united_array(self, column_key: CK, display_unit: Unit|None=None) -> RealUnitedArray:
-        """
-        Get a column as a RealUnitedArray with its display unit.
-        """
-        with self._rlock:
-            if self._column_types[column_key].value.array_type != RealUnitedArray():
-                raise ValueError(f"Column {column_key} is not a RealUnitedArray.")
-            return cast(RealUnitedArray, self.column_values_as_array(column_key, display_unit))
-        
-    def column_values_as_string_array(self, column_key: CK, display_unit: Unit|None=None) -> ComplexUnitedArray:
-        """
-        Get a column as a ComplexUnitedArray with its display unit.
-        """
-        with self._rlock:
-            if self._column_types[column_key].value.array_type != StringArray():
-                raise ValueError(f"Column {column_key} is not a StringArray.")
-            return cast(StringArray, self.column_values_as_array(column_key, display_unit))
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            values: np.ndarray = self.column_values_as_numpy_array(column_key, display_unit)
+            return self.column_type(column_key).create_array_from_canonical_values(values)
 
     def set_column_values_from_numpy_array(self, column_key: CK, values: np.ndarray, unit: Unit, precision: Literal["32", "64"]|None=None) -> None:
         """
@@ -1186,30 +1147,19 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             ValueError: If the column doesn't exist
         """
         with self._rlock:
+
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            if self.cell_value_is_empty(row_index, column_key) and self.column_type(column_key).value.none_value is None:
+            
+            if not (0 <= row_index < len(self._internal_canonical_dataframe)):
+                raise ValueError(f"Row index {row_index} is out of bounds.")
+
+            if self.cell_value_is_empty(row_index, column_key) and self.column_type(column_key).value.missing_values_in_dataframe is None:
                 raise ValueError(f"The requested cell is empty, but no NA value is defined for the value type {self.column_type(column_key).__name__} of the column {column_key}.")
             
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             value: Any = self._internal_canonical_dataframe.at[row_index, dataframe_column_name]
-            match self.column_type(column_key):
-                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    return RealUnitedScalar.create_converted_to_unit(value, self._display_units[column_key])
-                case ColumnType.COMPLEX_NUMBER_128:
-                    return ComplexUnitedScalar.create(value, self._display_units[column_key])
-                case ColumnType.STRING:
-                    return value
-                case ColumnType.BOOL:
-                    return value
-                case ColumnType.TIMESTAMP:
-                    return value
-                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                    return value
-                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                    return value
-                case _:
-                    raise ValueError(f"Invalid column value type: {self.column_type(column_key).__name__}")
+            return self.column_type(column_key).create_scalar_from_value(value)
                     
     @overload
     def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: CK) -> "_ColumnAccessor[CK]":
