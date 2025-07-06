@@ -2,83 +2,79 @@
 Column type operations mixin for UnitedDataframe.
 
 Contains all operations related to column types, including retrieval,
-and column type management.
+filtering by type, and column type management.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, overload
-
+from typing import TypeVar
+from .dataframe_protocol import UnitedDataframeMixin, CK
 from ..column_type import ColumnType
 
-CK = TypeVar("CK", bound=str, default=str)
+CK_CF = TypeVar("CK_CF", bound=str, default=str)
 
-class ColumnTypeMixin(Generic[CK]):
+class ColumnTypeMixin(UnitedDataframeMixin[CK]):
     """
     Column type operations mixin for UnitedDataframe.
     
-    Provides all functionality related to column types, including retrieval
-    and column type management.
+    Provides all functionality related to column types, including retrieval,
+    filtering by type, and column type management.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
     # ----------- Retrievals: Column types ------------
 
-    def column_type(self, column_key: CK) -> ColumnType:
-        with self._rlock:
-            return self._column_types[column_key]
-
-    @overload
-    def column_types(self, column_keys: CK) -> ColumnType:
-        ...
-
-    @overload
-    def column_types(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[ColumnType]:
-        ...
-
-    @overload
-    def column_types(self, column_keys: list[CK]) -> list[ColumnType]:
-        ...
-
-    @overload
-    def column_types(self, column_keys: set[CK]) -> set[ColumnType]:
-        ...
-
-    def column_types(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> ColumnType|list[ColumnType]|set[ColumnType]:
+    @property
+    def column_types(self) -> dict[CK, ColumnType]:
         """
-        Get the value type(s) by column key(s).
+        Get a copy of all column types.
+        
+        Returns:
+            dict[CK, ColumnType]: A copy of the dictionary of column types
+        """
+        with self._rlock:  # Full IDE support!
+            return self._column_types.copy()  # Protocol knows _column_types exists!
+        
+    def get_column_type(self, column_key: CK) -> ColumnType:
+        """
+        Get the column type for a column.
         
         Args:
-            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the value type(s) of. If None, all column keys are used.
-            *more_column_keys (CK): Additional column keys to get the value type(s) of.
+            column_key (CK): The column key
             
         Returns:
-            Value_Type|list[Value_Type]|set[Value_Type]: The value type(s) of the specified column(s)
+            ColumnType: The column type
         """
         with self._rlock:
-            match column_keys:
-                case str():
-                    if len(more_column_keys) == 0:
-                        return self._column_types[column_keys]
-                    else:
-                        return [self._column_types[column_keys]] + [self._column_types[more_column_key] for more_column_key in more_column_keys]
-                case list():
-                    column_types_as_list: list[ColumnType] = []
-                    for column_key in column_keys:
-                        column_types_as_list.append(self._column_types[column_key])
-                    return column_types_as_list
-                case set():
-                    column_types_as_set: set[ColumnType] = set()
-                    for column_key in column_keys:
-                        column_types_as_set.add(self._column_types[column_key])
-                    return column_types_as_set
-                case _:
-                    raise ValueError(f"Invalid column keys: {column_keys}.")
-    
-    @property
-    def column_type_dict(self) -> dict[CK, ColumnType]:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            return self._column_types[column_key]
+
+    def column_keys_of_column_type(self, *column_types: ColumnType) -> list[CK]:
         """
-        Get a dictionary mapping column keys to their value types.
+        Get the column keys of a given column type.
+        """
+        with self._rlock:
+            return [column_key for column_key in self._column_keys if self._column_types[column_key] in column_types]
+
+    # ----------- Setters: Column types ------------
+
+    def set_column_type(self, column_key: CK, column_type: ColumnType):
+        """
+        Set the column type for a column.
         
-        Returns:
-            dict[CK, Value_Type]: Dictionary mapping column keys to value types
+        Args:
+            column_key (CK): The column key
+            column_type (ColumnType): The new column type
+            
+        Raises:
+            ValueError: If the dataframe is read-only or the column doesn't exist
         """
-        with self._rlock:
-            return self._column_types.copy() 
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            self._column_types[column_key] = column_type 

@@ -1,16 +1,19 @@
-from typing import Generic, Iterator, TypeVar
-from ...united_dataframe import UnitedDataframe, ColumnKey
+from typing import Generic, Iterator, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe, ColumnKey
+
 from ...real_united_scalar import RealUnitedScalar
 from ..column_type import SCALAR_TYPE
 
-CK = TypeVar("CK", bound=ColumnKey|str)
+CK = TypeVar("CK", bound="ColumnKey|str")
 
 class _RowAccessor(Generic[CK]):
     """
     Internal class for row-based access to cell values.
     """
-    def __init__(self, parent: UnitedDataframe[CK], row_index: int):
-        self._parent: UnitedDataframe[CK] = parent
+    def __init__(self, parent: "UnitedDataframe[CK]", row_index: int):
+        self._parent: "UnitedDataframe[CK]" = parent
         self._row_index: int = row_index
 
     def __getitem__(self, column_key: CK) -> SCALAR_TYPE:

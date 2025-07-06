@@ -1,5 +1,8 @@
-from typing import Generic, Callable, TypeVar
-from ...united_dataframe import UnitedDataframe, ColumnKey
+from typing import Generic, Callable, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe, ColumnKey
+
 from ...real_united_scalar import RealUnitedScalar
 from ...complex_united_scalar import ComplexUnitedScalar
 from ...unit import Unit
@@ -9,7 +12,7 @@ from ..column_information import ColumnInformation
 import pandas as pd
 import numpy as np
 
-CK = TypeVar("CK", bound=ColumnKey|str)
+CK = TypeVar("CK", bound="ColumnKey|str")
 
 
 class _GroupBy(Generic[CK]):
@@ -19,7 +22,7 @@ class _GroupBy(Generic[CK]):
     This class provides pandas-like groupby functionality with unit awareness.
     """
     
-    def __init__(self, dataframe: UnitedDataframe[CK], by: list[CK]|set[CK]):
+    def __init__(self, dataframe: "UnitedDataframe[CK]", by: list[CK]|set[CK]):
         """
         Initialize a GroupBy object.
         
@@ -27,12 +30,12 @@ class _GroupBy(Generic[CK]):
             dataframe: The United_Dataframe to group
             by: List of columns to group by
         """
-        self._dataframe: UnitedDataframe[CK] = dataframe
+        self._dataframe: "UnitedDataframe[CK]" = dataframe
         self._by: list[CK] = list(by)
-        self._groups: dict[tuple, UnitedDataframe[CK]] | None = None
+        self._groups: dict[tuple, "UnitedDataframe[CK]"] | None = None
         self._group_keys: list[tuple] = []
     
-    def _get_groups(self) -> dict[tuple, UnitedDataframe[CK]]:
+    def _get_groups(self) -> dict[tuple, "UnitedDataframe[CK]"]:
         """
         Get the grouped dataframes.
         
@@ -64,7 +67,8 @@ class _GroupBy(Generic[CK]):
 
                     column_information: dict[CK, ColumnInformation[CK]] = self._dataframe.column_information.copy()
 
-                    # Create United_Dataframe for this group
+                    # Create United_Dataframe for this group - import here to avoid circular import
+                    from ...united_dataframe import UnitedDataframe
                     group_df = UnitedDataframe[CK](
                         subset_df,
                         column_information,
@@ -76,7 +80,7 @@ class _GroupBy(Generic[CK]):
         return self._groups
     
     @property
-    def groups(self) -> dict[tuple, UnitedDataframe[CK]]:
+    def groups(self) -> dict[tuple, "UnitedDataframe[CK]"]:
         """
         Get the grouped dataframes.
         
@@ -97,7 +101,7 @@ class _GroupBy(Generic[CK]):
             self._get_groups()
         return self._group_keys
     
-    def size(self, result_column_key: CK) -> UnitedDataframe[CK]:
+    def size(self, result_column_key: CK) -> "UnitedDataframe[CK]":
         """
         Get the size of each group.
         
@@ -138,13 +142,14 @@ class _GroupBy(Generic[CK]):
             result_column_information: dict[CK, ColumnInformation[CK]] = {key: self._dataframe.column_information[key] for key in self._by}
             result_column_information[result_column_key] = ColumnInformation(None, ColumnType.INTEGER_64, None)
 
+            from ...united_dataframe import UnitedDataframe
             return UnitedDataframe[CK](
                 result_df,
                 result_column_information,
                 self._dataframe._internal_dataframe_column_name_formatter
             )
     
-    def sum(self, numeric_only: bool = True, result_column_keys: list[CK] | None = None) -> UnitedDataframe[CK]:
+    def sum(self, numeric_only: bool = True, result_column_keys: list[CK] | None = None) -> "UnitedDataframe[CK]":
         """
         Calculate the sum of numeric columns for each group.
         
@@ -201,18 +206,25 @@ class _GroupBy(Generic[CK]):
             # Create result dataframe
             result_df = pd.DataFrame(group_data)
             
-            # Create column information for result
-            result_column_information: dict[CK, ColumnInformation[CK]] = {}
-            for numeric_column_key in numeric_columns:
-                result_column_information[numeric_column_key] = ColumnInformation(None, ColumnType.INTEGER_64, None)
+            # Create United_Dataframe for result
+            result_column_information: dict[CK, ColumnInformation[CK]] = {key: self._dataframe.column_information[key] for key in self._by}
+            for i, col in enumerate(numeric_columns):
+                result_key = result_column_keys[i]
+                original_info = self._dataframe.column_information[col]
+                result_column_information[result_key] = ColumnInformation(
+                    original_info.dimension,
+                    original_info.column_type,
+                    original_info.display_unit
+                )
             
+            from ...united_dataframe import UnitedDataframe
             return UnitedDataframe[CK](
                 result_df,
                 result_column_information,
                 self._dataframe._internal_dataframe_column_name_formatter
             )
     
-    def mean(self, numeric_only: bool = True, result_column_keys: list[CK] | None = None) -> UnitedDataframe[CK]:
+    def mean(self, numeric_only: bool = True, result_column_keys: list[CK] | None = None) -> "UnitedDataframe[CK]":
         """
         Calculate the mean of numeric columns for each group.
         
@@ -228,11 +240,11 @@ class _GroupBy(Generic[CK]):
             ValueError: If numeric_only is True and no numeric columns exist
             
         Examples:
-            # Calculate mean of all numeric columns
+            # Calculate mean for all numeric columns
             means = grouped.mean()
             
             # Calculate mean with custom result column keys
-            means = grouped.mean(result_column_keys=['avg_temp', 'avg_pressure'])
+            means = grouped.mean(result_column_keys=['mean_temp', 'mean_pressure'])
         """
         with self._dataframe._rlock:
             if numeric_only:
@@ -254,9 +266,9 @@ class _GroupBy(Generic[CK]):
                 row_data = {}
                 
                 # Add group key values
-                for i, col in enumerate(self._by):
-                    col_name = self._dataframe.internal_dataframe_column_string(col)
-                    row_data[col_name] = self._dataframe._internal_canonical_dataframe[col_name].iloc[0]
+                for _, col in enumerate(self._by):
+                    col_name_string = self._dataframe.internal_dataframe_column_string(col)
+                    row_data[col_name_string] = self._dataframe._internal_canonical_dataframe[col_name_string].iloc[0]
                 
                 # Add mean results
                 for i, col in enumerate(numeric_columns):
@@ -269,20 +281,27 @@ class _GroupBy(Generic[CK]):
             # Create result dataframe
             result_df = pd.DataFrame(group_data)
             
-            # Create column information for result
-            result_column_information: dict[CK, ColumnInformation[CK]] = {}
-            for numeric_column_key in numeric_columns:
-                result_column_information[numeric_column_key] = ColumnInformation(None, ColumnType.FLOAT_64, None)
+            # Create United_Dataframe for result
+            result_column_information: dict[CK, ColumnInformation[CK]] = {key: self._dataframe.column_information[key] for key in self._by}
+            for i, col in enumerate(numeric_columns):
+                result_key = result_column_keys[i]
+                original_info = self._dataframe.column_information[col]
+                result_column_information[result_key] = ColumnInformation(
+                    original_info.dimension,
+                    original_info.column_type,
+                    original_info.display_unit
+                )
             
+            from ...united_dataframe import UnitedDataframe
             return UnitedDataframe[CK](
                 result_df,
                 result_column_information,
                 self._dataframe._internal_dataframe_column_name_formatter
             )
     
-    def count(self, result_column_keys: list[CK] | None = None) -> UnitedDataframe[CK]:
+    def count(self, result_column_keys: list[CK] | None = None) -> "UnitedDataframe[CK]":
         """
-        Count non-null values in each group.
+        Count non-null values for each group.
         
         Args:
             result_column_keys (list[CK] | None): List of column keys for the result columns.
@@ -292,19 +311,19 @@ class _GroupBy(Generic[CK]):
             United_Dataframe[CK]: A dataframe with group keys and count results
             
         Examples:
-            # Count non-null values in all columns
+            # Count non-null values for all columns
             counts = grouped.count()
             
             # Count with custom result column keys
             counts = grouped.count(result_column_keys=['count_temp', 'count_pressure'])
         """
         with self._dataframe._rlock:
-            columns_to_count = self._dataframe.column_keys
+            columns = self._dataframe.column_keys
             
             if result_column_keys is None:
-                result_column_keys = columns_to_count.copy()
-            elif len(result_column_keys) != len(columns_to_count):
-                raise ValueError(f"Number of result column keys ({len(result_column_keys)}) must match number of columns to count ({len(columns_to_count)}).")
+                result_column_keys = columns.copy()
+            elif len(result_column_keys) != len(columns):
+                raise ValueError(f"Number of result column keys ({len(result_column_keys)}) must match number of columns to count ({len(columns)}).")
             
             group_data = []
             
@@ -313,12 +332,12 @@ class _GroupBy(Generic[CK]):
                 row_data = {}
                 
                 # Add group key values
-                for i, col in enumerate(self._by):
-                    col_name = self._dataframe.internal_dataframe_column_string(col)
-                    row_data[col_name] = self._dataframe._internal_canonical_dataframe[col_name].iloc[0]
+                for _, col in enumerate(self._by):
+                    col_name_string = self._dataframe.internal_dataframe_column_string(col)
+                    row_data[col_name_string] = self._dataframe._internal_canonical_dataframe[col_name_string].iloc[0]
                 
                 # Add count results
-                for i, col in enumerate(columns_to_count):
+                for i, col in enumerate(columns):
                     result_key = result_column_keys[i]
                     col_name = self._dataframe.internal_dataframe_column_string(col)
                     row_data[result_key] = group_df._internal_canonical_dataframe[col_name].count()
@@ -328,363 +347,277 @@ class _GroupBy(Generic[CK]):
             # Create result dataframe
             result_df = pd.DataFrame(group_data)
             
-            # Create column information for result
-            result_column_information: dict[CK, ColumnInformation[CK]] = {}
-            for column_key in columns_to_count:
-                result_column_information[column_key] = ColumnInformation(None, ColumnType.INTEGER_64, None)
+            # Create United_Dataframe for result
+            result_column_information: dict[CK, ColumnInformation[CK]] = {key: self._dataframe.column_information[key] for key in self._by}
+            for i, col in enumerate(columns):
+                result_key = result_column_keys[i]
+                result_column_information[result_key] = ColumnInformation(None, ColumnType.INTEGER_64, None)
             
+            from ...united_dataframe import UnitedDataframe
             return UnitedDataframe[CK](
                 result_df,
                 result_column_information,
                 self._dataframe._internal_dataframe_column_name_formatter
             )
     
-    def apply(self, func: Callable[[UnitedDataframe[CK]], RealUnitedScalar]|Callable[[UnitedDataframe[CK]], ComplexUnitedScalar], result_column_key: CK) -> UnitedDataframe[CK]:
+    def apply(self, func: Callable[["UnitedDataframe[CK]"], RealUnitedScalar]|Callable[["UnitedDataframe[CK]"], ComplexUnitedScalar], result_column_key: CK) -> "UnitedDataframe[CK]":
         """
-        Apply a function to each group for a specific column.
+        Apply a function to each group.
         
         Args:
-            func: Function to apply to each group
-            column: Column to apply the function to
+            func: A function that takes a United_Dataframe and returns a scalar
+            result_column_key (CK): The column key to use for the result
             
         Returns:
-            United_Dataframe: A dataframe with group keys and function results
+            United_Dataframe[CK]: A dataframe with group keys and function results
+            
+        Examples:
+            # Apply custom function to each group
+            def custom_func(group_df):
+                # Your custom logic here
+                return group_df.column_get_values('temperature')[0]
+            
+            results = grouped.apply(custom_func, 'first_temp')
         """
         with self._dataframe._rlock:
-            if not self._dataframe.has_column(result_column_key):
-                raise ValueError(f"Column {result_column_key} does not exist in the dataframe.")
-            
-            group_results = []
             group_data = []
-
-            result: RealUnitedScalar|ComplexUnitedScalar|None = None
-            result_dimension: Dimension|None = None
-            result_display_unit: Unit|None = None
             
             for key in self.group_keys:
                 group_df = self.groups[key]
                 row_data = {}
                 
                 # Add group key values
-                for i, col in enumerate(self._by):
-                    col_name = self._dataframe.internal_dataframe_column_string(col)
-                    row_data[col_name] = self._dataframe._internal_canonical_dataframe[col_name].iloc[0]
+                for _, col in enumerate(self._by):
+                    col_name_string = self._dataframe.internal_dataframe_column_string(col)
+                    row_data[col_name_string] = self._dataframe._internal_canonical_dataframe[col_name_string].iloc[0]
                 
-                # Apply function to the group
-                result: RealUnitedScalar|ComplexUnitedScalar = func(group_df)
-
-                # Get the result quantity and display unit, if present, check if they are the same!
-                if result_dimension is not None:
-                    if result_dimension != result.quantity:
-                        raise ValueError(f"Result quantity {result_dimension} does not match the result quantity {result.quantity}")
-                else:
-                    result_dimension = result.quantity
-                if result_display_unit is not None:
-                    if result_display_unit != result.display_unit:
-                        raise ValueError(f"Result display unit {result_display_unit} does not match the result display unit {result.display_unit}")
-                else:
-                    result_display_unit = result.display_unit
-                
-                # Add result to row data
-                col_name = self._dataframe.internal_dataframe_column_string(result_column_key)
-                row_data[col_name] = result.canonical_value
+                # Add function result
+                result = func(group_df)
+                row_data[result_column_key] = result
                 
                 group_data.append(row_data)
-
+            
             # Create result dataframe
             result_df = pd.DataFrame(group_data)
             
-            # Create column information for result
-            result_column_information: dict[CK, ColumnInformation[CK]] = self._dataframe.column_information.copy()
-            match type(result):
-                case RealUnitedScalar():
-                    result_column_information[result_column_key] = ColumnInformation(result_dimension, ColumnType.REAL_NUMBER_64, result_display_unit)
-                case ComplexUnitedScalar():
-                    result_column_information[result_column_key] = ColumnInformation(result_dimension, ColumnType.COMPLEX_NUMBER_128, result_display_unit)
-                case _:
-                    raise ValueError(f"Function must return a RealUnitedScalar or ComplexUnitedScalar, got {type(result)}")
+            # Create United_Dataframe for result
+            result_column_information: dict[CK, ColumnInformation[CK]] = {key: self._dataframe.column_information[key] for key in self._by}
             
+            # Determine column type for result based on function return type
+            if isinstance(func(self.groups[self.group_keys[0]]), RealUnitedScalar):
+                result_column_information[result_column_key] = ColumnInformation(
+                    func(self.groups[self.group_keys[0]]).dimension,
+                    ColumnType.REAL_UNITED_SCALAR,
+                    func(self.groups[self.group_keys[0]]).display_unit
+                )
+            else:  # ComplexUnitedScalar
+                result_column_information[result_column_key] = ColumnInformation(
+                    func(self.groups[self.group_keys[0]]).dimension,
+                    ColumnType.COMPLEX_UNITED_SCALAR,
+                    func(self.groups[self.group_keys[0]]).display_unit
+                )
+            
+            from ...united_dataframe import UnitedDataframe
             return UnitedDataframe[CK](
                 result_df,
                 result_column_information,
                 self._dataframe._internal_dataframe_column_name_formatter
             )
-
-    def head(self, n: int = 1) -> UnitedDataframe[CK]:
+    
+    def head(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
-        Get the first n rows from each group.
+        Return the first n rows from each group.
         
         Args:
             n (int): Number of rows to return from each group (default: 1)
             
         Returns:
-            United_Dataframe: A dataframe containing the first n rows from each group
-            
-        Raises:
-            ValueError: If n is negative
+            United_Dataframe[CK]: A dataframe with the first n rows from each group
             
         Examples:
-            # Get first row from each group (default)
-            grouped.head()
+            # Get first row from each group
+            first_rows = grouped.head(1)
             
             # Get first 3 rows from each group
-            grouped.head(3)
-            
-            # If a group has fewer than n rows, all rows from that group are returned
-            grouped.head(10)  # Returns all rows if group has fewer than 10 rows
+            first_3_rows = grouped.head(3)
         """
         with self._dataframe._rlock:
-            if n < 0:
-                raise ValueError(f"n must be non-negative, got {n}")
-            
-            all_head_rows = []
+            all_rows = []
             
             for key in self.group_keys:
                 group_df = self.groups[key]
-                # Get the first n rows from this group (or all if group has fewer than n rows)
-                actual_n = min(n, len(group_df))
-                head_rows = group_df.rowfun_head(actual_n)
-                all_head_rows.append(head_rows)
+                if len(group_df) >= n:
+                    head_rows = group_df._internal_canonical_dataframe.head(n)
+                    all_rows.append(head_rows)
+                else:
+                    all_rows.append(group_df._internal_canonical_dataframe)
             
-            # Concatenate all the head rows from all groups
-            if all_head_rows:
-                return UnitedDataframe[CK].concatenate_dataframes(all_head_rows[0], *all_head_rows[1:])
+            # Combine all rows
+            if all_rows:
+                result_df = pd.concat(all_rows, ignore_index=True)
             else:
-                # Return empty dataframe with same structure
-                return UnitedDataframe[CK].create_empty(
-                    self._dataframe._column_keys,
-                    self._dataframe._display_units,
-                    self._dataframe._value_types
-                )
-
-    def first(self) -> UnitedDataframe[CK]:
+                result_df = pd.DataFrame()
+            
+            # Create United_Dataframe for result
+            from ...united_dataframe import UnitedDataframe
+            return UnitedDataframe[CK](
+                result_df,
+                self._dataframe.column_information.copy(),
+                self._dataframe._internal_dataframe_column_name_formatter
+            )
+    
+    def first(self) -> "UnitedDataframe[CK]":
         """
-        Get the first row from each group.
+        Return the first row from each group.
         
         Returns:
-            United_Dataframe: A dataframe containing the first row from each group
-            
-        Raises:
-            ValueError: If any group is empty
+            United_Dataframe[CK]: A dataframe with the first row from each group
             
         Examples:
-            # Get the first row from each group
+            # Get first row from each group
             first_rows = grouped.first()
-            
-            # Access the first row's values for a specific group
-            first_rows.loc[0, 'column_name']
         """
-        with self._dataframe._rlock:
-            all_first_rows = []
-            
-            for key in self.group_keys:
-                group_df = self.groups[key]
-                if group_df.empty:
-                    raise ValueError(f"Cannot get first row from empty group {key}")
-                
-                first_row = group_df.rowfun_first()
-                all_first_rows.append(first_row)
-            
-            # Concatenate all the first rows from all groups
-            if all_first_rows:
-                return UnitedDataframe[CK].concatenate_dataframes(all_first_rows[0], *all_first_rows[1:])
-            else:
-                # Return empty dataframe with same structure
-                return UnitedDataframe[CK].create_empty(
-                    self._dataframe._column_keys,
-                    self._dataframe._display_units,
-                    self._dataframe._value_types
-                )
-
-    def tail(self, n: int = 1) -> UnitedDataframe[CK]:
+        return self.head(1)
+    
+    def tail(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
-        Get the last n rows from each group.
+        Return the last n rows from each group.
         
         Args:
             n (int): Number of rows to return from each group (default: 1)
             
         Returns:
-            United_Dataframe: A dataframe containing the last n rows from each group
-            
-        Raises:
-            ValueError: If n is negative
+            United_Dataframe[CK]: A dataframe with the last n rows from each group
             
         Examples:
-            # Get last row from each group (default)
-            grouped.tail()
+            # Get last row from each group
+            last_rows = grouped.tail(1)
             
             # Get last 3 rows from each group
-            grouped.tail(3)
-            
-            # If a group has fewer than n rows, all rows from that group are returned
-            grouped.tail(10)  # Returns all rows if group has fewer than 10 rows
+            last_3_rows = grouped.tail(3)
         """
         with self._dataframe._rlock:
-            if n < 0:
-                raise ValueError(f"n must be non-negative, got {n}")
-            
-            all_tail_rows = []
+            all_rows = []
             
             for key in self.group_keys:
                 group_df = self.groups[key]
-                # Get the last n rows from this group (or all if group has fewer than n rows)
-                actual_n = min(n, len(group_df))
-                tail_rows = group_df.rowfun_tail(actual_n)
-                all_tail_rows.append(tail_rows)
+                if len(group_df) >= n:
+                    tail_rows = group_df._internal_canonical_dataframe.tail(n)
+                    all_rows.append(tail_rows)
+                else:
+                    all_rows.append(group_df._internal_canonical_dataframe)
             
-            # Concatenate all the tail rows from all groups
-            if all_tail_rows:
-                return UnitedDataframe[CK].concatenate_dataframes(all_tail_rows[0], *all_tail_rows[1:])
+            # Combine all rows
+            if all_rows:
+                result_df = pd.concat(all_rows, ignore_index=True)
             else:
-                # Return empty dataframe with same structure
-                return UnitedDataframe[CK].create_empty(
-                    self._dataframe._column_keys,
-                    self._dataframe._display_units,
-                    self._dataframe._value_types
-                )
-
-    def last(self) -> UnitedDataframe[CK]:
+                result_df = pd.DataFrame()
+            
+            # Create United_Dataframe for result
+            from ...united_dataframe import UnitedDataframe
+            return UnitedDataframe[CK](
+                result_df,
+                self._dataframe.column_information.copy(),
+                self._dataframe._internal_dataframe_column_name_formatter
+            )
+    
+    def last(self) -> "UnitedDataframe[CK]":
         """
-        Get the last row from each group.
+        Return the last row from each group.
         
         Returns:
-            United_Dataframe: A dataframe containing the last row from each group
-            
-        Raises:
-            ValueError: If any group is empty
+            United_Dataframe[CK]: A dataframe with the last row from each group
             
         Examples:
-            # Get the last row from each group
+            # Get last row from each group
             last_rows = grouped.last()
-            
-            # Access the last row's values for a specific group
-            last_rows.loc[0, 'column_name']
         """
-        with self._dataframe._rlock:
-            all_last_rows = []
-            
-            for key in self.group_keys:
-                group_df = self.groups[key]
-                if group_df.empty:
-                    raise ValueError(f"Cannot get last row from empty group {key}")
-                
-                last_row = group_df.rowfun_last()
-                all_last_rows.append(last_row)
-            
-            # Concatenate all the last rows from all groups
-            if all_last_rows:
-                return UnitedDataframe[CK].concatenate_dataframes(all_last_rows[0], *all_last_rows[1:])
-            else:
-                # Return empty dataframe with same structure
-                return UnitedDataframe[CK].create_empty(
-                    self._dataframe._column_keys,
-                    self._dataframe._display_units,
-                    self._dataframe._value_types
-                )
-
+        return self.tail(1)
+    
     def get_filtered(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "_GroupBy[CK]":
         """
-        Filter each group by a dictionary of column keys and values.
-        
-        This method applies the same filtering criteria to each group individually,
-        then returns a new GroupBy object with the filtered groups.
+        Get a filtered version of the GroupBy object.
         
         Args:
-            filter_dict (dict[CK, UnitedScalar|str|bool|datetime]): A dictionary of column keys and values to filter by
+            filter_dict (dict[CK, SCALAR_TYPE]): Dictionary of column keys and values to filter by
             
         Returns:
-            GroupBy[CK]: A new GroupBy object with filtered groups
-            
-        Raises:
-            ValueError: If any column key does not exist in the dataframe
+            _GroupBy[CK]: A new GroupBy object with filtered data
             
         Examples:
-            # Filter groups to only include rows where 'status' is 'active'
-            filtered_groups = grouped.get_filtered({'status': 'active'})
-            
-            # Filter groups with multiple criteria
-            filtered_groups = grouped.get_filtered({
-                'status': 'active',
-                'priority': UnitedScalar.united_number(5, Unit.one)
-            })
-            
-            # Apply operations to filtered groups
-            result = filtered_groups.sum()
+            # Filter groups where temperature > 20
+            filtered_grouped = grouped.get_filtered({'temperature': lambda x: x > 20})
         """
         with self._dataframe._rlock:
-            filtered_groups = {}
+            # Apply filter to the original dataframe
+            filtered_df = self._dataframe.copy()
+            
+            for column_key, filter_value in filter_dict.items():
+                if callable(filter_value):
+                    # Apply lambda function filter
+                    column_values = filtered_df.column_get_values(column_key)
+                    mask = [filter_value(val) for val in column_values]
+                    filtered_df = filtered_df.mask_apply_to_dataframe(mask)
+                else:
+                    # Apply exact value filter
+                    mask = filtered_df.mask_get_equal_to(column_key, filter_value)
+                    filtered_df = filtered_df.mask_apply_to_dataframe(mask)
+            
+            return _GroupBy(filtered_df, self._by)
+    
+    def isna(self, subset: list[CK] | None = None) -> np.ndarray:
+        """
+        Return a boolean mask indicating which values are missing/null for each group.
+        
+        Args:
+            subset (list[CK] | None): List of column keys to check for missing values.
+                                     If None, checks all columns.
+            
+        Returns:
+            np.ndarray: Boolean array where True indicates missing values
+            
+        Examples:
+            # Check for missing values in all columns
+            missing_mask = grouped.isna()
+            
+            # Check for missing values in specific columns
+            missing_mask = grouped.isna(['temperature', 'pressure'])
+        """
+        with self._dataframe._rlock:
+            if subset is None:
+                subset = self._dataframe.column_keys
+            
+            all_masks = []
             
             for key in self.group_keys:
                 group_df = self.groups[key]
-                # Apply the same filtering to each group
-                filtered_group = group_df.filterfun_by_filterdict(filter_dict)
-                if not filtered_group.empty:
-                    filtered_groups[key] = filtered_group
-            
-            # Create a new GroupBy object with the filtered groups
-            # We need to reconstruct the original dataframe from the filtered groups
-            if filtered_groups:
-                all_filtered_rows = []
-                for group_df in filtered_groups.values():
-                    all_filtered_rows.append(group_df)
+                group_mask = np.zeros(len(group_df), dtype=bool)
                 
-                # Concatenate all filtered groups into a single dataframe
-                filtered_dataframe = UnitedDataframe[CK].concatenate_dataframes(all_filtered_rows[0], *all_filtered_rows[1:])
+                for col in subset:
+                    col_name = self._dataframe.internal_dataframe_column_string(col)
+                    col_mask = group_df._internal_canonical_dataframe[col_name].isna()
+                    group_mask = group_mask | col_mask.values
                 
-                # Create a new GroupBy object with the same grouping columns
-                return _GroupBy[CK](filtered_dataframe, self._by)
-            else:
-                # If no groups remain after filtering, return an empty GroupBy
-                empty_dataframe: UnitedDataframe[CK] = self._dataframe.create_empty()
-                return _GroupBy[CK](empty_dataframe, self._by)
-
-    def isna(self, subset: list[CK] | None = None) -> np.ndarray:
-        """
-        Return a boolean mask indicating which values are NA/NaN.
-        
-        This method works similarly to pandas DataFrame.isna(), returning a numpy array
-        with the same shape as the original, where True indicates NA/NaN values.
-        
-        Args:
-            subset (list[CK] | None): List of column keys to check for NA values.
-                                    If None, checks all columns.
-        
-        Returns:
-            np.ndarray: Boolean array with same shape as original, where True indicates NA values
+                all_masks.extend(group_mask)
             
-        Examples:
-            # Check all columns for NA values
-            na_mask = grouped.isna()
-            
-            # Check specific columns for NA values
-            na_mask = grouped.isna(['column1', 'column2'])
-            
-            # Use the mask for filtering
-            non_na_rows = grouped[~grouped.isna().any(axis=1)]
-        """
-        return self._dataframe.maskfun_isna(subset)
+            return np.array(all_masks)
     
     def notna(self, subset: list[CK] | None = None) -> np.ndarray:
         """
-        Return a boolean mask indicating which values are not NA/NaN.
-        
-        This is the inverse of isna() - returns True for non-NA values.
+        Return a boolean mask indicating which values are not missing/null for each group.
         
         Args:
-            subset (list[CK] | None): List of column keys to check for non-NA values.
-                                    If None, checks all columns.
-        
+            subset (list[CK] | None): List of column keys to check for non-missing values.
+                                     If None, checks all columns.
+            
         Returns:
-            np.ndarray: Boolean array with same shape as original, where True indicates non-NA values
+            np.ndarray: Boolean array where True indicates non-missing values
             
         Examples:
-            # Check all columns for non-NA values
-            non_na_mask = grouped.notna()
+            # Check for non-missing values in all columns
+            valid_mask = grouped.notna()
             
-            # Check specific columns for non-NA values
-            non_na_mask = grouped.notna(['column1', 'column2'])
-            
-            # Use the mask for filtering
-            non_na_rows = grouped[grouped.notna().all(axis=1)]
+            # Check for non-missing values in specific columns
+            valid_mask = grouped.notna(['temperature', 'pressure'])
         """
         return ~self.isna(subset)

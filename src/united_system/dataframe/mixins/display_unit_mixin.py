@@ -1,84 +1,77 @@
 """
 Display unit operations mixin for UnitedDataframe.
 
-Contains all operations related to display units, including retrieval
-and display unit management.
+Contains all operations related to display units, including retrieval,
+setting, and display unit management.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, overload
+from typing import Union
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ...units.united import United
+from ...units.base_classes.base_unit import BaseUnit
 
-from ...unit import Unit
-
-CK = TypeVar("CK", bound=str, default=str)
-
-class DisplayUnitMixin(Generic[CK]):
+class DisplayUnitMixin(UnitedDataframeMixin[CK]):
     """
     Display unit operations mixin for UnitedDataframe.
     
-    Provides all functionality related to display units, including retrieval
-    and display unit management.
+    Provides all functionality related to display units, including retrieval,
+    setting, and display unit management.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Retrievals: Display Units ------------
+    # ----------- Retrievals: Display units ------------
 
-    def display_unit(self, column_key: CK) -> Unit:
-        with self._rlock:
-            return self._display_units[column_key]
-
-    @overload
-    def display_units(self, column_keys: CK) -> Unit:
-        ... 
-
-    @overload
-    def display_units(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[Unit]:
-        ...
-
-    @overload
-    def display_units(self, column_keys: list[CK]) -> list[Unit]:
-        ...
-
-    @overload
-    def display_units(self, column_keys: set[CK]) -> set[Unit]:
-        ...
-
-    def display_units(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> Unit|list[Unit]|set[Unit]:
+    @property
+    def display_units(self) -> dict[CK, United]:
         """
-        Get the display unit(s) by column key(s).
+        Get a copy of all display units.
+        
+        Returns:
+            dict[CK, United]: A copy of the dictionary of display units
+        """
+        with self._rlock:  # Full IDE support!
+            return self._display_units.copy()  # Protocol knows _display_units exists!
+        
+    def get_display_unit(self, column_key: CK) -> United:
+        """
+        Get the display unit for a column.
         
         Args:
-            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the display unit(s) of. If None, all column keys are used.
-            *more_column_keys (CK): Additional column keys to get the display unit(s) of.
+            column_key (CK): The column key
             
         Returns:
-            Unit|list[Unit]|set[Unit]: The display unit(s) of the specified column(s)
+            United: The display unit
         """
         with self._rlock:
-            match column_keys:
-                case str():
-                    if len(more_column_keys) == 0:
-                        return self._display_units[column_keys]
-                    else:
-                        return [self._display_units[column_keys]] + [self._display_units[more_column_key] for more_column_key in more_column_keys]
-                case list():
-                    display_units_as_list: list[Unit] = []
-                    for column_key in column_keys:
-                        display_units_as_list.append(self._display_units[column_key])
-                    return display_units_as_list
-                case set():
-                    display_units_as_set: set[Unit] = set()
-                    for column_key in column_keys:
-                        display_units_as_set.add(self._display_units[column_key])
-                    return display_units_as_set
-                case _:
-                    raise ValueError(f"Invalid column keys: {column_keys}.")
-    
-    @property
-    def display_unit_dict(self) -> dict[CK, Unit]:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            return self._display_units[column_key]
+
+    # ----------- Setters: Display units ------------
+
+    def set_display_unit(self, column_key: CK, display_unit: Union[United, BaseUnit]):
         """
-        Get a dictionary mapping column keys to their display units.
+        Set the display unit for a column.
         
-        Returns:
-            dict[CK, Unit]: Dictionary mapping column keys to display units
+        Args:
+            column_key (CK): The column key
+            display_unit (United|BaseUnit): The new display unit
+            
+        Raises:
+            ValueError: If the dataframe is read-only or the column doesn't exist
         """
-        with self._rlock:
-            return self._display_units.copy() 
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            # Convert BaseUnit to United if needed
+            if isinstance(display_unit, BaseUnit):
+                display_unit = United(display_unit)
+            
+            self._display_units[column_key] = display_unit 

@@ -1,340 +1,403 @@
 """
 Groupby operations mixin for UnitedDataframe.
 
-Contains all operations related to groupby functionality, including
-grouping, aggregation, and group-wise operations.
+Contains all operations related to groupby functionality,
+including grouping, aggregation, and group-based operations.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, Dict, List, Callable, Any
-import pandas as pd
+from typing import Any, Dict, List, Callable, Union, Optional
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ..accessors._group_by import _GroupBy
 
-from ..column_type import SCALAR_TYPE
-
-CK = TypeVar("CK", bound=str, default=str)
-
-class GroupbyMixin(Generic[CK]):
+class GroupbyMixin(UnitedDataframeMixin[CK]):
     """
     Groupby operations mixin for UnitedDataframe.
     
     Provides all functionality related to groupby operations,
-    including grouping, aggregation, and group-wise operations.
+    including grouping, aggregation, and group-based operations.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Groupby operations ------------
+    # ----------- Groupby Operations: Basic ------------
 
-    def group_by(self, column_keys: List[CK]) -> "UnitedDataframeGroupBy[CK]":
+    def groupby(self, by: Union[CK, List[CK]], sort: bool = True, dropna: bool = True) -> "_GroupBy[CK]":
         """
-        Group the dataframe by specified column keys.
+        Group the dataframe by one or more columns.
         
         Args:
-            column_keys (List[CK]): List of column keys to group by
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            sort (bool): Whether to sort the group keys
+            dropna (bool): Whether to drop rows with NaN values in group keys
             
         Returns:
-            UnitedDataframeGroupBy[CK]: Groupby object for further operations
+            _GroupBy[CK]: GroupBy object for further operations
         """
-        with self._rlock:
-            # Validate column keys
-            for column_key in column_keys:
+        with self._rlock:  # Full IDE support!
+            # Ensure by is a list
+            if not isinstance(by, list):
+                by = [by]
+            
+            # Validate that all column keys exist
+            for column_key in by:
                 if column_key not in self._column_keys:
                     raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
-            return UnitedDataframeGroupBy(self, column_keys)
+            # Create GroupBy object
+            return _GroupBy(self, by, sort=sort, dropna=dropna)
 
-    def aggregate(self, agg_dict: Dict[CK, str | List[str] | Callable]) -> "UnitedDataframe[CK]":
+    def group_apply(self, by: Union[CK, List[CK]], func: Callable) -> "UnitedDataframe":
         """
-        Aggregate the dataframe using specified aggregation functions.
+        Apply a function to each group.
         
         Args:
-            agg_dict (Dict[CK, str | List[str] | Callable]): Dictionary mapping column keys to aggregation functions
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            func (Callable): Function to apply to each group
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with aggregated results
+            UnitedDataframe: Result of applying function to each group
         """
         with self._rlock:
-            # Validate column keys
-            for column_key in agg_dict.keys():
-                if column_key not in self._column_keys:
-                    raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            # Convert to internal column names
-            internal_agg_dict = {}
-            for column_key, agg_func in agg_dict.items():
-                internal_column_name = self._internal_dataframe_column_strings[column_key]
-                internal_agg_dict[internal_column_name] = agg_func
-            
-            # Perform aggregation
-            agg_result = self._internal_canonical_dataframe.agg(internal_agg_dict)
-            
-            # Convert back to UnitedDataframe
-            if isinstance(agg_result, pd.Series):
-                # Single row result
-                agg_df = pd.DataFrame([agg_result])
-            else:
-                agg_df = agg_result
-            
-            # Create new column information (simplified for aggregated data)
-            new_column_information = {}
-            for column_key in agg_dict.keys():
-                new_column_information[column_key] = self._column_information[column_key]
-            
-            return UnitedDataframe(agg_df, new_column_information, self._internal_dataframe_column_name_formatter)
+            grouped = self.groupby(by)
+            return grouped.apply(func)
 
-    def pivot_table(self, values: CK, index: CK | List[CK], columns: CK | List[CK],
-                   aggfunc: str | Callable = "mean", fill_value: Any = None) -> "UnitedDataframe[CK]":
+    def group_transform(self, by: Union[CK, List[CK]], func: Callable) -> "UnitedDataframe":
         """
-        Create a pivot table from the dataframe.
+        Transform each group using a function.
         
         Args:
-            values (CK): Column key to aggregate
-            index (CK | List[CK]): Column key(s) to use as row index
-            columns (CK | List[CK]): Column key(s) to use as columns
-            aggfunc (str | Callable): Aggregation function to use
-            fill_value (Any): Value to fill missing combinations
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            func (Callable): Function to transform each group
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with pivot table
+            UnitedDataframe: Transformed dataframe
         """
         with self._rlock:
-            # Validate column keys
-            all_columns = [values]
-            if isinstance(index, list):
-                all_columns.extend(index)
-            else:
-                all_columns.append(index)
-            if isinstance(columns, list):
-                all_columns.extend(columns)
-            else:
-                all_columns.append(columns)
-            
-            for column_key in all_columns:
-                if column_key not in self._column_keys:
-                    raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            # Convert to internal column names
-            values_internal = self._internal_dataframe_column_strings[values]
-            index_internal = ([self._internal_dataframe_column_strings[idx] for idx in index] 
-                            if isinstance(index, list) 
-                            else self._internal_dataframe_column_strings[index])
-            columns_internal = ([self._internal_dataframe_column_strings[col] for col in columns] 
-                              if isinstance(columns, list) 
-                              else self._internal_dataframe_column_strings[columns])
-            
-            # Create pivot table
-            pivot_result = self._internal_canonical_dataframe.pivot_table(
-                values=values_internal,
-                index=index_internal,
-                columns=columns_internal,
-                aggfunc=aggfunc,
-                fill_value=fill_value
-            )
-            
-            # Convert back to UnitedDataframe (simplified column information)
-            new_column_information = {}
-            for col in pivot_result.columns:
-                # Use the values column information for all pivot columns
-                new_column_information[str(col)] = self._column_information[values]
-            
-            return UnitedDataframe(pivot_result, new_column_information, self._internal_dataframe_column_name_formatter)
+            grouped = self.groupby(by)
+            return grouped.transform(func)
 
+    # ----------- Groupby Operations: Aggregation ------------
 
-class UnitedDataframeGroupBy(Generic[CK]):
-    """
-    GroupBy object for UnitedDataframe.
-    
-    Provides groupby functionality similar to pandas GroupBy objects.
-    """
-    
-    def __init__(self, dataframe: "UnitedDataframe[CK]", group_keys: List[CK]):
-        self._dataframe = dataframe
-        self._group_keys = group_keys
-        
-        # Create internal groupby object
-        internal_group_keys = [dataframe._internal_dataframe_column_strings[key] for key in group_keys]
-        self._internal_groupby = dataframe._internal_canonical_dataframe.groupby(internal_group_keys)
-    
-    def aggregate(self, agg_dict: Dict[CK, str | List[str] | Callable]) -> "UnitedDataframe[CK]":
+    def group_aggregate(self, by: Union[CK, List[CK]], agg_dict: Dict[CK, Union[str, Callable]]) -> "UnitedDataframe":
         """
-        Aggregate the grouped data.
+        Aggregate groups using different functions for different columns.
         
         Args:
-            agg_dict (Dict[CK, str | List[str] | Callable]): Dictionary mapping column keys to aggregation functions
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            agg_dict (Dict[CK, Union[str, Callable]]): Dictionary mapping column keys to aggregation functions
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with aggregated results
+            UnitedDataframe: Aggregated dataframe
         """
-        # Validate column keys
-        for column_key in agg_dict.keys():
-            if column_key not in self._dataframe._column_keys:
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-        
-        # Convert to internal column names
-        internal_agg_dict = {}
-        for column_key, agg_func in agg_dict.items():
-            internal_column_name = self._dataframe._internal_dataframe_column_strings[column_key]
-            internal_agg_dict[internal_column_name] = agg_func
-        
-        # Perform aggregation
-        agg_result = self._internal_groupby.agg(internal_agg_dict)
-        
-        # Create new column information
-        new_column_information = {}
-        
-        # Add group keys to column information
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
-        
-        # Add aggregated columns to column information
-        for column_key in agg_dict.keys():
-            new_column_information[column_key] = self._dataframe._column_information[column_key]
-        
-        return UnitedDataframe(agg_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def sum(self, numeric_only: bool = True) -> "UnitedDataframe[CK]":
+        with self._rlock:
+            grouped = self.groupby(by)
+            return grouped.agg(agg_dict)
+
+    def group_sum(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
         """
-        Calculate sum for each group.
+        Sum values in groups.
         
         Args:
-            numeric_only (bool): If True, only aggregate numeric columns
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to sum. If None, sums all numeric columns.
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with group sums
+            UnitedDataframe: Dataframe with group sums
         """
-        sum_result = self._internal_groupby.sum(numeric_only=numeric_only)
-        
-        # Create new column information
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
-        
-        for col in sum_result.columns:
-            # Find the corresponding column key
-            for column_key in self._dataframe._column_keys:
-                if self._dataframe._internal_dataframe_column_strings[column_key] == col:
-                    new_column_information[column_key] = self._dataframe._column_information[column_key]
-                    break
-        
-        return UnitedDataframe(sum_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def mean(self, numeric_only: bool = True) -> "UnitedDataframe[CK]":
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.sum()
+            else:
+                return grouped.sum(columns)
+
+    def group_mean(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
         """
-        Calculate mean for each group.
+        Calculate mean values in groups.
         
         Args:
-            numeric_only (bool): If True, only aggregate numeric columns
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate mean. If None, calculates mean of all numeric columns.
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with group means
+            UnitedDataframe: Dataframe with group means
         """
-        mean_result = self._internal_groupby.mean(numeric_only=numeric_only)
-        
-        # Create new column information (similar to sum)
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
-        
-        for col in mean_result.columns:
-            for column_key in self._dataframe._column_keys:
-                if self._dataframe._internal_dataframe_column_strings[column_key] == col:
-                    new_column_information[column_key] = self._dataframe._column_information[column_key]
-                    break
-        
-        return UnitedDataframe(mean_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def count(self) -> "UnitedDataframe[CK]":
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.mean()
+            else:
+                return grouped.mean(columns)
+
+    def group_median(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
         """
-        Count non-null values for each group.
+        Calculate median values in groups.
         
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate median. If None, calculates median of all numeric columns.
+            
         Returns:
-            UnitedDataframe[CK]: New dataframe with group counts
+            UnitedDataframe: Dataframe with group medians
         """
-        count_result = self._internal_groupby.count()
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.median()
+            else:
+                return grouped.median(columns)
+
+    def group_std(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Calculate standard deviation in groups.
         
-        # Create new column information
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate std. If None, calculates std of all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with group standard deviations
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.std()
+            else:
+                return grouped.std(columns)
+
+    def group_var(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Calculate variance in groups.
         
-        for col in count_result.columns:
-            for column_key in self._dataframe._column_keys:
-                if self._dataframe._internal_dataframe_column_strings[column_key] == col:
-                    # Count results are always integers
-                    new_column_information[column_key] = self._dataframe._column_information[column_key]
-                    break
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate variance. If None, calculates variance of all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with group variances
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.var()
+            else:
+                return grouped.var(columns)
+
+    def group_min(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Find minimum values in groups.
         
-        return UnitedDataframe(count_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def size(self) -> "UnitedDataframe[CK]":
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to find minimum. If None, finds minimum of all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with group minimums
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.min()
+            else:
+                return grouped.min(columns)
+
+    def group_max(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Find maximum values in groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to find maximum. If None, finds maximum of all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with group maximums
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.max()
+            else:
+                return grouped.max(columns)
+
+    def group_count(self, by: Union[CK, List[CK]]) -> "UnitedDataframe":
+        """
+        Count non-null values in groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            
+        Returns:
+            UnitedDataframe: Dataframe with group counts
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            return grouped.count()
+
+    def group_size(self, by: Union[CK, List[CK]]) -> "UnitedDataframe":
         """
         Get the size of each group.
         
-        Returns:
-            UnitedDataframe[CK]: New dataframe with group sizes
-        """
-        size_result = self._internal_groupby.size().reset_index(name='size')
-        
-        # Create new column information
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
-        
-        # Add size column
-        new_column_information['size'] = ColumnInformation('size', None, ColumnType.INT, None)
-        
-        return UnitedDataframe(size_result, new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def min(self, numeric_only: bool = True) -> "UnitedDataframe[CK]":
-        """
-        Calculate minimum for each group.
-        
         Args:
-            numeric_only (bool): If True, only aggregate numeric columns
+            by (Union[CK, List[CK]]): Column key(s) to group by
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with group minimums
+            UnitedDataframe: Dataframe with group sizes
         """
-        min_result = self._internal_groupby.min(numeric_only=numeric_only)
-        
-        # Create new column information (similar to sum)
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
-        
-        for col in min_result.columns:
-            for column_key in self._dataframe._column_keys:
-                if self._dataframe._internal_dataframe_column_strings[column_key] == col:
-                    new_column_information[column_key] = self._dataframe._column_information[column_key]
-                    break
-        
-        return UnitedDataframe(min_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter)
-    
-    def max(self, numeric_only: bool = True) -> "UnitedDataframe[CK]":
+        with self._rlock:
+            grouped = self.groupby(by)
+            return grouped.size()
+
+    # ----------- Groupby Operations: Advanced ------------
+
+    def group_quantile(self, by: Union[CK, List[CK]], q: float, columns: Optional[List[CK]] = None) -> "UnitedDataframe":
         """
-        Calculate maximum for each group.
+        Calculate quantiles in groups.
         
         Args:
-            numeric_only (bool): If True, only aggregate numeric columns
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            q (float): Quantile to calculate (0.0 to 1.0)
+            columns (Optional[List[CK]]): Columns to calculate quantile. If None, calculates quantile of all numeric columns.
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with group maximums
+            UnitedDataframe: Dataframe with group quantiles
         """
-        max_result = self._internal_groupby.max(numeric_only=numeric_only)
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.quantile(q)
+            else:
+                return grouped.quantile(q, columns)
+
+    def group_first(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Get the first value in each group.
         
-        # Create new column information (similar to sum)
-        new_column_information = {}
-        for group_key in self._group_keys:
-            new_column_information[group_key] = self._dataframe._column_information[group_key]
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to get first value. If None, gets first value of all columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with first values
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.first()
+            else:
+                return grouped.first(columns)
+
+    def group_last(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Get the last value in each group.
         
-        for col in max_result.columns:
-            for column_key in self._dataframe._column_keys:
-                if self._dataframe._internal_dataframe_column_strings[column_key] == col:
-                    new_column_information[column_key] = self._dataframe._column_information[column_key]
-                    break
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to get last value. If None, gets last value of all columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with last values
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.last()
+            else:
+                return grouped.last(columns)
+
+    def group_nth(self, by: Union[CK, List[CK]], n: int, columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Get the nth value in each group.
         
-        return UnitedDataframe(max_result.reset_index(), new_column_information, 
-                             self._dataframe._internal_dataframe_column_name_formatter) 
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            n (int): Index of value to get (0-based)
+            columns (Optional[List[CK]]): Columns to get nth value. If None, gets nth value of all columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with nth values
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.nth(n)
+            else:
+                return grouped.nth(n, columns)
+
+    # ----------- Groupby Operations: Window Functions ------------
+
+    def group_cumsum(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Calculate cumulative sum within groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate cumulative sum. If None, calculates for all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with cumulative sums
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.cumsum()
+            else:
+                return grouped.cumsum(columns)
+
+    def group_cumprod(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Calculate cumulative product within groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to calculate cumulative product. If None, calculates for all numeric columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with cumulative products
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.cumprod()
+            else:
+                return grouped.cumprod(columns)
+
+    def group_shift(self, by: Union[CK, List[CK]], periods: int = 1, columns: Optional[List[CK]] = None) -> "UnitedDataframe":
+        """
+        Shift values within groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            periods (int): Number of periods to shift
+            columns (Optional[List[CK]]): Columns to shift. If None, shifts all columns.
+            
+        Returns:
+            UnitedDataframe: Dataframe with shifted values
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.shift(periods)
+            else:
+                return grouped.shift(periods, columns)
+
+    def group_rank(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None, method: str = "average") -> "UnitedDataframe":
+        """
+        Calculate ranks within groups.
+        
+        Args:
+            by (Union[CK, List[CK]]): Column key(s) to group by
+            columns (Optional[List[CK]]): Columns to rank. If None, ranks all numeric columns.
+            method (str): Ranking method ('average', 'min', 'max', 'first', 'dense')
+            
+        Returns:
+            UnitedDataframe: Dataframe with ranks
+        """
+        with self._rlock:
+            grouped = self.groupby(by)
+            if columns is None:
+                return grouped.rank(method=method)
+            else:
+                return grouped.rank(columns, method=method) 

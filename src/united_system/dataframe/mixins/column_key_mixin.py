@@ -3,21 +3,25 @@ Column key operations mixin for UnitedDataframe.
 
 Contains all operations related to column keys, including retrieval,
 filtering by type, and column key management.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar
+from typing import TypeVar
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ..column_information import ColumnInformation
 
-from ..column_information import ColumnKey, ColumnInformation
+CK_CF = TypeVar("CK_CF", bound=str, default=str)
 
-CK = TypeVar("CK", bound=ColumnKey|str, default=str)
-CK_CF = TypeVar("CK_CF", bound=ColumnKey|str, default=str)
-
-class ColumnKeyMixin(Generic[CK]):
+class ColumnKeyMixin(UnitedDataframeMixin[CK]):
     """
     Column key operations mixin for UnitedDataframe.
     
     Provides all functionality related to column keys, including retrieval,
     filtering by type, and column key management.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
     # ----------- Retrievals: Column keys ------------
@@ -30,8 +34,8 @@ class ColumnKeyMixin(Generic[CK]):
         Returns:
             list[CK]: A copy of the list of column keys
         """
-        with self._rlock:
-            return self._column_keys.copy()
+        with self._rlock:  # Full IDE support!
+            return self._column_keys.copy()  # Protocol knows _column_keys exists!
         
     def has_column(self, column_key: CK) -> bool:
         """
@@ -59,24 +63,23 @@ class ColumnKeyMixin(Generic[CK]):
 
     # ----------- Column Information ------------
 
-    def get_column_information_dict(self) -> dict[CK, ColumnInformation[CK]]:
+    def get_column_information_dict(self) -> dict[CK, ColumnInformation]:
         """
         Get the column information list.
         """
         with self._rlock:
-            return {column_key: ColumnInformation[CK](column_key, self._dimensions[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
+            return {column_key: ColumnInformation(self._dimensions[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
 
-    def column_information_of_type(self, *column_key_types: type[CK_CF]) -> list[tuple[CK_CF, ColumnInformation[CK_CF]]]:
+    def column_information_of_type(self, *column_key_types: type[CK_CF]) -> list[tuple[CK_CF, ColumnInformation]]:
         """
         Filter the dataframe by column key type.
         """
         with self._rlock:
-            column_information_of_type: list[ColumnInformation[CK_CF]] = []
+            column_information_of_type: list[ColumnInformation] = []
             for column_key in self._column_keys:
                 column_key_filtered_type: CK = column_key
                 if isinstance(column_key_filtered_type, tuple(column_key_types)):
-                    column_information_of_type.append(ColumnInformation[CK_CF](
-                        column_key_filtered_type,
+                    column_information_of_type.append(ColumnInformation(
                         self._dimensions[column_key],
                         self._column_types[column_key],
                         self._display_units[column_key]))
@@ -96,8 +99,8 @@ class ColumnKeyMixin(Generic[CK]):
             ValueError: If the dataframe is read-only, the name already exists,
                                        or the new column name conflicts with existing columns
         """
-        with self._wlock:
-            if self._read_only:
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             if not self.has_column(current_column_key):
                 raise ValueError(f"Column key {current_column_key} does not exist in the dataframe.")
@@ -105,7 +108,7 @@ class ColumnKeyMixin(Generic[CK]):
                 raise ValueError(f"Column key {new_column_key} already exists in the dataframe.")
             current_internal_dataframe_column_name: str = self.internal_dataframe_column_string(current_column_key)
             new_internal_dataframe_column_name: str = self.create_internal_dataframe_column_name(new_column_key)
-            if new_internal_dataframe_column_name in self._internal_canonical_dataframe.columns:
+            if new_internal_dataframe_column_name in self._internal_canonical_dataframe.columns:  # Protocol knows this!
                 raise ValueError(f"Column name {new_internal_dataframe_column_name} already exists in the dataframe.")
             self._column_information[new_column_key] = self._column_information.pop(current_column_key)
             self._internal_canonical_dataframe.rename(columns={current_internal_dataframe_column_name: new_internal_dataframe_column_name}, inplace=True)

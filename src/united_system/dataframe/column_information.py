@@ -35,13 +35,13 @@ class ColumnInformation():
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
 class InternalDataFrameNameFormatter(Protocol, Generic[CK]):
-    def create_internal_dataframe_column_name(self, column_key: CK, column_information: ColumnInformation[CK]) -> str:
+    def create_internal_dataframe_column_name(self, column_key: CK, column_information: ColumnInformation) -> str:
         ...
     @classmethod
-    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation[CK]]:
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation]:
         ...
 
-def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation[CK]]:
+def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation]:
     # Find the indices of '[' and ']' in the internal_dataframe_column_name, looking from the end of the string
     internal_dataframe_column_name = internal_dataframe_column_name.strip()
     index_bracket_close: int = internal_dataframe_column_name.rfind(']')
@@ -70,6 +70,14 @@ def x(internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor:
         display_unit=display_unit if display_unit is not None else None
     )
     return column_key, column_information
-SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER: InternalDataFrameNameFormatter[CK] = InternalDataFrameNameFormatter[CK](
-    create_internal_dataframe_column_name=lambda column_key, column_information: f"{column_key} [{column_information.display_unit}]" if column_information.display_unit != None else f"{column_key} [-]",
-    retrieve_from_internal_dataframe_column_name=lambda internal_dataframe_column_name, dtype, column_key_constructor: x(internal_dataframe_column_name, dtype, column_key_constructor))
+
+# Concrete implementation of the protocol
+class SimpleInternalDataFrameNameFormatter(Generic[CK]):
+    def create_internal_dataframe_column_name(self, column_key: CK, column_information: ColumnInformation) -> str:
+        return f"{column_key} [{column_information.display_unit}]" if column_information.display_unit != None else f"{column_key} [-]"
+    
+    @classmethod
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, dtype: Dtype, column_key_constructor: Callable[[str], CK]|None=None) -> tuple[CK, ColumnInformation]:
+        return x(internal_dataframe_column_name, dtype, column_key_constructor)
+
+SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER: SimpleInternalDataFrameNameFormatter[CK] = SimpleInternalDataFrameNameFormatter[CK]()

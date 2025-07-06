@@ -1,148 +1,102 @@
 """
 Dimension operations mixin for UnitedDataframe.
 
-Contains all operations related to dimensions, including retrieval
-and dimension management.
+Contains all operations related to dimensions, including retrieval,
+setting, and dimension management.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, overload
+from typing import Union
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ...units.base_classes.base_dimension import BaseDimension
 
-from ...dimension import Dimension
-
-CK = TypeVar("CK", bound=str, default=str)
-
-class DimensionMixin(Generic[CK]):
+class DimensionMixin(UnitedDataframeMixin[CK]):
     """
     Dimension operations mixin for UnitedDataframe.
     
-    Provides all functionality related to dimensions, including retrieval
-    and dimension management.
+    Provides all functionality related to dimensions, including retrieval,
+    setting, and dimension management.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Retrievals: UnitQuantity ------------
+    # ----------- Retrievals: Dimensions ------------
 
-    def dimension(self, column_key: CK) -> Dimension:
+    @property
+    def dimensions(self) -> dict[CK, BaseDimension]:
+        """
+        Get a copy of all dimensions.
+        
+        Returns:
+            dict[CK, BaseDimension]: A copy of the dictionary of dimensions
+        """
+        with self._rlock:  # Full IDE support!
+            return self._dimensions.copy()  # Protocol knows _dimensions exists!
+        
+    def get_dimension(self, column_key: CK) -> BaseDimension:
+        """
+        Get the dimension for a column.
+        
+        Args:
+            column_key (CK): The column key
+            
+        Returns:
+            BaseDimension: The dimension
+        """
         with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             return self._dimensions[column_key]
 
-    @overload
-    def dimensions(self, column_keys: CK) -> Dimension:
-        ...
+    # ----------- Setters: Dimensions ------------
 
-    @overload
-    def dimensions(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[Dimension]:
-        ...
-
-    @overload
-    def dimensions(self, column_keys: list[CK]) -> list[Dimension]:
-        ...
-
-    @overload
-    def dimensions(self, column_keys: set[CK]) -> set[Dimension]:
-        ...
-
-    def dimensions(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> Dimension|list[Dimension]|set[Dimension]:
+    def set_dimension(self, column_key: CK, dimension: BaseDimension):
         """
-        Get the dimension(s) by column key(s).
+        Set the dimension for a column.
         
         Args:
-            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the dimension(s) of. If None, all column keys are used.
-            *more_column_keys (CK): Additional column keys to get the value type(s) of.
+            column_key (CK): The column key
+            dimension (BaseDimension): The new dimension
             
-        Returns:
-            Dimension|list[Dimension]|set[Dimension]: The dimension(s) of the specified column(s)
+        Raises:
+            ValueError: If the dataframe is read-only or the column doesn't exist
         """
-        with self._rlock:
-            match column_keys:
-                case str():
-                    if len(more_column_keys) == 0:
-                        return self._dimensions[column_keys]
-                    else:
-                        return [self._dimensions[column_keys]] + [self._dimensions[more_column_key] for more_column_key in more_column_keys]
-                case list():
-                    dimensions_as_list: list[Dimension] = []
-                    for column_key in column_keys:
-                        dimensions_as_list.append(self._dimensions[column_key])
-                    return dimensions_as_list
-                case set():
-                    dimensions_as_set: set[Dimension] = set()
-                    for column_key in column_keys:
-                        dimensions_as_set.add(self._dimensions[column_key])
-                    return dimensions_as_set
-                case _:
-                    raise ValueError(f"Invalid column keys: {column_keys}.")
-    
-    @property
-    def dimensions_dict(self) -> dict[CK, Dimension]:
-        """
-        Get a dictionary mapping column keys to their dimensions.
-        
-        Returns:
-            dict[CK, Dimension]: Dictionary mapping column keys to dimensions
-        """
-        with self._rlock:
-            return self._dimensions.copy()
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            self._dimensions[column_key] = dimension
 
-    # ----------- Internal Dataframe Column Strings ------------
+    # ----------- Internal dataframe column string operations ------------
 
     def internal_dataframe_column_string(self, column_key: CK) -> str:
-        with self._rlock:
-            return self._internal_dataframe_column_strings[column_key]
-
-    @overload
-    def internal_dataframe_column_strings(self, column_keys: CK) -> str:
-        ...
-
-    @overload
-    def internal_dataframe_column_strings(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[str]:
-        ...
-
-    @overload
-    def internal_dataframe_column_strings(self, column_keys: list[CK]) -> list[str]:
-        ...
-
-    @overload
-    def internal_dataframe_column_strings(self, column_keys: set[CK]) -> set[str]:
-        ...
-
-    def internal_dataframe_column_strings(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> str|list[str]|set[str]:
         """
-        Get the internal dataframe column strings by column key(s).
+        Get the internal dataframe column string for a column key.
         
         Args:
-            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the internal dataframe column strings of. If None, all column keys are used.
-            *more_column_keys (CK): Additional column keys to get the internal dataframe column strings of.
+            column_key (CK): The column key
             
         Returns:
-            str|list[str]|set[str]: The internal dataframe column strings of the specified column(s)
+            str: The internal column string
         """
         with self._rlock:
-            match column_keys:
-                case str():
-                    if len(more_column_keys) == 0:
-                        return self._internal_dataframe_column_strings[column_keys]
-                    else:
-                        return [self._internal_dataframe_column_strings[column_keys]] + [self._internal_dataframe_column_strings[more_column_key] for more_column_key in more_column_keys]
-                case list():
-                    internal_dataframe_column_strings_as_list: list[str] = []
-                    for column_key in column_keys:
-                        internal_dataframe_column_strings_as_list.append(self._internal_dataframe_column_strings[column_key])
-                    return internal_dataframe_column_strings_as_list
-                case set():
-                    internal_dataframe_column_strings_as_set: set[str] = set()
-                    for column_key in column_keys:
-                        internal_dataframe_column_strings_as_set.add(self._internal_dataframe_column_strings[column_key])
-                    return internal_dataframe_column_strings_as_set
-                case _:
-                    raise ValueError(f"Invalid column keys: {column_keys}.")
-    
-    @property
-    def internal_dataframe_column_strings_dict(self) -> dict[CK, str]:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            return self._internal_dataframe_column_strings[column_key]
+
+    def create_internal_dataframe_column_name(self, column_key: CK) -> str:
         """
-        Get a dictionary mapping column keys to their internal dataframe column strings.
+        Create an internal dataframe column name for a column key.
         
+        Args:
+            column_key (CK): The column key
+            
         Returns:
-            dict[CK, str]: Dictionary mapping column keys to internal dataframe column strings
+            str: The internal column name
         """
         with self._rlock:
-            return self._internal_dataframe_column_strings.copy() 
+            return self._internal_dataframe_name_formatter(column_key)  # Protocol knows this exists! 

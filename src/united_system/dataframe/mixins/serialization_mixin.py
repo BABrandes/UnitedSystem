@@ -1,283 +1,236 @@
 """
-Serialization mixin for UnitedDataframe.
+Serialization operations mixin for UnitedDataframe.
 
 Contains all operations related to serialization and deserialization,
-including JSON and HDF5 format support.
+including JSON, CSV, HDF5, and pickle formats.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, Any, Dict
+from typing import Any, Dict, Optional, Union
 import json
-import pandas as pd
+import pickle
+from pathlib import Path
+from .dataframe_protocol import UnitedDataframeMixin, CK
 
-CK = TypeVar("CK", bound=str, default=str)
-
-class SerializationMixin(Generic[CK]):
+class SerializationMixin(UnitedDataframeMixin[CK]):
     """
-    Serialization mixin for UnitedDataframe.
+    Serialization operations mixin for UnitedDataframe.
     
     Provides all functionality related to serialization and deserialization,
-    including JSON and HDF5 format support.
+    including JSON, CSV, HDF5, and pickle formats.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- JSON serialization ------------
+    # ----------- JSON Serialization ------------
 
-    def to_json(self, orient: str = "records", date_format: str = "iso", **kwargs) -> str:
+    def to_json(self, path: Optional[Union[str, Path]] = None, orient: str = "records", **kwargs) -> Optional[str]:
         """
-        Convert the dataframe to JSON format.
+        Serialize dataframe to JSON format.
         
         Args:
-            orient (str): Format of the JSON string:
-                         - "records": list of dictionaries
-                         - "index": dictionary with index as keys
-                         - "values": list of lists
-                         - "columns": dictionary with column names as keys
-            date_format (str): Date format ("iso", "epoch")
-            **kwargs: Additional arguments passed to pandas.to_json()
+            path (Optional[Union[str, Path]]): File path to save JSON. If None, returns JSON string.
+            orient (str): JSON orientation ('records', 'index', 'values', 'columns')
+            **kwargs: Additional arguments passed to pandas.DataFrame.to_json()
             
         Returns:
-            str: JSON string representation of the dataframe
+            Optional[str]: JSON string if path is None, otherwise None
         """
-        with self._rlock:
-            # Convert to pandas DataFrame for JSON serialization
-            df_for_json = self._internal_canonical_dataframe.copy()
+        with self._rlock:  # Full IDE support!
+            # Convert internal dataframe to JSON
+            json_data = self._internal_canonical_dataframe.to_json(orient=orient, **kwargs)
             
-            # Add metadata about units and dimensions
-            metadata = {
-                "column_keys": [self.column_key_as_str(ck) for ck in self._column_keys],
-                "column_types": {self.column_key_as_str(ck): str(self._column_types[ck]) for ck in self._column_keys},
-                "display_units": {self.column_key_as_str(ck): str(self._display_units[ck]) for ck in self._column_keys},
-                "dimensions": {self.column_key_as_str(ck): str(self._dimensions[ck]) for ck in self._column_keys}
-            }
-            
-            # Create the final JSON structure
-            json_data = {
-                "data": json.loads(df_for_json.to_json(orient=orient, date_format=date_format, **kwargs)),
-                "metadata": metadata
-            }
-            
-            return json.dumps(json_data, indent=2)
+            if path is None:
+                return json_data
+            else:
+                # Save to file
+                with open(path, 'w') as f:
+                    f.write(json_data)
+                return None
 
-    @classmethod
-    def from_json(cls, json_str: str, **kwargs) -> "UnitedDataframe[CK]":
+    def from_json(self, json_data: Union[str, Path], orient: str = "records", **kwargs) -> None:
         """
-        Create a UnitedDataframe from JSON string.
+        Load dataframe from JSON format.
         
         Args:
-            json_str (str): JSON string representation of the dataframe
+            json_data (Union[str, Path]): JSON string or file path
+            orient (str): JSON orientation ('records', 'index', 'values', 'columns')
             **kwargs: Additional arguments passed to pandas.read_json()
-            
-        Returns:
-            UnitedDataframe[CK]: New dataframe instance
         """
-        json_data = json.loads(json_str)
-        
-        # Extract data and metadata
-        data = json_data["data"]
-        metadata = json_data["metadata"]
-        
-        # Create pandas DataFrame from data
-        df = pd.DataFrame(data)
-        
-        # Reconstruct column information
-        column_information = {}
-        for col_key_str in metadata["column_keys"]:
-            column_key = col_key_str  # Assume string column keys for now
-            column_type = ColumnType.from_string(metadata["column_types"][col_key_str])
-            display_unit = Unit.from_string(metadata["display_units"][col_key_str])
-            dimension = Dimension.from_string(metadata["dimensions"][col_key_str])
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            column_information[column_key] = ColumnInformation(
-                column_key, dimension, column_type, display_unit
-            )
-        
-        # Create the dataframe
-        return cls(df, column_information)
+            # Load pandas dataframe from JSON
+            import pandas as pd
+            if isinstance(json_data, (str, Path)) and Path(json_data).exists():
+                # Load from file
+                df = pd.read_json(json_data, orient=orient, **kwargs)
+            else:
+                # Assume it's a JSON string
+                df = pd.read_json(json_data, orient=orient, **kwargs)
+            
+            # Replace internal dataframe
+            self._internal_canonical_dataframe = df
 
-    # ----------- HDF5 serialization ------------
+    # ----------- CSV Serialization ------------
 
-    def to_hdf5(self, filepath: str, key: str = "dataframe", **kwargs) -> None:
+    def to_csv(self, path: Union[str, Path], **kwargs) -> None:
         """
-        Save the dataframe to HDF5 format.
+        Serialize dataframe to CSV format.
         
         Args:
-            filepath (str): Path to the HDF5 file
-            key (str): Key under which to store the dataframe in the HDF5 file
-            **kwargs: Additional arguments passed to pandas.to_hdf()
+            path (Union[str, Path]): File path to save CSV
+            **kwargs: Additional arguments passed to pandas.DataFrame.to_csv()
         """
         with self._rlock:
-            # Save the main dataframe
-            self._internal_canonical_dataframe.to_hdf(filepath, key=key, **kwargs)
-            
-            # Save metadata
-            metadata = {
-                "column_keys": [self.column_key_as_str(ck) for ck in self._column_keys],
-                "column_types": {self.column_key_as_str(ck): str(self._column_types[ck]) for ck in self._column_keys},
-                "display_units": {self.column_key_as_str(ck): str(self._display_units[ck]) for ck in self._column_keys},
-                "dimensions": {self.column_key_as_str(ck): str(self._dimensions[ck]) for ck in self._column_keys}
-            }
-            
-            # Save metadata as a separate key
-            metadata_df = pd.DataFrame([metadata])
-            metadata_df.to_hdf(filepath, key=f"{key}_metadata", mode="a")
+            self._internal_canonical_dataframe.to_csv(path, **kwargs)
 
-    @classmethod
-    def from_hdf5(cls, filepath: str, key: str = "dataframe", **kwargs) -> "UnitedDataframe[CK]":
+    def from_csv(self, path: Union[str, Path], **kwargs) -> None:
         """
-        Load a UnitedDataframe from HDF5 format.
+        Load dataframe from CSV format.
         
         Args:
-            filepath (str): Path to the HDF5 file
-            key (str): Key under which the dataframe is stored in the HDF5 file
-            **kwargs: Additional arguments passed to pandas.read_hdf()
-            
-        Returns:
-            UnitedDataframe[CK]: New dataframe instance
-        """
-        # Load the main dataframe
-        df = pd.read_hdf(filepath, key=key, **kwargs)
-        
-        # Load metadata
-        metadata_df = pd.read_hdf(filepath, key=f"{key}_metadata")
-        metadata = metadata_df.iloc[0].to_dict()
-        
-        # Reconstruct column information
-        column_information = {}
-        for col_key_str in metadata["column_keys"]:
-            column_key = col_key_str  # Assume string column keys for now
-            column_type = ColumnType.from_string(metadata["column_types"][col_key_str])
-            display_unit = Unit.from_string(metadata["display_units"][col_key_str])
-            dimension = Dimension.from_string(metadata["dimensions"][col_key_str])
-            
-            column_information[column_key] = ColumnInformation(
-                column_key, dimension, column_type, display_unit
-            )
-        
-        # Create the dataframe
-        return cls(df, column_information)
-
-    # ----------- CSV serialization ------------
-
-    def to_csv(self, filepath: str, include_metadata: bool = True, **kwargs) -> None:
-        """
-        Save the dataframe to CSV format.
-        
-        Args:
-            filepath (str): Path to the CSV file
-            include_metadata (bool): Whether to include metadata in a separate file
-            **kwargs: Additional arguments passed to pandas.to_csv()
-        """
-        with self._rlock:
-            # Save the main dataframe
-            self._internal_canonical_dataframe.to_csv(filepath, **kwargs)
-            
-            if include_metadata:
-                # Save metadata to a separate JSON file
-                metadata_filepath = filepath.replace(".csv", "_metadata.json")
-                metadata = {
-                    "column_keys": [self.column_key_as_str(ck) for ck in self._column_keys],
-                    "column_types": {self.column_key_as_str(ck): str(self._column_types[ck]) for ck in self._column_keys},
-                    "display_units": {self.column_key_as_str(ck): str(self._display_units[ck]) for ck in self._column_keys},
-                    "dimensions": {self.column_key_as_str(ck): str(self._dimensions[ck]) for ck in self._column_keys}
-                }
-                
-                with open(metadata_filepath, 'w') as f:
-                    json.dump(metadata, f, indent=2)
-
-    @classmethod
-    def from_csv(cls, filepath: str, load_metadata: bool = True, **kwargs) -> "UnitedDataframe[CK]":
-        """
-        Load a UnitedDataframe from CSV format.
-        
-        Args:
-            filepath (str): Path to the CSV file
-            load_metadata (bool): Whether to load metadata from a separate file
+            path (Union[str, Path]): File path to load CSV from
             **kwargs: Additional arguments passed to pandas.read_csv()
+        """
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-        Returns:
-            UnitedDataframe[CK]: New dataframe instance
-        """
-        # Load the main dataframe
-        df = pd.read_csv(filepath, **kwargs)
-        
-        if load_metadata:
-            # Load metadata from JSON file
-            metadata_filepath = filepath.replace(".csv", "_metadata.json")
-            try:
-                with open(metadata_filepath, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Reconstruct column information
-                column_information = {}
-                for col_key_str in metadata["column_keys"]:
-                    column_key = col_key_str  # Assume string column keys for now
-                    column_type = ColumnType.from_string(metadata["column_types"][col_key_str])
-                    display_unit = Unit.from_string(metadata["display_units"][col_key_str])
-                    dimension = Dimension.from_string(metadata["dimensions"][col_key_str])
-                    
-                    column_information[column_key] = ColumnInformation(
-                        column_key, dimension, column_type, display_unit
-                    )
-                
-                # Create the dataframe
-                return cls(df, column_information)
-            except FileNotFoundError:
-                # If metadata file doesn't exist, create basic column information
-                column_information = {}
-                for col in df.columns:
-                    column_information[col] = ColumnInformation(
-                        col, None, ColumnType.infer_from_pandas_dtype(df[col].dtype), None
-                    )
-                return cls(df, column_information)
-        else:
-            # Create basic column information without metadata
-            column_information = {}
-            for col in df.columns:
-                column_information[col] = ColumnInformation(
-                    col, None, ColumnType.infer_from_pandas_dtype(df[col].dtype), None
-                )
-            return cls(df, column_information)
+            # Load pandas dataframe from CSV
+            import pandas as pd
+            df = pd.read_csv(path, **kwargs)
+            
+            # Replace internal dataframe
+            self._internal_canonical_dataframe = df
 
-    # ----------- Pickle serialization ------------
+    # ----------- HDF5 Serialization ------------
 
-    def to_pickle(self, filepath: str) -> None:
+    def to_hdf5(self, path: Union[str, Path], key: str, **kwargs) -> None:
         """
-        Save the dataframe to pickle format.
+        Serialize dataframe to HDF5 format.
         
         Args:
-            filepath (str): Path to the pickle file
+            path (Union[str, Path]): File path to save HDF5
+            key (str): HDF5 key/group name
+            **kwargs: Additional arguments passed to pandas.DataFrame.to_hdf()
         """
         with self._rlock:
-            import pickle
-            
-            # Create a dictionary with all necessary data
-            data_to_pickle = {
-                "internal_canonical_dataframe": self._internal_canonical_dataframe,
-                "column_information": self._column_information,
-                "internal_dataframe_column_name_formatter": self._internal_dataframe_column_name_formatter
-            }
-            
-            with open(filepath, 'wb') as f:
-                pickle.dump(data_to_pickle, f)
+            self._internal_canonical_dataframe.to_hdf(path, key, **kwargs)
 
-    @classmethod
-    def from_pickle(cls, filepath: str) -> "UnitedDataframe[CK]":
+    def from_hdf5(self, path: Union[str, Path], key: str, **kwargs) -> None:
         """
-        Load a UnitedDataframe from pickle format.
+        Load dataframe from HDF5 format.
         
         Args:
-            filepath (str): Path to the pickle file
+            path (Union[str, Path]): File path to load HDF5 from
+            key (str): HDF5 key/group name
+            **kwargs: Additional arguments passed to pandas.read_hdf()
+        """
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            
+            # Load pandas dataframe from HDF5
+            import pandas as pd
+            df = pd.read_hdf(path, key, **kwargs)
+            
+            # Replace internal dataframe
+            self._internal_canonical_dataframe = df
+
+    # ----------- Pickle Serialization ------------
+
+    def to_pickle(self, path: Union[str, Path]) -> None:
+        """
+        Serialize entire UnitedDataframe to pickle format.
+        
+        Args:
+            path (Union[str, Path]): File path to save pickle
+        """
+        with self._rlock:
+            # Serialize the entire dataframe object
+            with open(path, 'wb') as f:
+                pickle.dump(self, f)
+
+    @classmethod
+    def from_pickle(cls, path: Union[str, Path]) -> "UnitedDataframe":
+        """
+        Load UnitedDataframe from pickle format.
+        
+        Args:
+            path (Union[str, Path]): File path to load pickle from
             
         Returns:
-            UnitedDataframe[CK]: New dataframe instance
+            UnitedDataframe: Loaded dataframe
         """
-        import pickle
+        with open(path, 'rb') as f:
+            return pickle.load(f)
+
+    # ----------- Custom Serialization ------------
+
+    def to_dict(self, orient: str = "records") -> Union[Dict[str, Any], list]:
+        """
+        Convert dataframe to dictionary format.
         
-        with open(filepath, 'rb') as f:
-            data = pickle.load(f)
+        Args:
+            orient (str): Dictionary orientation ('records', 'dict', 'series', 'index')
+            
+        Returns:
+            Union[Dict[str, Any], list]: Dictionary representation
+        """
+        with self._rlock:
+            return self._internal_canonical_dataframe.to_dict(orient=orient)
+
+    def from_dict(self, data: Dict[str, Any], orient: str = "columns") -> None:
+        """
+        Load dataframe from dictionary format.
         
-        # Create the dataframe
-        return cls(
-            data["internal_canonical_dataframe"],
-            data["column_information"],
-            data["internal_dataframe_column_name_formatter"]
-        ) 
+        Args:
+            data (Dict[str, Any]): Dictionary data
+            orient (str): Dictionary orientation ('columns', 'records', 'index')
+        """
+        with self._wlock:  # Full IDE support for _wlock!
+            if self._read_only:  # And _read_only!
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            
+            # Create pandas dataframe from dictionary
+            import pandas as pd
+            df = pd.DataFrame.from_dict(data, orient=orient)
+            
+            # Replace internal dataframe
+            self._internal_canonical_dataframe = df
+
+    # ----------- Metadata Serialization ------------
+
+    def get_metadata(self) -> Dict[str, Any]:
+        """
+        Get metadata about the dataframe structure.
+        
+        Returns:
+            Dict[str, Any]: Metadata dictionary
+        """
+        with self._rlock:
+            return {
+                "column_keys": self._column_keys.copy(),
+                "column_types": {str(k): str(v) for k, v in self._column_types.items()},
+                "dimensions": {str(k): str(v) for k, v in self._dimensions.items()},
+                "display_units": {str(k): str(v) for k, v in self._display_units.items()},
+                "internal_column_strings": self._internal_dataframe_column_strings.copy(),
+                "shape": self._internal_canonical_dataframe.shape,
+                "read_only": self._read_only
+            }
+
+    def save_metadata(self, path: Union[str, Path]) -> None:
+        """
+        Save dataframe metadata to JSON file.
+        
+        Args:
+            path (Union[str, Path]): File path to save metadata
+        """
+        with self._rlock:
+            metadata = self.get_metadata()
+            with open(path, 'w') as f:
+                json.dump(metadata, f, indent=2) 

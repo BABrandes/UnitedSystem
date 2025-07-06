@@ -1,353 +1,322 @@
 """
-Constructor mixin for UnitedDataframe.
+Constructor operations mixin for UnitedDataframe.
 
-Contains all factory methods and alternative constructors for creating
-UnitedDataframe instances from various data sources.
+Contains all class factory methods and constructor operations,
+including creating empty dataframes, from arrays, and other construction patterns.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, Dict, Any, List
+from typing import Any, Dict, List, Optional, Union, Callable, TYPE_CHECKING
 import pandas as pd
-import numpy as np
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ..column_type import ColumnType
+from ...units.base_classes.base_dimension import BaseDimension
+from ...units.base_classes.base_unit import BaseUnit
+from ...units.united import United
+from ...arrays.base_classes.base_array import BaseArray
 
-from ..column_information import ColumnInformation
-from ..column_type import ColumnType, ARRAY_TYPE
-from ...unit import Unit
-from ...dimension import Dimension
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe
 
-CK = TypeVar("CK", bound=str, default=str)
-
-class ConstructorMixin(Generic[CK]):
+class ConstructorMixin(UnitedDataframeMixin[CK]):
     """
-    Constructor mixin for UnitedDataframe.
+    Constructor operations mixin for UnitedDataframe.
     
-    Provides all factory methods and alternative constructors for creating
-    UnitedDataframe instances from various data sources.
+    Provides all class factory methods and constructor operations,
+    including creating empty dataframes, from arrays, and other construction patterns.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Factory methods ------------
+    # ----------- Class Factory Methods ------------
 
     @classmethod
-    def create_empty(cls, column_keys: List[CK], column_types: List[ColumnType], 
-                    display_units: List[Unit] = None, dimensions: List[Dimension] = None) -> "UnitedDataframe[CK]":
+    def create_empty(
+        cls,
+        column_keys: List[CK],
+        column_types: Dict[CK, ColumnType],
+        dimensions: Dict[CK, BaseDimension],
+        display_units: Dict[CK, United],
+        internal_dataframe_name_formatter: Callable[[CK], str]
+    ) -> "UnitedDataframe":
         """
         Create an empty UnitedDataframe with specified column structure.
         
         Args:
             column_keys (List[CK]): List of column keys
-            column_types (List[ColumnType]): List of column types
-            display_units (List[Unit], optional): List of display units
-            dimensions (List[Dimension], optional): List of dimensions
+            column_types (Dict[CK, ColumnType]): Column type mapping
+            dimensions (Dict[CK, BaseDimension]): Dimension mapping
+            display_units (Dict[CK, United]): Display unit mapping
+            internal_dataframe_name_formatter (Callable[[CK], str]): Name formatter function
             
         Returns:
-            UnitedDataframe[CK]: New empty dataframe instance
+            UnitedDataframe: Empty dataframe with specified structure
         """
-        if len(column_keys) != len(column_types):
-            raise ValueError("Number of column keys must match number of column types")
+        import pandas as pd
         
-        if display_units is None:
-            display_units = [None] * len(column_keys)
-        if dimensions is None:
-            dimensions = [None] * len(column_keys)
+        # Create empty pandas dataframe with proper column names
+        internal_column_strings = {}
+        for column_key in column_keys:
+            internal_column_strings[column_key] = internal_dataframe_name_formatter(column_key)
         
-        if len(column_keys) != len(display_units) or len(column_keys) != len(dimensions):
-            raise ValueError("All lists must have the same length")
+        empty_df = pd.DataFrame(columns=list(internal_column_strings.values()))
         
-        # Create empty pandas DataFrame
-        data = {}
-        for i, (column_key, column_type) in enumerate(zip(column_keys, column_types)):
-            data[str(column_key)] = pd.Series([], dtype=column_type.value.corresponding_pandas_type)
-        
-        df = pd.DataFrame(data)
-        
-        # Create column information
-        column_information = {}
-        for i, column_key in enumerate(column_keys):
-            column_information[column_key] = ColumnInformation(
-                column_key, dimensions[i], column_types[i], display_units[i]
-            )
-        
-        return cls(df, column_information)
+        # Create UnitedDataframe instance
+        from ...united_dataframe import UnitedDataframe
+        return UnitedDataframe[CK](
+            internal_canonical_dataframe=empty_df,
+            column_keys=column_keys,
+            column_types=column_types,
+            dimensions=dimensions,
+            display_units=display_units,
+            internal_dataframe_column_strings=internal_column_strings,
+            internal_dataframe_name_formatter=internal_dataframe_name_formatter,
+            read_only=False
+        )
 
     @classmethod
-    def create_from_dict(cls, data: Dict[CK, ARRAY_TYPE]) -> "UnitedDataframe[CK]":
+    def from_arrays(
+        cls,
+        arrays: Dict[CK, BaseArray],
+        column_types: Dict[CK, ColumnType],
+        dimensions: Dict[CK, BaseDimension],
+        display_units: Dict[CK, United],
+        internal_dataframe_name_formatter: Callable[[CK], str]
+    ) -> "UnitedDataframe":
         """
-        Create a UnitedDataframe from a dictionary of column data.
+        Create a UnitedDataframe from a dictionary of arrays.
         
         Args:
-            data (Dict[CK, ARRAY_TYPE]): Dictionary mapping column keys to array data
+            arrays (Dict[CK, BaseArray]): Dictionary mapping column keys to arrays
+            column_types (Dict[CK, ColumnType]): Column type mapping
+            dimensions (Dict[CK, BaseDimension]): Dimension mapping
+            display_units (Dict[CK, United]): Display unit mapping
+            internal_dataframe_name_formatter (Callable[[CK], str]): Name formatter function
             
         Returns:
-            UnitedDataframe[CK]: New dataframe instance
+            UnitedDataframe: New dataframe with data from arrays
         """
-        if not data:
-            raise ValueError("Data dictionary cannot be empty")
+        import pandas as pd
         
-        # Convert arrays to pandas Series
+        # Validate that all arrays have the same length
+        lengths = [len(array) for array in arrays.values()]
+        if not all(length == lengths[0] for length in lengths):
+            raise ValueError("All arrays must have the same length.")
+        
+        # Create internal column strings
+        internal_column_strings = {}
+        for column_key in arrays.keys():
+            internal_column_strings[column_key] = internal_dataframe_name_formatter(column_key)
+        
+        # Convert arrays to pandas dataframe
         pandas_data = {}
-        column_information = {}
-        
-        for column_key, array_data in data.items():
-            # Infer column type from array data
-            column_type = ColumnType.infer_from_value(array_data)
-            display_unit = getattr(array_data, 'unit', None)
-            dimension = getattr(array_data, 'dimension', None)
-            
-            # Convert to pandas Series
-            pandas_data[str(column_key)] = column_type.united_array_to_pandas_series(array_data)
-            
-            # Create column information
-            column_information[column_key] = ColumnInformation(
-                column_key, dimension, column_type, display_unit
-            )
+        for column_key, array in arrays.items():
+            internal_column_name = internal_column_strings[column_key]
+            pandas_data[internal_column_name] = array.to_pandas()
         
         df = pd.DataFrame(pandas_data)
-        return cls(df, column_information)
+        
+        # Create UnitedDataframe instance
+        from ...united_dataframe import UnitedDataframe
+        return UnitedDataframe[CK](
+            internal_canonical_dataframe=df,
+            column_keys=list(arrays.keys()),
+            column_types=column_types,
+            dimensions=dimensions,
+            display_units=display_units,
+            internal_dataframe_column_strings=internal_column_strings,
+            internal_dataframe_name_formatter=internal_dataframe_name_formatter,
+            read_only=False
+        )
 
     @classmethod
-    def create_from_records(cls, records: List[Dict[CK, Any]], 
-                           column_types: Dict[CK, ColumnType] = None,
-                           display_units: Dict[CK, Unit] = None,
-                           dimensions: Dict[CK, Dimension] = None) -> "UnitedDataframe[CK]":
+    def from_dict(
+        cls,
+        data: Dict[CK, List[Any]],
+        column_types: Dict[CK, ColumnType],
+        dimensions: Dict[CK, BaseDimension],
+        display_units: Dict[CK, United],
+        internal_dataframe_name_formatter: Callable[[CK], str]
+    ) -> "UnitedDataframe":
         """
-        Create a UnitedDataframe from a list of record dictionaries.
+        Create a UnitedDataframe from a dictionary of lists.
         
         Args:
-            records (List[Dict[CK, Any]]): List of dictionaries representing rows
-            column_types (Dict[CK, ColumnType], optional): Mapping of column keys to types
-            display_units (Dict[CK, Unit], optional): Mapping of column keys to display units
-            dimensions (Dict[CK, Dimension], optional): Mapping of column keys to dimensions
+            data (Dict[CK, List[Any]]): Dictionary mapping column keys to lists of values
+            column_types (Dict[CK, ColumnType]): Column type mapping
+            dimensions (Dict[CK, BaseDimension]): Dimension mapping
+            display_units (Dict[CK, United]): Display unit mapping
+            internal_dataframe_name_formatter (Callable[[CK], str]): Name formatter function
             
         Returns:
-            UnitedDataframe[CK]: New dataframe instance
+            UnitedDataframe: New dataframe with data from dictionary
         """
-        if not records:
-            raise ValueError("Records list cannot be empty")
+        import pandas as pd
         
-        # Create pandas DataFrame from records
-        df = pd.DataFrame(records)
+        # Validate that all lists have the same length
+        lengths = [len(values) for values in data.values()]
+        if not all(length == lengths[0] for length in lengths):
+            raise ValueError("All lists must have the same length.")
         
-        # Create column information
-        column_information = {}
-        for column_key in df.columns:
-            # Use provided types or infer from data
-            if column_types and column_key in column_types:
-                column_type = column_types[column_key]
-            else:
-                column_type = ColumnType.infer_from_pandas_dtype(df[column_key].dtype)
-            
-            display_unit = display_units.get(column_key, None) if display_units else None
-            dimension = dimensions.get(column_key, None) if dimensions else None
-            
-            column_information[column_key] = ColumnInformation(
-                column_key, dimension, column_type, display_unit
-            )
+        # Create internal column strings
+        internal_column_strings = {}
+        for column_key in data.keys():
+            internal_column_strings[column_key] = internal_dataframe_name_formatter(column_key)
         
-        return cls(df, column_information)
+        # Convert to pandas dataframe
+        pandas_data = {}
+        for column_key, values in data.items():
+            internal_column_name = internal_column_strings[column_key]
+            pandas_data[internal_column_name] = values
+        
+        df = pd.DataFrame(pandas_data)
+        
+        # Create UnitedDataframe instance
+        from ...united_dataframe import UnitedDataframe
+        return UnitedDataframe[CK](
+            internal_canonical_dataframe=df,
+            column_keys=list(data.keys()),
+            column_types=column_types,
+            dimensions=dimensions,
+            display_units=display_units,
+            internal_dataframe_column_strings=internal_column_strings,
+            internal_dataframe_name_formatter=internal_dataframe_name_formatter,
+            read_only=False
+        )
 
     @classmethod
-    def create_from_pandas(cls, df: pd.DataFrame, 
-                          column_types: Dict[str, ColumnType] = None,
-                          display_units: Dict[str, Unit] = None,
-                          dimensions: Dict[str, Dimension] = None) -> "UnitedDataframe[str]":
+    def from_pandas(
+        cls,
+        df: "pd.DataFrame",
+        column_key_mapping: Dict[str, CK],
+        column_types: Dict[CK, ColumnType],
+        dimensions: Dict[CK, BaseDimension],
+        display_units: Dict[CK, United],
+        internal_dataframe_name_formatter: Callable[[CK], str]
+    ) -> "UnitedDataframe":
         """
         Create a UnitedDataframe from a pandas DataFrame.
         
         Args:
-            df (pd.DataFrame): The pandas DataFrame to convert
-            column_types (Dict[str, ColumnType], optional): Mapping of column names to types
-            display_units (Dict[str, Unit], optional): Mapping of column names to display units
-            dimensions (Dict[str, Dimension], optional): Mapping of column names to dimensions
+            df (pd.DataFrame): Source pandas DataFrame
+            column_key_mapping (Dict[str, CK]): Mapping from pandas column names to UnitedDataframe column keys
+            column_types (Dict[CK, ColumnType]): Column type mapping
+            dimensions (Dict[CK, BaseDimension]): Dimension mapping
+            display_units (Dict[CK, United]): Display unit mapping
+            internal_dataframe_name_formatter (Callable[[CK], str]): Name formatter function
             
         Returns:
-            UnitedDataframe[str]: New dataframe instance
+            UnitedDataframe: New dataframe with data from pandas DataFrame
         """
-        # Create column information
-        column_information = {}
-        for column_name in df.columns:
-            # Use provided types or infer from data
-            if column_types and column_name in column_types:
-                column_type = column_types[column_name]
-            else:
-                column_type = ColumnType.infer_from_pandas_dtype(df[column_name].dtype)
-            
-            display_unit = display_units.get(column_name, None) if display_units else None
-            dimension = dimensions.get(column_name, None) if dimensions else None
-            
-            column_information[column_name] = ColumnInformation(
-                column_name, dimension, column_type, display_unit
+        
+        # Create internal column strings
+        internal_column_strings = {}
+        for column_key in column_key_mapping.values():
+            internal_column_strings[column_key] = internal_dataframe_name_formatter(column_key)
+        
+        # Rename columns in the dataframe
+        reverse_mapping = {v: k for k, v in column_key_mapping.items()}
+        renamed_df = df.copy()
+        
+        # Rename columns to internal names
+        rename_dict = {}
+        for pandas_col, united_col_key in column_key_mapping.items():
+            internal_name = internal_column_strings[united_col_key]
+            rename_dict[pandas_col] = internal_name
+        
+        renamed_df = renamed_df.rename(columns=rename_dict)
+        
+        # Create UnitedDataframe instance
+        from ...united_dataframe import UnitedDataframe
+        return UnitedDataframe[CK](
+            internal_canonical_dataframe=renamed_df,
+            column_keys=list(column_key_mapping.values()),
+            column_types=column_types,
+            dimensions=dimensions,
+            display_units=display_units,
+            internal_dataframe_column_strings=internal_column_strings,
+            internal_dataframe_name_formatter=internal_dataframe_name_formatter,
+            read_only=False
+        )
+
+    # ----------- Copy Operations ------------
+
+    def copy(self) -> "UnitedDataframe":
+        """
+        Create a deep copy of the dataframe.
+        
+        Returns:
+            UnitedDataframe: Deep copy of the dataframe
+        """
+        with self._rlock:  # Full IDE support!
+            # Create UnitedDataframe instance
+            from ...united_dataframe import UnitedDataframe
+            return UnitedDataframe[CK](
+                internal_canonical_dataframe=self._internal_canonical_dataframe.copy(),
+                column_keys=self._column_keys.copy(),
+                column_types=self._column_types.copy(),
+                dimensions=self._dimensions.copy(),
+                display_units=self._display_units.copy(),
+                internal_dataframe_column_strings=self._internal_dataframe_column_strings.copy(),
+                internal_dataframe_name_formatter=self._internal_dataframe_name_formatter,
+                read_only=self._read_only
             )
-        
-        return cls(df.copy(), column_information)
 
-    @classmethod
-    def create_from_arrays(cls, arrays: List[ARRAY_TYPE], column_keys: List[CK] = None) -> "UnitedDataframe[CK]":
+    def copy_structure(self) -> "UnitedDataframe[CK]":
         """
-        Create a UnitedDataframe from a list of arrays.
+        Create a copy of the dataframe structure (metadata) with empty data.
         
-        Args:
-            arrays (List[ARRAY_TYPE]): List of arrays to use as columns
-            column_keys (List[CK], optional): List of column keys. If None, uses numeric indices.
-            
         Returns:
-            UnitedDataframe[CK]: New dataframe instance
+            UnitedDataframe[CK]: New empty dataframe with same structure
         """
-        if not arrays:
-            raise ValueError("Arrays list cannot be empty")
-        
-        if column_keys is None:
-            column_keys = [f"column_{i}" for i in range(len(arrays))]
-        
-        if len(arrays) != len(column_keys):
-            raise ValueError("Number of arrays must match number of column keys")
-        
-        # Create dictionary mapping column keys to arrays
-        data = {column_key: array for column_key, array in zip(column_keys, arrays)}
-        
-        return cls.create_from_dict(data)
-
-    @classmethod
-    def create_like(cls, other: "UnitedDataframe[CK]", data: pd.DataFrame = None) -> "UnitedDataframe[CK]":
-        """
-        Create a UnitedDataframe with the same structure as another dataframe.
-        
-        Args:
-            other (UnitedDataframe[CK]): The dataframe to copy structure from
-            data (pd.DataFrame, optional): The data to use. If None, creates empty dataframe.
-            
-        Returns:
-            UnitedDataframe[CK]: New dataframe instance with same structure
-        """
-        if data is None:
-            # Create empty dataframe with same structure
-            return cls.create_empty(
-                other.column_keys,
-                [other.column_type(ck) for ck in other.column_keys],
-                [other.display_unit(ck) for ck in other.column_keys],
-                [other.dimension(ck) for ck in other.column_keys]
+        with self._rlock:
+            return self.create_empty(
+                column_keys=self._column_keys.copy(),
+                column_types=self._column_types.copy(),
+                dimensions=self._dimensions.copy(),
+                display_units=self._display_units.copy(),
+                internal_dataframe_name_formatter=self._internal_dataframe_name_formatter
             )
-        else:
-            # Use provided data with same column information
-            return cls(data, other._column_information, other._internal_dataframe_column_name_formatter)
 
-    @classmethod
-    def create_zeros(cls, rows: int, column_keys: List[CK], column_types: List[ColumnType],
-                    display_units: List[Unit] = None, dimensions: List[Dimension] = None) -> "UnitedDataframe[CK]":
-        """
-        Create a UnitedDataframe filled with zeros.
-        
-        Args:
-            rows (int): Number of rows
-            column_keys (List[CK]): List of column keys
-            column_types (List[ColumnType]): List of column types
-            display_units (List[Unit], optional): List of display units
-            dimensions (List[Dimension], optional): List of dimensions
-            
-        Returns:
-            UnitedDataframe[CK]: New dataframe instance filled with zeros
-        """
-        if rows <= 0:
-            raise ValueError("Number of rows must be positive")
-        
-        # Create the basic structure
-        df = cls.create_empty(column_keys, column_types, display_units, dimensions)
-        
-        # Fill with zeros
-        for i in range(rows):
-            row_data = {}
-            for column_key in column_keys:
-                # Create zero value for this column type
-                column_type = df.column_type(column_key)
-                if column_type.is_numeric():
-                    row_data[column_key] = 0
-                elif column_type == ColumnType.STRING:
-                    row_data[column_key] = ""
-                elif column_type == ColumnType.BOOL:
-                    row_data[column_key] = False
-                else:
-                    row_data[column_key] = None
-            
-            df.row_add_values(row_data)
-        
-        return df
+    # ----------- Conversion Operations ------------
 
-    @classmethod
-    def create_ones(cls, rows: int, column_keys: List[CK], column_types: List[ColumnType],
-                   display_units: List[Unit] = None, dimensions: List[Dimension] = None) -> "UnitedDataframe[CK]":
+    def to_read_only(self) -> "UnitedDataframe[CK]":
         """
-        Create a UnitedDataframe filled with ones.
+        Create a read-only copy of the dataframe.
         
-        Args:
-            rows (int): Number of rows
-            column_keys (List[CK]): List of column keys
-            column_types (List[ColumnType]): List of column types (must be numeric)
-            display_units (List[Unit], optional): List of display units
-            dimensions (List[Dimension], optional): List of dimensions
-            
         Returns:
-            UnitedDataframe[CK]: New dataframe instance filled with ones
+            UnitedDataframe[CK]: Read-only copy of the dataframe
         """
-        if rows <= 0:
-            raise ValueError("Number of rows must be positive")
-        
-        # Validate that all column types are numeric
-        for column_type in column_types:
-            if not column_type.is_numeric():
-                raise ValueError(f"Column type {column_type} is not numeric")
-        
-        # Create the basic structure
-        df = cls.create_empty(column_keys, column_types, display_units, dimensions)
-        
-        # Fill with ones
-        for i in range(rows):
-            row_data = {column_key: 1 for column_key in column_keys}
-            df.row_add_values(row_data)
-        
-        return df
+        with self._rlock:
+            # Create UnitedDataframe instance
+            from ...united_dataframe import UnitedDataframe
+            return UnitedDataframe[CK](
+                internal_canonical_dataframe=self._internal_canonical_dataframe.copy(),
+                column_keys=self._column_keys.copy(),
+                column_types=self._column_types.copy(),
+                dimensions=self._dimensions.copy(),
+                display_units=self._display_units.copy(),
+                internal_dataframe_column_strings=self._internal_dataframe_column_strings.copy(),
+                internal_dataframe_name_formatter=self._internal_dataframe_name_formatter,
+                read_only=True  # Make it read-only
+            )
 
-    @classmethod
-    def create_random(cls, rows: int, column_keys: List[CK], column_types: List[ColumnType],
-                     display_units: List[Unit] = None, dimensions: List[Dimension] = None,
-                     random_state: int = None) -> "UnitedDataframe[CK]":
+    def to_pandas(self) -> pd.DataFrame:
         """
-        Create a UnitedDataframe filled with random values.
+        Convert to pandas DataFrame with original column names.
         
-        Args:
-            rows (int): Number of rows
-            column_keys (List[CK]): List of column keys
-            column_types (List[ColumnType]): List of column types
-            display_units (List[Unit], optional): List of display units
-            dimensions (List[Dimension], optional): List of dimensions
-            random_state (int, optional): Random seed for reproducibility
-            
         Returns:
-            UnitedDataframe[CK]: New dataframe instance filled with random values
+            pd.DataFrame: Pandas DataFrame representation
         """
-        if rows <= 0:
-            raise ValueError("Number of rows must be positive")
-        
-        if random_state is not None:
-            np.random.seed(random_state)
-        
-        # Create the basic structure
-        df = cls.create_empty(column_keys, column_types, display_units, dimensions)
-        
-        # Fill with random values
-        for i in range(rows):
-            row_data = {}
-            for column_key in column_keys:
-                column_type = df.column_type(column_key)
-                
-                if column_type == ColumnType.FLOAT:
-                    row_data[column_key] = np.random.random()
-                elif column_type == ColumnType.INT:
-                    row_data[column_key] = np.random.randint(0, 100)
-                elif column_type == ColumnType.BOOL:
-                    row_data[column_key] = np.random.choice([True, False])
-                elif column_type == ColumnType.STRING:
-                    row_data[column_key] = f"random_string_{i}_{np.random.randint(0, 1000)}"
-                else:
-                    row_data[column_key] = None
+        with self._rlock:
+            # Create a copy and rename columns back to original names
+            df = self._internal_canonical_dataframe.copy()
             
-            df.row_add_values(row_data)
-        
-        return df 
+            # Create reverse mapping from internal names to column keys
+            reverse_mapping = {internal_name: str(column_key) 
+                              for column_key, internal_name in self._internal_dataframe_column_strings.items()}
+            
+            df = df.rename(columns=reverse_mapping)
+            return df 

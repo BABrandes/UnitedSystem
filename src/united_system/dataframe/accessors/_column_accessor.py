@@ -1,14 +1,17 @@
-from typing import Generic, TypeVar, Iterator, overload, Literal
+from typing import Generic, TypeVar, Iterator, overload, Literal, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe, ColumnKey
+
 from ...scalars.united_scalar import UnitedScalar
 from ...units.base_classes.base_unit import BaseUnit
-from ...united_dataframe import UnitedDataframe, ColumnKey
 from ..column_type import ARRAY_TYPE, ColumnType
 from ...dimension import Dimension
 from ...unit import Unit
 import pandas as pd
 import numpy as np
 
-CK = TypeVar("CK", bound=ColumnKey|str)
+CK = TypeVar("CK", bound="ColumnKey|str")
 
 class _ColumnAccessor(Generic[CK]):
     """
@@ -16,8 +19,8 @@ class _ColumnAccessor(Generic[CK]):
     
     Provides a pandas-like interface for accessing individual cells.
     """
-    def __init__(self, parent: UnitedDataframe[CK], column_key: CK):
-        self._parent: UnitedDataframe[CK] = parent
+    def __init__(self, parent: "UnitedDataframe[CK]", column_key: CK):
+        self._parent: "UnitedDataframe[CK]" = parent
         self._column_key: CK = column_key
         
     def __getitem__(self, row: int) -> UnitedScalar:

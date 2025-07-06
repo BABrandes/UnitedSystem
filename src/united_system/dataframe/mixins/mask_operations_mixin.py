@@ -1,96 +1,213 @@
 """
 Mask operations mixin for UnitedDataframe.
 
-Contains all operations related to boolean masking, including creating masks
-for missing values, valid values, and applying masks for filtering.
+Contains all operations related to boolean masking operations,
+including mask creation, application, and filtering.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar
+from typing import Union, Any, List
 import numpy as np
-import pandas as pd
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ...bool_array import BoolArray
 
-CK = TypeVar("CK", bound=str, default=str)
-
-class MaskOperationsMixin(Generic[CK]):
+class MaskOperationsMixin(UnitedDataframeMixin[CK]):
     """
     Mask operations mixin for UnitedDataframe.
     
     Provides all functionality related to boolean masking operations,
-    including creating masks for missing values, valid values, and applying masks.
+    including mask creation, application, and filtering.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Mask operations ------------
+    # ----------- Mask Operations: Creation ------------
 
-    def mask_get_missing_values(self, subset: list[CK] | None = None) -> np.ndarray:
+    def mask_get_valid_values(self, column_key: CK) -> BoolArray:
         """
-        Return a boolean mask indicating which values are NA/NaN.
+        Get a boolean mask for valid (non-null) values in a column.
         
         Args:
-            subset (list[CK] | None): List of column keys to check for missing values.
-                                    If None, checks all columns.
-        
+            column_key (CK): The column key
+            
         Returns:
-            np.ndarray: Boolean array with same shape as original, where True indicates missing values
+            BoolArray: Boolean mask where True indicates valid values
+        """
+        with self._rlock:  # Full IDE support!
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_valid_mask = self._internal_canonical_dataframe[internal_column_name].notna()
+            return BoolArray(is_valid_mask.tolist())
+
+    def mask_get_missing_values(self, column_key: CK) -> BoolArray:
+        """
+        Get a boolean mask for missing (null) values in a column.
+        
+        Args:
+            column_key (CK): The column key
+            
+        Returns:
+            BoolArray: Boolean mask where True indicates missing values
         """
         with self._rlock:
-            if subset is None:
-                subset = self._column_keys
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
-            # Validate subset
-            for column_key in subset:
-                if column_key not in self._column_keys:
-                    raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            # Get internal column names
-            internal_columns = [self._internal_dataframe_column_strings[col] for col in subset]
-            
-            # Create mask - True where any of the specified columns is NA
-            mask = self._internal_canonical_dataframe[internal_columns].isna()
-            
-            if len(internal_columns) == 1:
-                return mask.values.flatten()
-            else:
-                return mask.any(axis=1).values
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_missing_mask = self._internal_canonical_dataframe[internal_column_name].isna()
+            return BoolArray(is_missing_mask.tolist())
 
-    def mask_get_valid_values(self, subset: list[CK] | None = None) -> np.ndarray:
+    def mask_get_equal_to(self, column_key: CK, value: Any) -> BoolArray:
         """
-        Return a boolean mask indicating which values are not NA/NaN.
-        
-        This is the inverse of mask_get_missing_values() - returns True for non-NA values.
+        Get a boolean mask for values equal to a specific value.
         
         Args:
-            subset (list[CK] | None): List of column keys to check for non-NA values.
-                                    If None, checks all columns.
-        
+            column_key (CK): The column key
+            value (Any): The value to compare against
+            
         Returns:
-            np.ndarray: Boolean array with same shape as original, where True indicates non-NA values
+            BoolArray: Boolean mask where True indicates equal values
         """
         with self._rlock:
-            return ~self.mask_get_missing_values(subset)
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_equal_mask = self._internal_canonical_dataframe[internal_column_name] == value
+            return BoolArray(is_equal_mask.tolist())
 
-    def mask_apply_boolean_filter(self, mask: np.ndarray) -> "UnitedDataframe[CK]":
+    def mask_get_not_equal_to(self, column_key: CK, value: Any) -> BoolArray:
         """
-        Apply a boolean mask to filter the dataframe.
+        Get a boolean mask for values not equal to a specific value.
         
         Args:
-            mask (np.ndarray): Boolean array with same length as number of rows
+            column_key (CK): The column key
+            value (Any): The value to compare against
             
         Returns:
-            UnitedDataframe[CK]: New dataframe with only rows where mask is True
+            BoolArray: Boolean mask where True indicates not equal values
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_not_equal_mask = self._internal_canonical_dataframe[internal_column_name] != value
+            return BoolArray(is_not_equal_mask.tolist())
+
+    def mask_get_greater_than(self, column_key: CK, value: Any) -> BoolArray:
+        """
+        Get a boolean mask for values greater than a specific value.
+        
+        Args:
+            column_key (CK): The column key
+            value (Any): The value to compare against
+            
+        Returns:
+            BoolArray: Boolean mask where True indicates greater values
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_greater_mask = self._internal_canonical_dataframe[internal_column_name] > value
+            return BoolArray(is_greater_mask.tolist())
+
+    def mask_get_less_than(self, column_key: CK, value: Any) -> BoolArray:
+        """
+        Get a boolean mask for values less than a specific value.
+        
+        Args:
+            column_key (CK): The column key
+            value (Any): The value to compare against
+            
+        Returns:
+            BoolArray: Boolean mask where True indicates lesser values
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            is_less_mask = self._internal_canonical_dataframe[internal_column_name] < value
+            return BoolArray(is_less_mask.tolist())
+
+    def mask_get_in_range(self, column_key: CK, min_value: Any, max_value: Any) -> BoolArray:
+        """
+        Get a boolean mask for values within a specific range (inclusive).
+        
+        Args:
+            column_key (CK): The column key
+            min_value (Any): The minimum value (inclusive)
+            max_value (Any): The maximum value (inclusive)
+            
+        Returns:
+            BoolArray: Boolean mask where True indicates values in range
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._internal_dataframe_column_strings[column_key]
+            column_data = self._internal_canonical_dataframe[internal_column_name]
+            is_in_range_mask = (column_data >= min_value) & (column_data <= max_value)
+            return BoolArray(is_in_range_mask.tolist())
+
+    # ----------- Mask Operations: Application ------------
+
+    def mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe":
+        """
+        Apply a boolean mask to the dataframe, returning a new filtered dataframe.
+        
+        Args:
+            mask (BoolArray): Boolean mask to apply
+            
+        Returns:
+            UnitedDataframe: New filtered dataframe
         """
         with self._rlock:
             if len(mask) != len(self._internal_canonical_dataframe):
-                raise ValueError(f"Mask length {len(mask)} does not match dataframe length {len(self._internal_canonical_dataframe)}")
+                raise ValueError(f"Mask length ({len(mask)}) does not match dataframe length ({len(self._internal_canonical_dataframe)}).")
             
-            # Apply mask to internal dataframe
-            filtered_df = self._internal_canonical_dataframe[mask]
+            # Filter internal dataframe
+            filtered_dataframe = self._internal_canonical_dataframe[mask.to_pandas()]
             
-            # Create new dataframe with same column information
-            return UnitedDataframe(
-                filtered_df,
-                self._column_information,
-                self._internal_dataframe_column_name_formatter
+            # Create new UnitedDataframe with filtered data
+            from ...united_dataframe import UnitedDataframe
+            new_df = UnitedDataframe[CK](
+                internal_canonical_dataframe=filtered_dataframe.copy(),
+                column_keys=self._column_keys.copy(),
+                column_types=self._column_types.copy(),
+                dimensions=self._dimensions.copy(),
+                display_units=self._display_units.copy(),
+                internal_dataframe_column_strings=self._internal_dataframe_column_strings.copy(),
+                internal_dataframe_name_formatter=self._internal_dataframe_name_formatter,
+                read_only=True  # Filtered dataframes are read-only
             )
+            return new_df
+
+    def mask_get_row_indices(self, mask: BoolArray) -> List[int]:
+        """
+        Get the row indices where a boolean mask is True.
+        
+        Args:
+            mask (BoolArray): Boolean mask
+            
+        Returns:
+            List[int]: List of row indices where mask is True
+        """
+        with self._rlock:
+            if len(mask) != len(self._internal_canonical_dataframe):
+                raise ValueError(f"Mask length ({len(mask)}) does not match dataframe length ({len(self._internal_canonical_dataframe)}).")
+            
+            return [i for i, value in enumerate(mask) if value]
+
+    # ----------- Mask operations ------------
 
     def mask_get_duplicates(self, subset: list[CK] | None = None, keep: str = "first") -> np.ndarray:
         """

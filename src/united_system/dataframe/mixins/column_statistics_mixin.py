@@ -1,412 +1,209 @@
 """
-Column statistics mixin for UnitedDataframe.
+Column statistics operations mixin for UnitedDataframe.
 
-Contains all statistical operations on columns, including min, max, mean, 
-standard deviation, percentiles, and other statistical measures.
+Contains all statistical operations for columns, including min, max, mean,
+standard deviation, and other statistical measures.
+
+Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Generic, TypeVar, Literal
-import numpy as np
+from typing import Union
+from .dataframe_protocol import UnitedDataframeMixin, CK
+from ...real_united_scalar import RealUnitedScalar
+from ...complex_united_scalar import ComplexUnitedScalar
+from ...int_array import IntArray
+from ...float_array import FloatArray
+from ...real_united_array import RealUnitedArray
+from ...complex_united_array import ComplexUnitedArray
 
-from ..column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE, NUMERIC_SCALAR_TYPE
-
-CK = TypeVar("CK", bound=str, default=str)
-
-class ColumnStatisticsMixin(Generic[CK]):
+class ColumnStatisticsMixin(UnitedDataframeMixin[CK]):
     """
-    Column statistics mixin for UnitedDataframe.
+    Column statistics operations mixin for UnitedDataframe.
     
-    Provides all statistical operations on columns, including min, max, mean,
-    standard deviation, percentiles, and other statistical measures.
+    Provides all statistical operations for columns, including min, max, mean,
+    standard deviation, and other statistical measures.
+    
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    # ----------- Column statistics and analysis ------------
+    # ----------- Column Statistics: Min/Max ------------
 
-    def column_get_min(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    def column_get_min(self, column_key: CK) -> RealUnitedScalar:
         """
-        Get the minimum value of a column with optional filtering.
+        Get the minimum value in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The minimum value with appropriate unit information
+            RealUnitedScalar: The minimum value
         """
-        with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.min()
+        with self._rlock:  # Full IDE support!
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'min'):
+                return column_data.min()
+            else:
+                raise ValueError(f"Column {column_key} does not support min operation.")
 
-    def column_get_max(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    def column_get_max(self, column_key: CK) -> RealUnitedScalar:
         """
-        Get the maximum value of a column with optional filtering.
+        Get the maximum value in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The maximum value with appropriate unit information
+            RealUnitedScalar: The maximum value
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.max()
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'max'):
+                return column_data.max()
+            else:
+                raise ValueError(f"Column {column_key} does not support max operation.")
 
-    def column_get_mean(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    # ----------- Column Statistics: Mean/Standard Deviation ------------
+
+    def column_get_mean(self, column_key: CK) -> Union[RealUnitedScalar, ComplexUnitedScalar]:
         """
-        Get the mean (average) value of a column with optional filtering.
+        Get the mean value in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The mean value with appropriate unit information
+            Union[RealUnitedScalar, ComplexUnitedScalar]: The mean value
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.mean()
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'mean'):
+                return column_data.mean()
+            else:
+                raise ValueError(f"Column {column_key} does not support mean operation.")
 
-    def column_get_std(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all", ddof: int = 1) -> NUMERIC_SCALAR_TYPE:
+    def column_get_std(self, column_key: CK) -> RealUnitedScalar:
         """
-        Get the standard deviation of a column with optional filtering.
+        Get the standard deviation in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
-            ddof (int): Delta degrees of freedom (default 1 for sample std)
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The standard deviation with appropriate unit information
+            RealUnitedScalar: The standard deviation
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.std(ddof=ddof)
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'std'):
+                return column_data.std()
+            else:
+                raise ValueError(f"Column {column_key} does not support std operation.")
 
-    def column_get_sum(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    # ----------- Column Statistics: Sum/Product ------------
+
+    def column_get_sum(self, column_key: CK) -> Union[RealUnitedScalar, ComplexUnitedScalar]:
         """
-        Get the sum of values in a column with optional filtering.
+        Get the sum of values in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The sum with appropriate unit information
+            Union[RealUnitedScalar, ComplexUnitedScalar]: The sum
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.sum()
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'sum'):
+                return column_data.sum()
+            else:
+                raise ValueError(f"Column {column_key} does not support sum operation.")
 
-    def column_get_median(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    def column_get_product(self, column_key: CK) -> Union[RealUnitedScalar, ComplexUnitedScalar]:
         """
-        Get the median value of a column with optional filtering.
+        Get the product of values in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The median value with appropriate unit information
+            Union[RealUnitedScalar, ComplexUnitedScalar]: The product
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.median()
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'product'):
+                return column_data.product()
+            else:
+                raise ValueError(f"Column {column_key} does not support product operation.")
 
-    def column_get_percentile(self, column_key: CK, percentile: float, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+    # ----------- Column Statistics: Count/Variance ------------
+
+    def column_get_count(self, column_key: CK) -> int:
         """
-        Get a specific percentile value of a column with optional filtering.
+        Get the count of non-missing values in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            percentile (float): The percentile to calculate (0.0 to 1.0)
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The percentile value with appropriate unit information
+            int: The count of non-missing values
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            if not 0 <= percentile <= 1:
-                raise ValueError(f"Percentile must be between 0 and 1, got {percentile}")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.quantile(percentile)
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'count'):
+                return column_data.count()
+            else:
+                return len(column_data)
 
-    def column_get_var(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all", ddof: int = 1) -> NUMERIC_SCALAR_TYPE:
+    def column_get_variance(self, column_key: CK) -> RealUnitedScalar:
         """
-        Get the variance of a column with optional filtering.
+        Get the variance in a column.
         
         Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
-            ddof (int): Delta degrees of freedom (default 1 for sample variance)
+            column_key (CK): The column key
             
         Returns:
-            UnitedScalar: The variance with appropriate unit information
+            RealUnitedScalar: The variance
         """
         with self._rlock:
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-            
-            column_values = self.column(column_key)
-            
-            match case:
-                case "only_positive":
-                    filtered_values = column_values[column_values > 0]
-                case "only_negative":
-                    filtered_values = column_values[column_values < 0]
-                case "only_non_negative":
-                    filtered_values = column_values[column_values >= 0]
-                case "only_non_positive":
-                    filtered_values = column_values[column_values <= 0]
-                case "all":
-                    filtered_values = column_values
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(filtered_values) == 0:
-                raise ValueError(f"No values found matching criteria '{case}' in column '{column_key}'")
-            
-            return filtered_values.var(ddof=ddof)
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'variance'):
+                return column_data.variance()
+            else:
+                raise ValueError(f"Column {column_key} does not support variance operation.")
 
-    def column_count_valid(self, column_key: CK) -> int:
+    # ----------- Column Statistics: Median/Quantile ------------
+
+    def column_get_median(self, column_key: CK) -> RealUnitedScalar:
         """
-        Count the number of valid (non-NaN) values in a column.
+        Get the median value in a column.
         
         Args:
-            column_key (CK): The column key of the column
+            column_key (CK): The column key
             
         Returns:
-            int: Number of valid values
+            RealUnitedScalar: The median value
         """
         with self._rlock:
-            column_values = self.column(column_key)
-            return column_values.count()
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'median'):
+                return column_data.median()
+            else:
+                raise ValueError(f"Column {column_key} does not support median operation.")
 
-    def column_count_missing(self, column_key: CK) -> int:
+    def column_get_quantile(self, column_key: CK, quantile: float) -> RealUnitedScalar:
         """
-        Count the number of missing (NaN) values in a column.
+        Get a quantile value in a column.
         
         Args:
-            column_key (CK): The column key of the column
+            column_key (CK): The column key
+            quantile (float): The quantile (0.0 to 1.0)
             
         Returns:
-            int: Number of missing values
+            RealUnitedScalar: The quantile value
         """
         with self._rlock:
-            column_values = self.column(column_key)
-            return column_values.isna().sum()
-
-    def column_count_unique(self, column_key: CK) -> int:
-        """
-        Count the number of unique values in a column.
-        
-        Args:
-            column_key (CK): The column key of the column
-            
-        Returns:
-            int: Number of unique values
-        """
-        with self._rlock:
-            column_values = self.column(column_key)
-            return column_values.nunique()
-
-    def column_get_unique(self, column_key: CK) -> ARRAY_TYPE:
-        """
-        Get the unique values in a column.
-        
-        Args:
-            column_key (CK): The column key of the column
-            
-        Returns:
-            ARRAY_TYPE: Array of unique values
-        """
-        with self._rlock:
-            column_values = self.column(column_key)
-            return column_values.unique() 
+            column_data = self.get_column(column_key)
+            if hasattr(column_data, 'quantile'):
+                return column_data.quantile(quantile)
+            else:
+                raise ValueError(f"Column {column_key} does not support quantile operation.") 

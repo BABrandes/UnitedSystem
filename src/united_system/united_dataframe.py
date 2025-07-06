@@ -5,7 +5,7 @@ This is the primary class that users will interact with. It inherits from all
 the mixins to provide a complete dataframe implementation with units support.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TypeVar, Generic, Dict, Any, Callable, Union
 import pandas as pd
 from readerwriterlock import rwlock
@@ -60,23 +60,23 @@ class UnitedDataframe(
     
     # Core data structures
     _internal_canonical_dataframe: pd.DataFrame
-    _column_information: Dict[CK, ColumnInformation[CK]]
+    _column_information: Dict[CK, ColumnInformation]
     _internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter
     
     # Derived data structures (populated in __post_init__)
-    _column_keys: list[CK] = None
-    _column_types: Dict[CK, ColumnType] = None
-    _display_units: Dict[CK, Unit] = None
-    _dimensions: Dict[CK, Dimension] = None
-    _internal_dataframe_column_strings: Dict[CK, str] = None
+    _column_keys: list[CK] = field(default_factory=list, init=False)
+    _column_types: Dict[CK, ColumnType] = field(default_factory=dict, init=False)
+    _display_units: Dict[CK, Unit] = field(default_factory=dict, init=False)
+    _dimensions: Dict[CK, Dimension] = field(default_factory=dict, init=False)
+    _internal_dataframe_column_strings: Dict[CK, str] = field(default_factory=dict, init=False)
     
     # Read-only state
     _read_only: bool = False
     
     # Thread safety
-    _lock: rwlock.RWLockFairD = None
-    _rlock: rwlock.RWLockFairD._aReader = None
-    _wlock: rwlock.RWLockFairD._aWriter = None
+    _lock: rwlock.RWLockFairD = field(default=None, init=False)
+    _rlock: rwlock.RWLockFairD._aReader = field(default=None, init=False)
+    _wlock: rwlock.RWLockFairD._aWriter = field(default=None, init=False)
 
     def __post_init__(self):
         """
@@ -122,7 +122,7 @@ class UnitedDataframe(
     def from_dataframe_and_column_information_list(
         cls,
         dataframe: pd.DataFrame,
-        column_information: Dict[CK, ColumnInformation[CK]],
+        column_information: Dict[CK, ColumnInformation],
         internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter,
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
@@ -150,7 +150,7 @@ class UnitedDataframe(
     def create_from_dataframe_and_column_information_list(
         cls,
         dataframe: pd.DataFrame,
-        column_information: Dict[CK, ColumnInformation[CK]],
+        column_information: Dict[CK, ColumnInformation],
         internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter,
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
