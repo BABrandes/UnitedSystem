@@ -1,4 +1,3 @@
-
 from typing import Callable, Generic, TypeVar, overload, cast, Iterator, Literal, Any
 import operator
 import math
@@ -1341,394 +1340,9 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 raise ValueError(f"The row index {row_index} does not exist. The dataframe has {len(self)} rows.")
             self.cell_value_set(row_index, column_key, value)
 
-    # ----------- Column functions operations ------------
-
-    def colfun_min(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
-        """
-        Get the minimum value of a column with optional filtering.
-        
-        Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
-            
-        Returns:
-            UnitedScalar: The minimum value with appropriate unit information
-            
-        Raises:
-            ValueError: If the column doesn't exist
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if len(self._internal_canonical_dataframe) == 0:
-                return self.column_type(column_key).create_scalar_from_value(None, self._display_units[column_key])
-
-            match case:
-                case "only_positive":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] > 0]
-                case "only_negative":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] < 0]
-                case "only_non_negative":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] >= 0]
-                case "only_non_positive":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] <= 0]
-                case "all":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-            
-            if len(values) == 0:
-                value = None
-            else:
-                value = np.min(values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-
-    def colfun_max(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> RealUnitedScalar:
-        """
-        Get the maximum value of a column with optional filtering.
-        
-        Args:
-            column_key (CK): The column key of the column
-            case (str): Filtering criteria for the values:
-                - "only_positive": only positive values (value > 0)
-                - "only_negative": only negative values (value < 0)
-                - "only_non_negative": only non-negative values (value >= 0)
-                - "only_non_positive": only non-positive values (value <= 0)
-                - "all": all values
-            
-        Returns:
-            UnitedScalar: The maximum value with appropriate unit information
-            
-        Raises:
-            ValueError: If the column doesn't exist
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if len(self._internal_canonical_dataframe) == 0:
-                return self._helper_fun_return_numerical_value(column_key, None)
-            
-            match case:
-                case "only_positive":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] > 0]
-                case "only_negative":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] < 0]
-                case "only_non_negative":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] >= 0]
-                case "only_non_positive":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] <= 0]    
-                case "all":
-                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                case _:
-                    raise ValueError(f"Invalid case: {case}")
-        
-            if len(values) == 0:
-                value = None
-            else:
-                value = np.max(values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-
-    def colfun_sum(self, column_key: CK) -> RealUnitedScalar:
-        """
-        Calculate the sum of a numeric column.
-        
-        Args:
-            column_key (CK): The column key of the column
-            
-        Returns:
-            UnitedScalar: The sum with appropriate unit information
-            
-        Raises:
-            ValueError: If the column doesn't exist or is not numeric
-        """
-        with self._rlock:
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if self.is_numeric(column_key):
-                values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                return self._helper_fun_return_numerical_value(column_key, np.sum(values))
-            else:
-                raise ValueError(f"Column '{column_key}' is not numeric.")
-
-    def colfun_mean(self, column_key: CK) -> RealUnitedScalar:
-        """
-        Calculate the mean of a numeric column.
-        
-        Args:
-            column_key (CK): The column key of the column
-            
-        Returns:
-            UnitedScalar: The mean with appropriate unit information
-            
-        Raises:
-            ValueError: If the column doesn't exist or is not numeric
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-
-            if len(values) == 0:
-                value = None
-            else:
-                value = np.mean(values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-
-    def colfun_std(self, column_key: CK) -> RealUnitedScalar:
-        """
-        Calculate the standard deviation of a numeric column.
-        
-        Args:
-            column_key (CK): The column key of the column
-            
-        Returns:
-            UnitedScalar: The standard deviation with appropriate unit information
-            
-        Raises:
-            ValueError: If the column doesn't exist or is not numeric
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-
-            if len(values) == 0:
-                value = None
-            elif len(values) == 1:
-                value = np.inf
-            else:
-                value = np.std(values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-    
-    def colfun_unique_as_list(self, column_key: CK) -> list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int]:
-        """
-        Get the unique values of a column.
-
-        Args:
-            index_or_column_key (int|CK): The index or column key of the column
-
-        Returns:
-            list[UnitedScalar]: The unique values with appropriate unit information
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            unique_values: list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int] = []
-
-            for value in values.unique():
-                unique_values.append(self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key]))
-
-            return unique_values
-        
-    def colfun_unique_as_array(self, column_key: CK) -> RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray:
-        """
-        Get the unique values of a column.
-
-        Args:
-            index_or_column_key (int|CK): The index or column key of the column
-
-        Returns:
-            list[UnitedScalar]: The unique values with appropriate unit information
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            unique_values: np.ndarray = values.unique()
-
-            return self.column_type(column_key).create_array_from_canonical_values(unique_values, self._display_units[column_key])
-
-    def colfun_smallest_positive_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
-        """
-        Get the smallest positive non-zero value of a column.
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
-
-            if len(positive_nonzero_values) == 0:
-                value = None
-            else:
-                value = np.min(positive_nonzero_values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-        
-    def colfun_largest_positive_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
-        """
-        Get the largest positive non-zero value of a column.
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
-
-            if len(positive_nonzero_values) == 0:
-                value = None
-            else:
-                value = np.max(positive_nonzero_values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-
-    def colfun_largest_negative_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
-        """
-        Get the largest negative non-zero value of a column.
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
-
-            if len(negative_nonzero_values) == 0:
-                value = None
-            else:
-                value = np.max(negative_nonzero_values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-        
-    def colfun_smallest_negative_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
-        """
-        Get the smallest negative non-zero value of a column.
-        """
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            
-            if not self.is_numeric(column_key):
-                raise ValueError(f"Column key {column_key} is not numeric.")
-            
-            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
-
-            if len(negative_nonzero_values) == 0:
-                value = None
-            else:
-                value = np.min(negative_nonzero_values)
-
-            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
-    
-    @overload
-    def colfun_count_value_occurances(self, column_key: CK) -> dict[SCALAR_TYPE, int]:
-        """Count the number of occurrences of each unique value in the column."""
-        ...
-    @overload
-    def colfun_count_value_occurances(self, column_key: CK, value_to_count: SCALAR_TYPE) -> int:
-        """Count the number of occurrences of the specified value in the column."""
-        ...
-    def colfun_count_value_occurances(self, column_key: CK, value_to_count: SCALAR_TYPE|None = None) -> dict[SCALAR_TYPE, int]|int:
-        with self._rlock:
-            if not self.has_column(column_key):
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            column_type: ColumnType = self.column_type(column_key)
-            display_unit: Unit|None = self._display_units[column_key]
-            if value_to_count is None:
-                unique_values: np.ndarray = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)].unique()
-                column_as_pd_series: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]
-                occurance_counts_dict: dict[SCALAR_TYPE, int] = {}
-                for value in unique_values:
-                    occurance_count: int = column_as_pd_series.eq(value).sum()
-                    value_key: SCALAR_TYPE = column_type.create_scalar_from_value(value, display_unit)
-                    occurance_counts_dict[value_key] = occurance_count
-                return occurance_counts_dict
-            else:
-                if not self.compatible_with_column(column_key, value_to_count):
-                    raise ValueError(f"The value {value_to_count} is not compatible with the column {column_key}.")
-                value_casted_for_dataframe: Any = column_type.cast_for_dataframe(value_to_count)
-                column_values: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]                
-                occurance_count: int = column_values.eq(value_casted_for_dataframe).sum()
-                return occurance_count
-            
-    def colfun_row_index(self, column_key: CK, value: SCALAR_TYPE, case: Literal["first", "last"] = "first") -> int:
-        """
-        Get the row index of the first occurrence of a value in a column.
-
-        Args:
-            column_key (CK): The column key of the column
-            value (UnitedScalar): The value to get the row index of
-            case (Literal["first", "last"]): The case to get the row index of
-
-        Returns:
-            int: The row index of the first occurrence of the value in the column. Returns -1 if the value is not found.
-        """
-        with self._rlock:
-            column_type: ColumnType = self.column_type(column_key)
-            value_casted_for_dataframe: Any = column_type.cast_for_dataframe(value)
-            column_values: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]
-            row_index: int|str
-            try:
-                match case:
-                    case "first":
-                        row_index = column_values.eq(value_casted_for_dataframe).idxmax()
-                    case "last":
-                        row_index = column_values.eq(value_casted_for_dataframe).idxmin()
-                    case _:
-                        raise ValueError(f"Invalid case: {case}")
-            except ValueError:
-                return -1
-            if isinstance(row_index, str):
-                raise ValueError(f"The row index of the value {value} in the column {column_key} is not a number. It appears the index of the internal dataframe has been set.")
-            else:
-                return int(row_index)
-
     # ----------- Mask operations ------------
 
-    def maskfun_isna(self, subset: list[CK] | None = None) -> np.ndarray:
+    def mask_get_missing_values(self, subset: list[CK] | None = None) -> np.ndarray:
         """
         Return a boolean mask indicating which values are NA/NaN.
         
@@ -1777,11 +1391,11 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
             return result_array
 
-    def maskfun_notna(self, subset: list[CK] | None = None) -> np.ndarray:
+    def mask_get_valid_values(self, subset: list[CK] | None = None) -> np.ndarray:
         """
         Return a boolean mask indicating which values are not NA/NaN.
         
-        This is the inverse of isna() - returns True for non-NA values.
+        This is the inverse of mask_get_missing_values() - returns True for non-NA values.
         
         Args:
             subset (list[CK] | None): List of column keys to check for non-NA values.
@@ -1792,15 +1406,15 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
         Examples:
             # Check all columns for non-NA values
-            non_na_mask = df.notna()
+            non_na_mask = df.mask_get_valid_values()
             
             # Check specific columns for non-NA values
-            non_na_mask = df.notna(['column1', 'column2'])
+            non_na_mask = df.mask_get_valid_values(['column1', 'column2'])
             
             # Use the mask for filtering
-            non_na_rows = df[df.notna().all(axis=1)]
+            non_na_rows = df[df.mask_get_valid_values().all(axis=1)]
         """
-        return ~self.maskfun_isna(subset)
+        return ~self.mask_get_missing_values(subset)
     
     class _UnitedScalar_Proxy:
         def __init__(self, symbol: str = "x"):
@@ -1832,7 +1446,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
         return ufunc_filter
 
-    def maskfun_get_from_filter(
+    def mask_create_from_filter(
         self,
         column_key_and_callable: dict[CK, Callable[[SCALAR_TYPE], bool] | Callable[[str], bool]]
     ) -> np.ndarray:
@@ -1877,7 +1491,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
             return mask_of_dataframe
         
-    def maskfun_apply_mask(self, mask: np.ndarray) -> "UnitedDataframe[CK]":
+    def mask_apply_to_dataframe(self, mask: np.ndarray) -> "UnitedDataframe[CK]":
         """
         Get a new dataframe with the rows that satisfy the numpy mask.
 
@@ -1955,7 +1569,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return self._internal_canonical_dataframe.empty
 
-    def rowfun_head(self, n: int = 1) -> "UnitedDataframe[CK]":
+    def rows_get_head(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the first n rows of the dataframe.
         
@@ -1970,13 +1584,13 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
         Examples:
             # Get first 1 rows (default)
-            df.head()
+            df.rows_get_head()
             
             # Get first 10 rows
-            df.head(10)
+            df.rows_get_head(10)
             
             # Get all rows if n is larger than dataframe size
-            df.head(100)  # Returns all rows if dataframe has fewer than 100 rows
+            df.rows_get_head(100)  # Returns all rows if dataframe has fewer than 100 rows
         """
         with self._rlock:
             if n < 0:
@@ -1991,7 +1605,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_first(self) -> "UnitedDataframe[CK]":
+    def rows_get_first(self) -> "UnitedDataframe[CK]":
         """
         Get the first row of the dataframe.
         
@@ -2003,7 +1617,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
         Examples:
             # Get the first row
-            first_row = df.first()
+            first_row = df.rows_get_first()
             
             # Access the first row's values
             first_row.loc[0, 'column_name']
@@ -2019,7 +1633,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_tail(self, n: int = 1) -> "UnitedDataframe[CK]":
+    def rows_get_tail(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the last n rows of the dataframe.
         
@@ -2034,13 +1648,13 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
         Examples:
             # Get last 1 rows (default)
-            df.tail()
+            df.rows_get_tail()
             
             # Get last 10 rows
-            df.tail(10)
+            df.rows_get_tail(10)
             
             # Get all rows if n is larger than dataframe size
-            df.tail(100)  # Returns all rows if dataframe has fewer than 100 rows
+            df.rows_get_tail(100)  # Returns all rows if dataframe has fewer than 100 rows
         """
         with self._rlock:
             if n < 0:
@@ -2055,7 +1669,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def rowfun_last(self) -> "UnitedDataframe[CK]":
+    def rows_get_last(self) -> "UnitedDataframe[CK]":
         """
         Get the last row of the dataframe.
         
@@ -2067,7 +1681,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
         Examples:
             # Get the last row
-            last_row = df.last()
+            last_row = df.rows_get_last()
             
             # Access the last row's values
             last_row.loc[0, 'column_name']
@@ -2293,7 +1907,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- Column and Row Filtering ------------
 
-    def filterfun_get_by_column_key_types(self, *column_key_types: type[CK_CF]) -> "UnitedDataframe[CK_CF]":
+    def filter_by_column_key_types(self, *column_key_types: type[CK_CF]) -> "UnitedDataframe[CK_CF]":
         """
         Filter the dataframe by column key type.
         """
@@ -2307,7 +1921,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 self._internal_column_name_formatter,
                 True)
         
-    def filterfun_inplace_by_column_key_types(self, *column_key_types: type[CK]) -> None:
+    def filter_inplace_by_column_key_types(self, *column_key_types: type[CK]) -> None:
         """
         Filter the dataframe by column key type in place.
         """
@@ -2320,7 +1934,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             for column_key in column_keys_to_remove:
                 self.remove_column(column_key)
 
-    def filterfun_by_filterdict(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "UnitedDataframe[CK]":
+    def filter_by_values(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "UnitedDataframe[CK]":
         """
         Filter the dataframe by a dictionary of column keys and values.
 
@@ -2556,3 +2170,416 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     raise ValueError(f"Grouping column {col} does not exist in the dataframe.")
             
             return _GroupBy(self, by)
+
+    # ----------- Column statistics and analysis ------------
+
+    def column_get_min(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
+        """
+        Get the minimum value of a column with optional filtering.
+        
+        Args:
+            column_key (CK): The column key of the column
+            case (str): Filtering criteria for the values:
+                - "only_positive": only positive values (value > 0)
+                - "only_negative": only negative values (value < 0)
+                - "only_non_negative": only non-negative values (value >= 0)
+                - "only_non_positive": only non-positive values (value <= 0)
+                - "all": all values
+            
+        Returns:
+            UnitedScalar: The minimum value with appropriate unit information
+            
+        Raises:
+            ValueError: If the column doesn't exist
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            if len(self._internal_canonical_dataframe) == 0:
+                return self.column_type(column_key).create_scalar_from_value(None, self._display_units[column_key])
+
+            match case:
+                case "only_positive":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] > 0]
+                case "only_negative":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] < 0]
+                case "only_non_negative":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] >= 0]
+                case "only_non_positive":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] <= 0]
+                case "all":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+                case _:
+                    raise ValueError(f"Invalid case: {case}")
+            
+            if len(values) == 0:
+                value = None
+            else:
+                value = np.min(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+
+    def column_get_max(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> RealUnitedScalar:
+        """
+        Get the maximum value of a column with optional filtering.
+        
+        Args:
+            column_key (CK): The column key of the column
+            case (str): Filtering criteria for the values:
+                - "only_positive": only positive values (value > 0)
+                - "only_negative": only negative values (value < 0)
+                - "only_non_negative": only non-negative values (value >= 0)
+                - "only_non_positive": only non-positive values (value <= 0)
+                - "all": all values
+            
+        Returns:
+            UnitedScalar: The maximum value with appropriate unit information
+            
+        Raises:
+            ValueError: If the column doesn't exist
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            if len(self._internal_canonical_dataframe) == 0:
+                return self._helper_fun_return_numerical_value(column_key, None)
+            
+            match case:
+                case "only_positive":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] > 0]
+                case "only_negative":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] < 0]
+                case "only_non_negative":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] >= 0]
+                case "only_non_positive":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name][self._internal_canonical_dataframe[dataframe_column_name] <= 0]    
+                case "all":
+                    values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+                case _:
+                    raise ValueError(f"Invalid case: {case}")
+        
+            if len(values) == 0:
+                value = None
+            else:
+                value = np.max(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+
+    def column_get_sum(self, column_key: CK) -> RealUnitedScalar:
+        """
+        Calculate the sum of a numeric column.
+        
+        Args:
+            column_key (CK): The column key of the column
+            
+        Returns:
+            UnitedScalar: The sum with appropriate unit information
+            
+        Raises:
+            ValueError: If the column doesn't exist or is not numeric
+        """
+        with self._rlock:
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            if self.is_numeric(column_key):
+                values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+                return self._helper_fun_return_numerical_value(column_key, np.sum(values))
+            else:
+                raise ValueError(f"Column '{column_key}' is not numeric.")
+
+    def column_get_mean(self, column_key: CK) -> RealUnitedScalar:
+        """
+        Calculate the mean of a numeric column.
+        
+        Args:
+            column_key (CK): The column key of the column
+            
+        Returns:
+            UnitedScalar: The mean with appropriate unit information
+            
+        Raises:
+            ValueError: If the column doesn't exist or is not numeric
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+
+            if len(values) == 0:
+                value = None
+            else:
+                value = np.mean(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+
+    def column_get_std(self, column_key: CK) -> RealUnitedScalar:
+        """
+        Calculate the standard deviation of a numeric column.
+        
+        Args:
+            column_key (CK): The column key of the column
+            
+        Returns:
+            UnitedScalar: The standard deviation with appropriate unit information
+            
+        Raises:
+            ValueError: If the column doesn't exist or is not numeric
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+
+            if len(values) == 0:
+                value = None
+            elif len(values) == 1:
+                value = np.inf
+            else:
+                value = np.std(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+    
+    def column_get_unique_values(self, column_key: CK) -> list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int]:
+        """
+        Get the unique values of a column.
+
+        Args:
+            column_key (CK): The column key of the column
+
+        Returns:
+            list[UnitedScalar]: The unique values with appropriate unit information
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            unique_values: list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int] = []
+
+            for value in values.unique():
+                unique_values.append(self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key]))
+
+            return unique_values
+        
+    def column_get_unique_array(self, column_key: CK) -> RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray:
+        """
+        Get the unique values of a column as an array.
+
+        Args:
+            column_key (CK): The column key of the column
+
+        Returns:
+            Array: The unique values as an array with appropriate unit information
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            unique_values: np.ndarray = values.unique()
+
+            return self.column_type(column_key).create_array_from_canonical_values(unique_values, self._display_units[column_key])
+
+    def column_get_min_positive(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
+        """
+        Get the smallest positive non-zero value of a column.
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
+
+            if len(positive_nonzero_values) == 0:
+                value = None
+            else:
+                value = np.min(positive_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+        
+    def column_get_max_positive(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
+        """
+        Get the largest positive non-zero value of a column.
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
+
+            if len(positive_nonzero_values) == 0:
+                value = None
+            else:
+                value = np.max(positive_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+
+    def column_get_max_negative(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
+        """
+        Get the largest negative non-zero value of a column.
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
+
+            if len(negative_nonzero_values) == 0:
+                value = None
+            else:
+                value = np.max(negative_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+        
+    def column_get_min_negative(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
+        """
+        Get the smallest negative non-zero value of a column.
+        """
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
+
+            if len(negative_nonzero_values) == 0:
+                value = None
+            else:
+                value = np.min(negative_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+    
+    @overload
+    def column_count_value_occurrences(self, column_key: CK) -> dict[SCALAR_TYPE, int]:
+        """Count the number of occurrences of each unique value in the column."""
+        ...
+    @overload
+    def column_count_value_occurrences(self, column_key: CK, value_to_count: SCALAR_TYPE) -> int:
+        """Count the number of occurrences of the specified value in the column."""
+        ...
+    def column_count_value_occurrences(self, column_key: CK, value_to_count: SCALAR_TYPE|None = None) -> dict[SCALAR_TYPE, int]|int:
+        with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            column_type: ColumnType = self.column_type(column_key)
+            display_unit: Unit|None = self._display_units[column_key]
+            if value_to_count is None:
+                unique_values: np.ndarray = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)].unique()
+                column_as_pd_series: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]
+                occurance_counts_dict: dict[SCALAR_TYPE, int] = {}
+                for value in unique_values:
+                    occurance_count: int = column_as_pd_series.eq(value).sum()
+                    value_key: SCALAR_TYPE = column_type.create_scalar_from_value(value, display_unit)
+                    occurance_counts_dict[value_key] = occurance_count
+                return occurance_counts_dict
+            else:
+                if not self.compatible_with_column(column_key, value_to_count):
+                    raise ValueError(f"The value {value_to_count} is not compatible with the column {column_key}.")
+                value_casted_for_dataframe: Any = column_type.cast_for_dataframe(value_to_count)
+                column_values: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]                
+                occurance_count: int = column_values.eq(value_casted_for_dataframe).sum()
+                return occurance_count
+            
+    def column_find_value_index(self, column_key: CK, value: SCALAR_TYPE, case: Literal["first", "last"] = "first") -> int:
+        """
+        Get the row index of the first or last occurrence of a value in a column.
+
+        Args:
+            column_key (CK): The column key of the column
+            value (UnitedScalar): The value to get the row index of
+            case (Literal["first", "last"]): Whether to find the first or last occurrence
+
+        Returns:
+            int: The row index of the occurrence of the value in the column. Returns -1 if the value is not found.
+        """
+        with self._rlock:
+            column_type: ColumnType = self.column_type(column_key)
+            value_casted_for_dataframe: Any = column_type.cast_for_dataframe(value)
+            column_values: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]
+            row_index: int|str
+            try:
+                match case:
+                    case "first":
+                        row_index = column_values.eq(value_casted_for_dataframe).idxmax()
+                    case "last":
+                        row_index = column_values.eq(value_casted_for_dataframe).idxmin()
+                    case _:
+                        raise ValueError(f"Invalid case: {case}")
+            except ValueError:
+                return -1
+            if isinstance(row_index, str):
+                raise ValueError(f"The row index of the value {value} in the column {column_key} is not a number. It appears the index of the internal dataframe has been set.")
+            else:
+                return int(row_index)
+
+    def column_clamp_values(self, column_key: CK, min_val: SCALAR_TYPE, max_val: SCALAR_TYPE, inclusive: Literal["both", "neither", "left", "right"] = "both") -> None:
+        """
+        Clamp all values in a column to the specified range.
+        
+        Args:
+            column_key (CK): The column key to clamp
+            min_val (UnitedScalar): The minimum value
+            max_val (UnitedScalar): The maximum value
+            inclusive (str): Which bounds to include ("both", "neither", "left", "right")
+            
+        Raises:
+            ValueError: If the dataframe is read-only, the column doesn't exist,
+                                       or the column is not numeric
+        """
+        with self._wlock:
+            if self._read_only:
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
+            if self.is_numeric(column_key):
+                values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+                clamped_values = values.clip(lower=min_val.canonical_float, upper=max_val.canonical_float, inclusive=inclusive)
+                self._internal_canonical_dataframe[dataframe_column_name] = clamped_values
+            else:
+                raise ValueError(f"Column '{column_key}' is not numeric.")
