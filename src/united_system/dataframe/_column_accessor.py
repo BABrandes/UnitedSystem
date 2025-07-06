@@ -1,10 +1,10 @@
 from typing import Generic, TypeVar, Iterator, overload, Literal
-from ..united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
-from ..arrays.united_array.united_array import UnitedArray
-from ..units.unit_quantity import UnitQuantity
 from ..units.base_classes.base_unit import BaseUnit
-from ..united_dataframe import Value_Type
+from ..united_dataframe_original import UnitedDataframe, ColumnKey
+from ..dataframe.column_type import ARRAY_TYPE, ColumnType
+from ..dimension import Dimension
+from ..unit import Unit
 import pandas as pd
 import numpy as np
 
@@ -41,7 +41,7 @@ class _ColumnAccessor(Generic[CK]):
     def as_pandas_series(self, unit: BaseUnit) -> pd.Series:
         return self._parent.column_values_as_pandas_series(self._column_key, unit)
     
-    def as_united_array(self, display_unit: BaseUnit|None=None) -> UnitedArray:
+    def as_united_array(self, display_unit: BaseUnit|None=None) -> ARRAY_TYPE:
         if display_unit is None:
             display_unit = self._parent.display_unit(self._column_key)
         return self._parent.column_values_as_array(self._column_key, display_unit)
@@ -201,12 +201,16 @@ class _ColumnAccessor(Generic[CK]):
         return self._parent.display_unit(self._column_key)
     
     @property
-    def UnitQuantity(self) -> UnitQuantity:
-        return self._parent.UnitQuantity(self._column_key)
+    def Dimension(self) -> Dimension:
+        return self._parent.dimension(self._column_key)
+
+    @property
+    def display_unit(self) -> Unit:
+        return self._parent.display_unit(self._column_key)
     
     @property
-    def value_type(self) -> Value_Type:
-        return self._parent.value_type(self._column_key)
+    def column_type(self) -> ColumnType:
+        return self._parent.column_type(self._column_key)
     
     @property
     def column_key(self) -> CK:
