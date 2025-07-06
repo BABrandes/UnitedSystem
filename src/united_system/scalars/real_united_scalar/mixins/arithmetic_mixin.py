@@ -260,7 +260,7 @@ class ArithmeticMixin:
         
         # Create dimensionless dimension for reverse division
         from ....units.named_simple_dimensions import NamedSimpleDimension
-        dimensionless = NamedSimpleDimension.NUMBER.simple_unit_dimension
+        dimensionless = NamedSimpleDimension.NUMBER.simple_dimension
         new_dimension = dimensionless - self.dimension
         
         if self.is_nan():
@@ -319,7 +319,7 @@ class ArithmeticMixin:
         if exponent == 0:
             # Any number to the power of 0 is 1 (dimensionless)
             from ....units.named_simple_dimensions import NamedSimpleDimension
-            return RealUnitedScalar(1.0, NamedSimpleDimension.NUMBER.simple_unit_dimension, None)
+            return RealUnitedScalar(1.0, NamedSimpleDimension.NUMBER.simple_dimension, None)
         
         if exponent == 1:
             # Return a copy of self

@@ -1,11 +1,11 @@
 from typing import Generic, Callable, TypeVar, Type
-from ..united_dataframe.united_dataframe import UnitedDataframe, ColumnKey
+from ..united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
 from ..units.unit_quantity import UnitQuantity
 from ..units.base_classes.base_unit import BaseUnit
-from ..united_dataframe.core.base import SCALAR_TYPE
-from ..united_dataframe.united_dataframe import ColumnInformation
-from ..united_dataframe.united_dataframe import ColumnType
+from ..united_dataframe import SCALAR_TYPE
+from ..united_dataframe import ColumnInformation
+from ..united_dataframe import ColumnType
 from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
 from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
 import pandas as pd
@@ -14,7 +14,7 @@ import numpy as np
 CK = TypeVar("CK", bound=ColumnKey|str)
 
 
-class GroupBy(Generic[CK]):
+class _GroupBy(Generic[CK]):
     """
     A GroupBy object for performing grouped operations on United_Dataframe.
     
@@ -584,7 +584,7 @@ class GroupBy(Generic[CK]):
                     self._dataframe._value_types
                 )
 
-    def get_filtered(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "GroupBy[CK]":
+    def get_filtered(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "_GroupBy[CK]":
         """
         Filter each group by a dictionary of column keys and values.
         
@@ -634,11 +634,11 @@ class GroupBy(Generic[CK]):
                 filtered_dataframe = UnitedDataframe[CK].concatenate_dataframes(all_filtered_rows[0], *all_filtered_rows[1:])
                 
                 # Create a new GroupBy object with the same grouping columns
-                return GroupBy[CK](filtered_dataframe, self._by)
+                return _GroupBy[CK](filtered_dataframe, self._by)
             else:
                 # If no groups remain after filtering, return an empty GroupBy
                 empty_dataframe: UnitedDataframe[CK] = self._dataframe.create_empty()
-                return GroupBy[CK](empty_dataframe, self._by)
+                return _GroupBy[CK](empty_dataframe, self._by)
 
     def isna(self, subset: list[CK] | None = None) -> np.ndarray:
         """

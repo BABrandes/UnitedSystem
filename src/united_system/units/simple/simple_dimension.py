@@ -64,7 +64,7 @@ class SimpleDimension(BaseDimension["SimpleDimension", "SimpleUnit"]):
         
         # Try to find a named dimension
         for named_dim in NamedSimpleDimension:
-            if named_dim.simple_unit_dimension == self:
+            if named_dim.simple_dimension == self:
                 return named_dim.name
         
         # Fallback to exponent representation
@@ -181,13 +181,13 @@ class SimpleDimension(BaseDimension["SimpleDimension", "SimpleUnit"]):
             pseudo_dimension_match_index = -1
             
             # Check for dimension exponent matches
-            for i, (current_exp, base_exp) in enumerate(zip(current_dimension_exponents, base_dimension.simple_unit_dimension.dimension_exponents)):
+            for i, (current_exp, base_exp) in enumerate(zip(current_dimension_exponents, base_dimension.simple_dimension.dimension_exponents)):
                 if current_exp != 0 and base_exp != 0:
                     dimension_match_index = i
                     break
                     
             # Check for pseudo dimension exponent matches
-            for i, (current_exp, base_exp) in enumerate(zip(current_pseudo_dimension_exponents, base_dimension.simple_unit_dimension.pseudo_dimension_exponents)):
+            for i, (current_exp, base_exp) in enumerate(zip(current_pseudo_dimension_exponents, base_dimension.simple_dimension.pseudo_dimension_exponents)):
                 if current_exp != 0 and base_exp != 0:
                     pseudo_dimension_match_index = i
                     break
@@ -196,14 +196,14 @@ class SimpleDimension(BaseDimension["SimpleDimension", "SimpleUnit"]):
             unit_exponent = 0.0
             if dimension_match_index != -1 and pseudo_dimension_match_index == -1:
                 # Only dimension match
-                unit_exponent = current_dimension_exponents[dimension_match_index] / base_dimension.simple_unit_dimension.dimension_exponents[dimension_match_index]
+                unit_exponent = current_dimension_exponents[dimension_match_index] / base_dimension.simple_dimension.dimension_exponents[dimension_match_index]
             elif dimension_match_index == -1 and pseudo_dimension_match_index != -1:
                 # Only pseudo dimension match
-                unit_exponent = current_pseudo_dimension_exponents[pseudo_dimension_match_index] / base_dimension.simple_unit_dimension.pseudo_dimension_exponents[pseudo_dimension_match_index]
+                unit_exponent = current_pseudo_dimension_exponents[pseudo_dimension_match_index] / base_dimension.simple_dimension.pseudo_dimension_exponents[pseudo_dimension_match_index]
             elif dimension_match_index != -1 and pseudo_dimension_match_index != -1:
                 # Both matches - they should be consistent
-                dim_ratio = current_dimension_exponents[dimension_match_index] / base_dimension.simple_unit_dimension.dimension_exponents[dimension_match_index]
-                pseudo_ratio = current_pseudo_dimension_exponents[pseudo_dimension_match_index] / base_dimension.simple_unit_dimension.pseudo_dimension_exponents[pseudo_dimension_match_index]
+                dim_ratio = current_dimension_exponents[dimension_match_index] / base_dimension.simple_dimension.dimension_exponents[dimension_match_index]
+                pseudo_ratio = current_pseudo_dimension_exponents[pseudo_dimension_match_index] / base_dimension.simple_dimension.pseudo_dimension_exponents[pseudo_dimension_match_index]
                 if abs(dim_ratio - pseudo_ratio) > 1e-10:  # Allow for floating point errors
                     raise ValueError(f"Inconsistent ratios for base dimension {base_dimension}: {dim_ratio} vs {pseudo_ratio}")
                 unit_exponent = dim_ratio
@@ -225,10 +225,10 @@ class SimpleDimension(BaseDimension["SimpleDimension", "SimpleUnit"]):
                         unit_string_parts.append(f"/{base_unit_string}^{abs(unit_exponent)}")
                 
                 # Subtract this base dimension contribution from current exponents
-                for i, base_exp in enumerate(base_dimension.simple_unit_dimension.dimension_exponents):
+                for i, base_exp in enumerate(base_dimension.simple_dimension.dimension_exponents):
                     current_dimension_exponents[i] -= base_exp * unit_exponent
                     
-                for i, base_exp in enumerate(base_dimension.simple_unit_dimension.pseudo_dimension_exponents):
+                for i, base_exp in enumerate(base_dimension.simple_dimension.pseudo_dimension_exponents):
                     current_pseudo_dimension_exponents[i] -= base_exp * unit_exponent
             
             # Check if we've accounted for all dimensions

@@ -1,14 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Final, Tuple, List, overload, Union, NamedTuple
+from typing import Final, Tuple, List, overload, Union
 import re
-import math
 import numpy as np
-from itertools import product
 
 from ..base_classes.base_unit import BaseUnit
 from ..unit_symbol import UnitSymbol
 from ..base_classes.base_dimension import BaseDimension
-from ..named_simple_dimensions import NamedSimpleDimension
 from .simple_dimension import SimpleDimension
 from .simple_unit_element import SimpleUnitElement
 
@@ -17,9 +14,10 @@ _SIMPLE_UNIT_CACHE: dict[str, "SimpleUnit"] = {}
 
 @dataclass(frozen=True, slots=True)
 class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
-    unit_elements: Final[tuple[SimpleUnitElement, ...]] = field()
+    unit_elements: Final[tuple[SimpleUnitElement, ...]] = field(init=False)
 
-    def __post_init__(self):
+    def __init__(self, unit_elements: tuple[SimpleUnitElement, ...]):
+        object.__setattr__(self, "unit_elements", unit_elements)
         quantity_exponents: list[float] = [0.0] * 7
         pseudo_quantity_exponents: list[int] = [0] * 2
         factor: float = 1
@@ -36,9 +34,9 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
             # Add quantity exponents (regardless of prefix)
             unit_symbol: UnitSymbol = unit_element.unit_symbol
             exponent: float = unit_element.exponent
-            for exponent_index, qty_exp in enumerate(unit_symbol.named_simple_unit_dimension.simple_unit_dimension.dimension_exponents):
+            for exponent_index, qty_exp in enumerate(unit_symbol.named_simple_dimension.simple_dimension.dimension_exponents):
                 quantity_exponents[exponent_index] += qty_exp * exponent
-            for exponent_index, pseudo_exp in enumerate(unit_symbol.named_simple_unit_dimension.simple_unit_dimension.pseudo_dimension_exponents):
+            for exponent_index, pseudo_exp in enumerate(unit_symbol.named_simple_dimension.simple_dimension.pseudo_dimension_exponents):
                 pseudo_quantity_exponents[exponent_index] += pseudo_exp * exponent
 
             if unit_symbol.value.offset != 0:
@@ -46,7 +44,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
                     raise ValueError("Cannot have two non-zero offsets in the same unit")
                 offset = unit_symbol.value.offset
 
-        object.__setattr__(self, "unit_dimension", SimpleDimension.create(quantity_exponents, pseudo_quantity_exponents))
+        object.__setattr__(self, "dimension", SimpleDimension.create(quantity_exponents, pseudo_quantity_exponents))
         object.__setattr__(self, "factor", factor)
         object.__setattr__(self, "offset", offset)
 
@@ -277,7 +275,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
             return "*".join(nominator_parts) + "/" + "*".join(denominator_parts)
         
     @staticmethod
-    def suggest_units(unit_dimension: BaseDimension, canonical_value: float|None, must_include: set[SimpleUnitElement]|list[SimpleUnitElement]=set(), n: int = 1000) -> Tuple["SimpleUnit", list["SimpleUnit"]]:
+    def suggest_units(dimension: SimpleDimension, canonical_value: float|None, must_include: set[SimpleUnitElement]|list[SimpleUnitElement]=set(), n: int = 1000) -> Tuple["SimpleUnit", list["SimpleUnit"]]:
         """
         Suggest units for a given dimension and canonical value, optimized for readability.
         
@@ -303,7 +301,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
         
         if canonical_value is None:
             # If no value given, just return a basic canonical unit
-            canonical_unit = unit_dimension.canonical_unit
+            canonical_unit = dimension.canonical_unit
             return canonical_unit, [canonical_unit]
         
         # Generate all possible unit combinations
@@ -318,7 +316,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
             # Try without prefix
             try:
                 unit = SimpleUnit((SimpleUnitElement("", symbol, 1.0),))
-                if unit.compatible_to(unit_dimension):
+                if unit.compatible_to(dimension):
                     unit_str = unit.format_string(no_fraction=False)
                     if unit_str not in seen_units:
                         compatible_units.append(unit)
@@ -332,7 +330,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
                     continue
                 try:
                     unit = SimpleUnit((SimpleUnitElement(prefix, symbol, 1.0),))
-                    if unit.compatible_to(unit_dimension):
+                    if unit.compatible_to(dimension):
                         unit_str = unit.format_string(no_fraction=False)
                         if unit_str not in seen_units:
                             compatible_units.append(unit)
@@ -356,7 +354,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
                                     SimpleUnitElement("", symbol1, exp1),
                                     SimpleUnitElement("", symbol2, exp2)
                                 ))
-                                if unit.compatible_to(unit_dimension):
+                                if unit.compatible_to(dimension):
                                     unit_str = unit.format_string(no_fraction=False)
                                     if unit_str not in seen_units:
                                         compatible_units.append(unit)
@@ -378,7 +376,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
             for element in required_elements:
                 try:
                     unit = SimpleUnit((element,))
-                    if unit.compatible_to(unit_dimension):
+                    if unit.compatible_to(dimension):
                         unit_str = unit.format_string(no_fraction=False)
                         if unit_str not in seen_units:
                             compatible_units.append(unit)
@@ -388,7 +386,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
         
         if not compatible_units:
             # Fallback to canonical unit
-            canonical_unit = unit_dimension.canonical_unit
+            canonical_unit = dimension.canonical_unit
             return canonical_unit, [canonical_unit]
         
         # Score each unit based on how "nice" the resulting value would be
@@ -419,7 +417,7 @@ class SimpleUnit(BaseUnit[SimpleDimension, "SimpleUnit"]):
             return suggestions[0], suggestions
         else:
             # Fallback
-            canonical_unit = unit_dimension.canonical_unit
+            canonical_unit = dimension.canonical_unit
             return canonical_unit, [canonical_unit]
     
     @staticmethod

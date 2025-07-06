@@ -1,7 +1,7 @@
 from typing import Generic, Iterator, TypeVar
-from ..united_dataframe import United_Dataframe
+from ..united_dataframe import UnitedDataframe
 from ..scalars.united_scalar import UnitedScalar
-from ..united_dataframe.united_dataframe import ColumnKey
+from ..united_dataframe import ColumnKey
 
 CK = TypeVar("CK", bound=ColumnKey|str)
 
@@ -9,8 +9,8 @@ class _RowAccessor(Generic[CK]):
     """
     Internal class for row-based access to cell values.
     """
-    def __init__(self, parent: United_Dataframe[CK], row_index: int):
-        self._parent: United_Dataframe[CK] = parent
+    def __init__(self, parent: UnitedDataframe[CK], row_index: int):
+        self._parent: UnitedDataframe[CK] = parent
         self._row_index: int = row_index
 
     def __getitem__(self, column_key: CK) -> UnitedScalar:

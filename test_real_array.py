@@ -3,9 +3,9 @@
 """Test script for RealArray implementation."""
 
 import numpy as np
-from src.united_system.real_array import RealArray
+from united_system.real_united_array import RealUnitedArray
 from src.united_system.unit import Unit
-from src.united_system.real_scalar import RealScalar
+from united_system.real_united_scalar import RealUnitedScalar
 
 def test_real_array():
     print("Testing RealArray implementation...")
@@ -14,15 +14,15 @@ def test_real_array():
     print("\n1. Testing constructor variants...")
     
     # From list with unit
-    distances = RealArray([1.0, 2.0, 3.0, 4.0, 5.0], Unit("m"))
+    distances = RealUnitedArray([1.0, 2.0, 3.0, 4.0, 5.0], Unit("m"))
     print(f"From list with unit: {distances}")
     
     # From numpy array with unit  
-    velocities = RealArray(np.array([10.0, 20.0, 30.0]), Unit("m/s"))
+    velocities = RealUnitedArray(np.array([10.0, 20.0, 30.0]), Unit("m/s"))
     print(f"From numpy array with unit: {velocities}")
     
     # Dimensionless array
-    ratios = RealArray([0.1, 0.2, 0.3, 0.4, 0.5])
+    ratios = RealUnitedArray([0.1, 0.2, 0.3, 0.4, 0.5])
     print(f"Dimensionless: {ratios}")
     
     # Test 2: Properties
@@ -49,7 +49,7 @@ def test_real_array():
     print(f"distances + distances: {doubled_distances}")
     
     # Array + Scalar
-    offset_distances = distances + RealScalar(1.0, Unit("m"))
+    offset_distances = distances + RealUnitedScalar(1.0, Unit("m"))
     print(f"distances + 1 m: {offset_distances}")
     
     # Array + Number
@@ -57,7 +57,7 @@ def test_real_array():
     print(f"distances * 2: {scaled_distances}")
     
     # Array arithmetic with different units
-    times = RealArray([1.0, 2.0, 3.0], Unit("s"))
+    times = RealUnitedArray([1.0, 2.0, 3.0], Unit("s"))
     speeds = distances[:3] / times
     print(f"distances / times = speeds: {speeds}")
     
@@ -92,18 +92,18 @@ def test_real_array():
     
     # Test 8: Factory methods
     print("\n8. Testing factory methods...")
-    zeros_array = RealArray.zeros(5, Unit("m"))
+    zeros_array = RealUnitedArray.zeros(5, Unit("m"))
     print(f"Zeros array: {zeros_array}")
     
-    ones_array = RealArray.ones((2, 3), Unit("kg"))
+    ones_array = RealUnitedArray.ones((2, 3), Unit("kg"))
     print(f"Ones array: {ones_array}")
     
-    dimensionless_array = RealArray.dimensionless([1, 2, 3, 4])
+    dimensionless_array = RealUnitedArray.dimensionless([1, 2, 3, 4])
     print(f"Dimensionless array: {dimensionless_array}")
     
     # Test 9: Compatibility
     print("\n9. Testing compatibility...")
-    more_distances = RealArray([6.0, 7.0], Unit("m"))
+    more_distances = RealUnitedArray([6.0, 7.0], Unit("m"))
     print(f"Compatible with more distances: {distances.compatible_with(more_distances)}")
     print(f"Compatible with velocities: {distances.compatible_with(velocities)}")
     

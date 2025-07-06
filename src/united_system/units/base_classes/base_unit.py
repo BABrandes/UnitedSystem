@@ -19,6 +19,11 @@ class BaseUnit(ABC, JSONable, HDF5able, Generic[DT, UT]):
     factor: float = field(init=False, hash=False, repr=False, compare=False)
     offset: float = field(init=False, hash=False, repr=False, compare=False)
 
+    @property
+    @abstractmethod
+    def dimension(self) -> DT:
+        ...
+
     @abstractmethod
     def compatible_to(self, other: UT) -> bool:
         raise NotImplementedError("compatible_to is not implemented for this unit")

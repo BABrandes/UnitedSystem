@@ -33,13 +33,16 @@ class Unit(JSONable, HDF5able):
         
         match unit_or_dimension:
             case SimpleUnit():
-                self._wrapped_unit = unit_or_dimension
+                object.__setattr__(self, "_wrapped_unit", unit_or_dimension)
                 
             case str():
-                self._wrapped_unit = SimpleUnit.parse_string(unit_or_dimension)
+                object.__setattr__(self, "_wrapped_unit", SimpleUnit.parse_string(unit_or_dimension))
 
             case Dimension():
-                self._wrapped_unit = SimpleUnit.parse_string(unit_or_dimension.canonical_unit.format_string(no_fraction=False))
+                object.__setattr__(self, "_wrapped_unit", SimpleUnit.parse_string(unit_or_dimension.canonical_unit.format_string(no_fraction=False)))
+        
+        # Initialize cached dimension
+        object.__setattr__(self, "_dimension", None)
 
 ########################################################
 
@@ -59,7 +62,7 @@ class Unit(JSONable, HDF5able):
     def dimension(self) -> Dimension:
         """Get the dimension of this unit."""
         if self._dimension is None:
-            self._dimension = Dimension(self._wrapped_unit.dimension)
+            object.__setattr__(self, "_dimension", Dimension(self._wrapped_unit.dimension))
         return self._dimension
     
 ########################################################

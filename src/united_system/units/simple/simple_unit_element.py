@@ -15,7 +15,7 @@ class SimpleUnitElement:
 
     @property
     def unit_dimension(self) -> "SimpleDimension":
-        return self.unit_symbol.value.named_simple_unit_dimension.simple_unit_dimension
+        return self.unit_symbol.value.named_simple_dimension.simple_dimension
     
     @property
     def canonical_factor(self) -> float:

@@ -23,7 +23,7 @@ class UnitSymbolTag(Enum):
 class UnitSymbolInformation:
     name: str
     symbols: list[str]
-    named_simple_unit_dimension: NamedSimpleDimension
+    named_simple_dimension: NamedSimpleDimension
     symbol_tags: set[UnitSymbolTag]
     factor: float = 1.0
     offset: float = 0.0
@@ -104,5 +104,5 @@ class UnitSymbol(Enum):
         raise ValueError(f"Unknown unit name: {name}")
 
     @property
-    def named_simple_unit_dimension(self) -> NamedSimpleDimension:
-        return self.value.named_simple_unit_dimension
+    def named_simple_dimension(self) -> NamedSimpleDimension:
+        return self.value.named_simple_dimension

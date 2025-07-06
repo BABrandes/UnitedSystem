@@ -4,15 +4,17 @@ from ..units.united import United
 from abc import ABC, abstractmethod
 from ..units.base_classes.base_unit import BaseDimension
 from ..units.base_classes.base_unit import BaseUnit
-from typing import TypeAlias, TypeVar, Generic
-from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
-from ..units.base_classes.base_unit import BaseUnit
+from typing import TypeAlias, TypeVar, Generic, TYPE_CHECKING
 
-UNITED_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar
+if TYPE_CHECKING:
+    from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
+    from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
+
+# Use string literals to avoid circular import
+UNITED_SCALAR_TYPE: TypeAlias = "RealUnitedScalar|ComplexUnitedScalar"
 
 PT = TypeVar("PT", bound=float|complex)
-UST = TypeVar("UST", bound=UNITED_SCALAR_TYPE)
+UST = TypeVar("UST", bound="UNITED_SCALAR_TYPE")
 UT = TypeVar("UT", bound=BaseUnit)
 UD = TypeVar("UD", bound=BaseDimension)
 

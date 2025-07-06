@@ -1,10 +1,10 @@
 from typing import Generic, TypeVar, Iterator, overload, Literal
-from ..united_dataframe.united_dataframe import UnitedDataframe, ColumnKey
+from ..united_dataframe import UnitedDataframe, ColumnKey
 from ..scalars.united_scalar import UnitedScalar
 from ..arrays.united_array.united_array import UnitedArray
 from ..units.unit_quantity import UnitQuantity
 from ..units.base_classes.base_unit import BaseUnit
-from ..united_dataframe.united_dataframe import Value_Type
+from ..united_dataframe import Value_Type
 import pandas as pd
 import numpy as np
 

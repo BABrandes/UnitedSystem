@@ -18,6 +18,21 @@ class BaseArray(ABC, JSONable, HDF5able, Generic[ST, AT]):
 
     canonical_np_array: np.ndarray
 
+    @property
+    def shape(self) -> tuple:
+        """Get the shape of the array."""
+        return self.canonical_np_array.shape
+    
+    @property
+    def size(self) -> int:
+        """Get the size of the array."""
+        return self.canonical_np_array.size
+    
+    @property 
+    def value_type(self) -> type:
+        """Get the value type of the array."""
+        return self.canonical_np_array.dtype.type
+
     @abstractmethod
     def get_scalar(self, index: int) -> ST:
         ...

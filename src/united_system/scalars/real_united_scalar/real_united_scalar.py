@@ -65,6 +65,11 @@ class RealUnitedScalar(
     ```
     """
     
+    # Explicit dataclass fields
+    canonical_value: float
+    dimension: SimpleDimension
+    display_unit: SimpleUnit = None
+    
     def __post_init__(self):
         """Initialize and validate the scalar."""
         # Call the core mixin's post_init for validation

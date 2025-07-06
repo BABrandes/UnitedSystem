@@ -6,7 +6,7 @@ This shows how easy it is to work with physical quantities using the
 UnitedSystem package through the RealScalar wrapper class.
 """
 
-from src.united_system import RealScalar
+from src.united_system import RealUnitedScalar
 
 def main():
     print("=== UNITED SYSTEM - REAL SCALAR EXAMPLE ===")
@@ -14,11 +14,11 @@ def main():
     
     # Create scalars with simple string constructors
     print("1. Creating physical quantities:")
-    distance = RealScalar("5 m")
-    time = RealScalar("2.5 s")
-    voltage = RealScalar("3.14 V")
-    current = RealScalar("0.5 A")
-    mass = RealScalar("10 kg")
+    distance = RealUnitedScalar("5 m")
+    time = RealUnitedScalar("2.5 s")
+    voltage = RealUnitedScalar("3.14 V")
+    current = RealUnitedScalar("0.5 A")
+    mass = RealUnitedScalar("10 kg")
     
     print(f"   Distance: {distance}")
     print(f"   Time: {time}")
@@ -29,8 +29,8 @@ def main():
     
     # Create scalars with separate value and unit
     print("2. Alternative constructor:")
-    temperature = RealScalar(298.15, "K")
-    pressure = RealScalar(1.013e5, "Pa")
+    temperature = RealUnitedScalar(298.15, "K")
+    pressure = RealUnitedScalar(1.013e5, "Pa")
     print(f"   Temperature: {temperature}")
     print(f"   Pressure: {pressure}")
     print()
@@ -62,7 +62,7 @@ def main():
     # Division by zero preserves units
     print("5. Division by zero preserves units:")
     infinite_velocity = distance / 0
-    zero_time = RealScalar("0 s")
+    zero_time = RealUnitedScalar("0 s")
     infinite_acceleration = velocity / zero_time
     
     print(f"   infinite velocity = {distance} / 0 = {infinite_velocity}")
@@ -79,15 +79,15 @@ def main():
     
     # Compatibility checking
     print("7. Compatibility checking:")
-    another_distance = RealScalar("10 km")
+    another_distance = RealUnitedScalar("10 km")
     print(f"   distance compatible with another_distance: {distance.compatible_with(another_distance)}")
     print(f"   distance compatible with velocity: {distance.compatible_with(velocity)}")
     print()
     
     # Equality
     print("8. Equality:")
-    same_distance = RealScalar("5 m")
-    different_distance = RealScalar("5 km")
+    same_distance = RealUnitedScalar("5 m")
+    different_distance = RealUnitedScalar("5 km")
     print(f"   distance == same_distance: {distance == same_distance}")
     print(f"   distance == different_distance: {distance == different_distance}")
     print()

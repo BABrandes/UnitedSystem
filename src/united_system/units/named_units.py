@@ -28,8 +28,8 @@ class NamedUnitInformation:
         if self._unit is None:
             from .simple.simple_unit import SimpleUnit
             unit = SimpleUnit.parse_string(self.unit_string)
-            if unit.dimension != self.named_simple_unit_dimension.simple_unit_dimension:
-                raise ValueError(f"Unit {self.unit_string} has canonical dimension {unit.dimension} but expected {self.named_simple_unit_dimension.simple_unit_dimension}")
+            if unit.dimension != self.named_simple_unit_dimension.simple_dimension:
+                raise ValueError(f"Unit {self.unit_string} has canonical dimension {unit.dimension} but expected {self.named_simple_unit_dimension.simple_dimension}")
             object.__setattr__(self, '_unit', unit)
         return self._unit
 

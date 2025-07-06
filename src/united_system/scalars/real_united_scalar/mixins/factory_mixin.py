@@ -36,7 +36,7 @@ class FactoryMixin:
         if len(split_string) == 1:
             # No unit specified - assume dimensionless
             value = str_to_float(split_string[0])
-            return cls(value, NamedSimpleDimension.NUMBER.simple_unit_dimension, NamedSimpleDimension.NUMBER.canonical_unit)
+            return cls(value, NamedSimpleDimension.NUMBER.simple_dimension, NamedSimpleDimension.NUMBER.canonical_unit)
         elif len(split_string) == 2:
             # Value and unit specified
             value_str, unit_str = split_string
@@ -51,4 +51,4 @@ class FactoryMixin:
         """Create a dimensionless scalar."""
         from ....units.named_simple_dimensions import NamedSimpleDimension
         from ..real_united_scalar import RealUnitedScalar
-        return cls(value, NamedSimpleDimension.NUMBER.simple_unit_dimension, NamedSimpleDimension.NUMBER.canonical_unit)
+        return cls(value, NamedSimpleDimension.NUMBER.simple_dimension, NamedSimpleDimension.NUMBER.canonical_unit)

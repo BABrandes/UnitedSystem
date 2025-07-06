@@ -14,7 +14,7 @@ AMOUNT_OF_SUBSTANCE_INDEX: int = 5
 LUMINOUS_INTENSITY_INDEX: int = 6
 
 DT = TypeVar("DT", bound="BaseDimension")
-UT = TypeVar("UT", bound=BaseUnit)
+UT = TypeVar("UT", bound="BaseUnit")
 
 @dataclass(frozen=True, slots=True)
 class BaseDimension(ABC, Generic[DT,UT]):
@@ -23,9 +23,9 @@ class BaseDimension(ABC, Generic[DT,UT]):
     A unit dimension represents the physical dimensions of a unit (e.g., length, mass, time).
     """
     
-    @abstractmethod
     @property
-    def canonical_unit(self) -> UT:
+    @abstractmethod
+    def canonical_unit(self) -> "UT":
         ...
 
     @abstractmethod

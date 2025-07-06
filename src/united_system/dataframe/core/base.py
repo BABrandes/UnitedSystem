@@ -19,8 +19,8 @@ from ...scalars.complex_united_scalar.complex_united_scalar import ComplexUnited
 from ...utils import JSONable, HDF5able
 from ...units.utils import United
 from ...arrays.utils import ArrayLike
-from ..legacy.utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-from ..legacy.column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
+from ..utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
+from ..column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
 

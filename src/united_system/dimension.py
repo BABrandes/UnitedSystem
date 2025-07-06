@@ -1,4 +1,3 @@
-
 from .utils import JSONable, HDF5able
 from typing import Union, Tuple, Optional, TYPE_CHECKING
 from .named_dimensions import NamedDimension, DimensionExponents
@@ -61,26 +60,26 @@ class Dimension(JSONable, HDF5able):
         
         if unit is not None:
             # Extract dimension from unit
-            self._wrapped_dimension = unit._wrapped_unit.dimension
+            object.__setattr__(self, "_wrapped_dimension", unit._wrapped_unit.dimension)
         else:
             match dimension:
                 case NamedDimension():
                     if isinstance(dimension.value, NamedSimpleDimension):
-                        self._wrapped_dimension = dimension.value.simple_unit_dimension
+                        object.__setattr__(self, "_wrapped_dimension", dimension.value.simple_dimension)
                     elif isinstance(dimension.value, DimensionExponents):
                         dim_exponents = [dimension.value.mass, dimension.value.time, dimension.value.length, dimension.value.current, dimension.value.temperature, dimension.value.amount, dimension.value.luminous_intensity]
                         pseudo_exponents = [dimension.value.angle, dimension.value.log_level]
-                        self._wrapped_dimension = SimpleDimension.create(dim_exponents, pseudo_exponents)
+                        object.__setattr__(self, "_wrapped_dimension", SimpleDimension.create(dim_exponents, pseudo_exponents))
                     else:
                         raise ValueError(f"Invalid dimension: {dimension}")
 
                 case DimensionExponents():
                     dim_exponents = [dimension.mass, dimension.time, dimension.length, dimension.current, dimension.temperature, dimension.amount, dimension.luminous_intensity]
                     pseudo_exponents = [dimension.angle, dimension.log_level]
-                    self._wrapped_dimension = SimpleDimension.create(dim_exponents, pseudo_exponents)
+                    object.__setattr__(self, "_wrapped_dimension", SimpleDimension.create(dim_exponents, pseudo_exponents))
                 
                 case SimpleDimension():
-                    self._wrapped_dimension = dimension
+                    object.__setattr__(self, "_wrapped_dimension", dimension)
                 
                 case None:
                     # Use individual exponents or default to dimensionless
@@ -97,21 +96,9 @@ class Dimension(JSONable, HDF5able):
                         int(angle or 0),
                         int(log_level or 0)
                     ]
-                    self._wrapped_dimension = SimpleDimension.create(dim_exponents, pseudo_exponents)
+                    object.__setattr__(self, "_wrapped_dimension", SimpleDimension.create(dim_exponents, pseudo_exponents))
                 case _:
                     raise ValueError(f"Invalid dimension: {dimension}")
-
-########################################################
-
-    # Fields of the wrapped dimension
-
-    @property
-    def dimension_exponents(self) -> Tuple[float, ...]:
-        return tuple(self._wrapped_dimension.dimension_exponents)
-    
-    @property
-    def pseudo_dimension_exponents(self) -> Tuple[int, ...]:
-        return tuple(self._wrapped_dimension.pseudo_dimension_exponents)
 
 ########################################################
 
@@ -128,8 +115,9 @@ class Dimension(JSONable, HDF5able):
         return tuple(self._wrapped_dimension.pseudo_dimension_exponents)
     
     @property
-    def canonical_unit(self) -> Unit:
+    def canonical_unit(self) -> "Unit":
         """Get the canonical unit for this dimension."""
+        from .unit import Unit
         return Unit(self._wrapped_dimension.canonical_unit)
     
     def is_dimensionless(self) -> bool:
@@ -164,7 +152,7 @@ class Dimension(JSONable, HDF5able):
         """Check equality."""
         if not isinstance(other, Dimension):
             return False
-        return self.simple_unit_dimension == other.simple_unit_dimension
+        return self._wrapped_dimension == other._wrapped_dimension
     
     def __ne__(self, other: "Dimension") -> bool:
         """Check inequality."""
@@ -174,7 +162,7 @@ class Dimension(JSONable, HDF5able):
         """Check if this dimension is compatible with another."""
         if not isinstance(other, Dimension):
             raise TypeError(f"Can only check compatibility with Dimension, got {type(other)}")
-        return self.simple_unit_dimension == other.simple_unit_dimension
+        return self._wrapped_dimension == other._wrapped_dimension
     
 ########################################################
 
@@ -182,11 +170,11 @@ class Dimension(JSONable, HDF5able):
     
     def __str__(self) -> str:
         """String representation."""
-        return str(self.simple_unit_dimension)
+        return str(self._wrapped_dimension)
     
     def __repr__(self) -> str:
         """Detailed string representation for debugging."""
-        return f"Dimension({self.simple_unit_dimension!r})"
+        return f"Dimension({self._wrapped_dimension!r})"
     
 ########################################################
 

@@ -1,25 +1,31 @@
 from typing import TypeAlias, Literal, overload, Any, NamedTuple
 from enum import Enum
 from dataclasses import dataclass
-import pandas as pd
-from pandas._typing import Dtype
-from ...scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from ...scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
-from ...arrays.real_united_array.real_united_array import RealUnitedArray
-from ...arrays.complex_united_array import ComplexUnitedArray
-from ...arrays.string_array import StringArray
-from ...arrays.int_array import IntArray
-from ...arrays.float_array import FloatArray
-from ...arrays.bool_array import BoolArray
-from ...arrays.timestamp_array import TimestampArray
-from pandas import Timestamp
-from ...units.base_classes.base_unit import BaseUnit
-import numpy as np
 import math
 
+import pandas as pd
+from pandas._typing import Dtype
+from pandas import Timestamp
+import numpy as np
+
+from ..unit import Unit
+from ..dimension import Dimension
+from ..real_united_scalar import RealUnitedScalar
+from ..complex_united_scalar import ComplexUnitedScalar
+from ..real_united_array import RealUnitedArray
+from ..complex_united_array import ComplexUnitedArray
+from ..string_array import StringArray
+from ..int_array import IntArray
+from ..float_array import FloatArray
+from ..bool_array import BoolArray
+from ..timestamp_array import TimestampArray
+
 PYTHON_SCALAR_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
+SCALAR_TYPE: TypeAlias = PYTHON_SCALAR_TYPE|RealUnitedScalar|ComplexUnitedScalar|str|bool|int|Timestamp
+NUMERIC_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar|int|float|complex|Timestamp
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray
 UNITED_ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray
+UNITED_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar
 ARRAY_STORAGE_TYPE: TypeAlias = float|complex|str|int|bool|Timestamp
 NUMPY_STORAGE_TYPE: TypeAlias = np.float64|np.float32|np.float16|np.complex128|np.complex64|np.int64|np.int32|np.int16|np.int8|np.bool_|np.datetime64
 
@@ -276,26 +282,83 @@ class ColumnType(Enum):
             or scalar_or_array_type == self.value.array_type
         )
     
-    def create_scalar_from_value(self, value: Any, display_unit: BaseUnit|None = None) -> SCALAR_TYPE:
-        if display_unit is not None:
-            if not self.value.has_unit:
-                raise ValueError(f"The column type {self.name} does not have a unit, so a display unit cannot be set.")
+    def create_scalar_from_value(self, canonical_value: float|complex|str|bool|int|Timestamp|None, dimension_or_display_unit: Dimension|Unit|None = None) -> SCALAR_TYPE:
+
+        if canonical_value is None:
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    return RealUnitedScalar.create_from_canonical_value(np.nan, dimension_or_display_unit)
+                case ColumnType.COMPLEX_NUMBER_128:
+                    raise ValueError(f"Complex United Scalar is not yet supported.")
+                case ColumnType.STRING:
+                    raise ValueError(f"Missing values are not supported for string types.")
+                case ColumnType.BOOL:
+                    raise ValueError(f"Missing values are not supported for boolean types.")
+                case ColumnType.TIMESTAMP:
+                    return pd.NaT
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    raise ValueError(f"Missing values are not supported for integer types.")
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    return math.nan
+                case ColumnType.COMPLEX_128:
+                    return math.nan + 1j
+                case _:
+                    raise ValueError(f"Unsupported column type: {self}")
+        
+        if isinstance(canonical_value, float) and self is not ColumnType.FLOAT_64 and self is not ColumnType.FLOAT_32 and self is not ColumnType.REAL_NUMBER_64 and self is not ColumnType.REAL_NUMBER_32:
+            raise ValueError(f"Invalid canonical value: {canonical_value} for column type {self.name}.")
+
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return RealUnitedScalar.create_converted_to_unit(value, display_unit)
+                if isinstance(dimension_or_display_unit, Unit):
+                    display_unit: Unit = dimension_or_display_unit
+                    return RealUnitedScalar.create_from_canonical_value(canonical_value, display_unit)
+                elif isinstance(dimension_or_display_unit, Dimension):
+                    dimension: Dimension = dimension_or_display_unit
+                    return RealUnitedScalar.create_from_canonical_value(canonical_value, dimension)
+                else:
+                    raise ValueError(f"Invalid dimension or display unit: {dimension_or_display_unit}")
             case ColumnType.COMPLEX_NUMBER_128:
-                return ComplexUnitedScalar.create(value, display_unit)
+                raise ValueError(f"Complex United Scalar is not yet supported.")
             case ColumnType.STRING:
-                return str(value)
+                return str(canonical_value)
             case ColumnType.BOOL:
-                return bool(value)
+                return bool(canonical_value)
             case ColumnType.TIMESTAMP:
-                return Timestamp(value)
+                return Timestamp(canonical_value)
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return int(value)
+                return int(canonical_value)
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return float(value)
+                return float(canonical_value)
             case ColumnType.COMPLEX_128:
-                return complex(value)
+                return complex(canonical_value)
+            case _:
+                raise ValueError(f"Unsupported column type: {self}")
+            
+    def create_array_from_canonical_values(self, canonical_values: np.ndarray, dimension_or_display_unit: Dimension|Unit|None = None) -> ARRAY_TYPE:
+        match self:
+            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                if isinstance(dimension_or_display_unit, Unit):
+                    display_unit: Unit = dimension_or_display_unit
+                    return RealUnitedArray.create_from_canonical_values(canonical_values, display_unit)
+                elif isinstance(dimension_or_display_unit, Dimension):
+                    dimension: Dimension = dimension_or_display_unit
+                    return RealUnitedArray.create_from_canonical_values(canonical_values, dimension)
+                else:
+                    raise ValueError(f"Invalid dimension or display unit: {dimension_or_display_unit}")
+            case ColumnType.COMPLEX_NUMBER_128:
+                raise ValueError(f"Complex United Array is not yet supported.")
+            case ColumnType.STRING:
+                return StringArray(canonical_values)
+            case ColumnType.BOOL:
+                return BoolArray(canonical_values)
+            case ColumnType.TIMESTAMP:
+                return TimestampArray(canonical_values)
+            case ColumnType.COMPLEX_128:
+                raise ValueError(f"Complex United Array is not yet supported.")
+            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                return FloatArray(canonical_values)
+            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                return IntArray(canonical_values)
             case _:
                 raise ValueError(f"Unsupported column type: {self}")

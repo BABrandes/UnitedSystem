@@ -1,4 +1,4 @@
-from .scalars.real_united_scalar import RealUnitedScalar
+from .scalars.real_united_scalar import RealUnitedScalar as InternalRealUnitedScalar
 from typing import Union, TYPE_CHECKING, Optional
 from .utils import JSONable, HDF5able
 import h5py
@@ -10,13 +10,13 @@ if TYPE_CHECKING:
     from .unit import Unit
 
 @dataclass(frozen=True, slots=True, init=False)
-class RealScalar(JSONable, HDF5able):
+class RealUnitedScalar(JSONable, HDF5able):
 
 ########################################################
 
     # Fields
 
-    _wrapped_real_scalar: RealUnitedScalar = field(init=False, hash=False, repr=False, compare=False)
+    _wrapped_real_scalar: InternalRealUnitedScalar = field(init=False, hash=False, repr=False, compare=False)
     _dimension: Dimension = field(init=False, hash=False, repr=False, compare=False)
     _display_unit: Unit = field(init=False, hash=False, repr=False, compare=False)
 
@@ -26,14 +26,14 @@ class RealScalar(JSONable, HDF5able):
 
     # Constructor
 
-    def __init__(self, value: Union[float, int, str, RealUnitedScalar], unit: Optional["Unit"] = None):
+    def __init__(self, value: Union[float, int, str, InternalRealUnitedScalar], unit: Optional["Unit"] = None):
         """
-        Create a RealScalar from various input formats.
+        Create a RealUnitedScalar from various input formats.
         
         Examples:
-            RealScalar("5 m")           # String with value and unit
-            RealScalar(5, Unit("m"))    # Separate value and Unit object
-            RealScalar(0.5)             # Dimensionless number
+            RealUnitedScalar("5 cm")           # String with value and unit
+            RealUnitedScalar(5, Unit("cm"))    # Separate value and Unit object
+            RealUnitedScalar(0.5)             # Dimensionless number
         """
 
         # Set the wrapped real scalar
@@ -41,20 +41,33 @@ class RealScalar(JSONable, HDF5able):
             case str():
                 if unit is not None:
                     raise ValueError("Cannot specify unit when using string input")
-                self._wrapped_real_scalar = RealUnitedScalar.parse_string(value)
+                object.__setattr__(self, "_wrapped_real_scalar", InternalRealUnitedScalar.parse_string(value))
                 
             case float() | int():
-                self._wrapped_real_scalar = RealUnitedScalar.create_from_value_and_unit(value, unit._wrapped_unit)
+                if unit is None:
+                    # Create dimensionless
+                    object.__setattr__(self, "_wrapped_real_scalar", InternalRealUnitedScalar.create_dimensionless(float(value)))
+                else:
+                    object.__setattr__(self, "_wrapped_real_scalar", InternalRealUnitedScalar.create_from_value_and_unit(value, unit._wrapped_unit))
 
-            case RealUnitedScalar():
-                self._wrapped_real_scalar = value
+            case InternalRealUnitedScalar():
+                object.__setattr__(self, "_wrapped_real_scalar", value)
         
-        # Set the attributes from the wrapped real scalar
-        self.canonical_value = self._wrapped_real_scalar.canonical_value
-        self.dimension: Dimension = Dimension(self._wrapped_real_scalar.dimension)
-        self.display_unit: Unit = Unit(self._wrapped_real_scalar.display_unit)
+        # Set the cached attributes
+        object.__setattr__(self, "_dimension", None)
+        object.__setattr__(self, "_display_unit", None)
 
-        self.__post_init__()
+    @classmethod
+    def create_from_canonical_value(cls, canonical_value: float, display_unit_or_dimension: Unit|Dimension) -> "RealUnitedScalar":
+        """Create a RealUnitedScalar from a canonical value and a unit."""
+        if isinstance(display_unit_or_dimension, Unit):
+            display_unit: Unit = display_unit_or_dimension
+            return cls(InternalRealUnitedScalar(canonical_value, display_unit.dimension._wrapped_dimension), display_unit._wrapped_unit)
+        elif isinstance(display_unit_or_dimension, Dimension):
+            dimension: Dimension = display_unit_or_dimension
+            return cls(InternalRealUnitedScalar(canonical_value, dimension._wrapped_dimension), None)
+        else:
+            raise ValueError(f"Invalid display unit or dimension: {display_unit_or_dimension}")
 
 ########################################################
 
@@ -67,80 +80,80 @@ class RealScalar(JSONable, HDF5able):
     @property
     def dimension(self) -> Dimension:
         if self._dimension is None:
-            self._dimension = Dimension(self._wrapped_real_scalar.dimension)
+            object.__setattr__(self, "_dimension", Dimension(self._wrapped_real_scalar.dimension))
         return self._dimension
     
     @property
-    def display_unit(self) -> Unit:
-        if self._display_unit is None:
-            self._display_unit = Unit(self._wrapped_real_scalar.display_unit)
+    def display_unit(self) -> Optional[Unit]:
+        if self._display_unit is None and self._wrapped_real_scalar.display_unit is not None:
+            object.__setattr__(self, "_display_unit", Unit(self._wrapped_real_scalar.display_unit))
         return self._display_unit
     
 ########################################################
 
     # Arithmetic operations
 
-    def __add__(self, other: "RealScalar") -> "RealScalar":
+    def __add__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Add two scalars."""
-        return RealScalar(self._wrapped_real_scalar + other._wrapped_real_scalar)
+        return RealUnitedScalar(self._wrapped_real_scalar + other._wrapped_real_scalar)
     
-    def __radd__(self, other: "RealScalar") -> "RealScalar":
+    def __radd__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Add two scalars (reverse)."""
         return other + self
     
-    def __sub__(self, other: "RealScalar") -> "RealScalar":
+    def __sub__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Subtract two scalars."""
-        return RealScalar(self._wrapped_real_scalar - other._wrapped_real_scalar)
+        return RealUnitedScalar(self._wrapped_real_scalar - other._wrapped_real_scalar)
     
-    def __rsub__(self, other: "RealScalar") -> "RealScalar":
+    def __rsub__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Subtract scalars (reverse)."""
         return other - self
     
-    def __mul__(self, other: Union["RealScalar", float, int]) -> "RealScalar":
+    def __mul__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Multiply scalar by another scalar or number."""
-        return RealScalar(self._wrapped_real_scalar * other._wrapped_real_scalar if isinstance(other, RealScalar) else self._wrapped_real_scalar * other)
+        return RealUnitedScalar(self._wrapped_real_scalar * other._wrapped_real_scalar if isinstance(other, RealUnitedScalar) else self._wrapped_real_scalar * other)
     
-    def __rmul__(self, other: Union[float, int]) -> "RealScalar":
+    def __rmul__(self, other: Union[float, int]) -> "RealUnitedScalar":
         """Multiply number by scalar (reverse)."""
         return self * other
     
-    def __truediv__(self, other: Union["RealScalar", float, int]) -> "RealScalar":
+    def __truediv__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Divide scalar by another scalar or number."""
-        return RealScalar(self._wrapped_real_scalar / other._wrapped_real_scalar if isinstance(other, RealScalar) else self._wrapped_real_scalar / other)
+        return RealUnitedScalar(self._wrapped_real_scalar / other._wrapped_real_scalar if isinstance(other, RealUnitedScalar) else self._wrapped_real_scalar / other)
     
-    def __rtruediv__(self, other: Union[float, int]) -> "RealScalar":
+    def __rtruediv__(self, other: Union[float, int]) -> "RealUnitedScalar":
         """Divide number by scalar (reverse)."""
-        return RealScalar(other / self._wrapped_real_scalar)
+        return RealUnitedScalar(other / self._wrapped_real_scalar)
     
-    def __pow__(self, exponent: float) -> "RealScalar":
+    def __pow__(self, exponent: float) -> "RealUnitedScalar":
         """Raise scalar to a power."""
-        return RealScalar(self._wrapped_real_scalar ** exponent)
+        return RealUnitedScalar(self._wrapped_real_scalar ** exponent)
 
     ########################################################
 
     # Comparison operations (basic equality only for now)
 
-    def __eq__(self, other: "RealScalar") -> bool:
+    def __eq__(self, other: "RealUnitedScalar") -> bool:
         """Check equality."""
         return self._wrapped_real_scalar == other._wrapped_real_scalar
     
-    def __ne__(self, other: "RealScalar") -> bool:
+    def __ne__(self, other: "RealUnitedScalar") -> bool:
         """Check inequality."""
         return not self == other
     
-    def __lt__(self, other: "RealScalar") -> bool:
+    def __lt__(self, other: "RealUnitedScalar") -> bool:
         """Check if scalar is less than another scalar."""
         return self._wrapped_real_scalar < other._wrapped_real_scalar
     
-    def __le__(self, other: "RealScalar") -> bool:
+    def __le__(self, other: "RealUnitedScalar") -> bool:
         """Check if scalar is less than or equal to another scalar."""
         return self._wrapped_real_scalar <= other._wrapped_real_scalar
     
-    def __gt__(self, other: "RealScalar") -> bool:
+    def __gt__(self, other: "RealUnitedScalar") -> bool:
         """Check if scalar is greater than another scalar."""
         return self._wrapped_real_scalar > other._wrapped_real_scalar
     
-    def __ge__(self, other: "RealScalar") -> bool:
+    def __ge__(self, other: "RealUnitedScalar") -> bool:
         """Check if scalar is greater than or equal to another scalar."""
         return self._wrapped_real_scalar >= other._wrapped_real_scalar
 
@@ -179,13 +192,13 @@ class RealScalar(JSONable, HDF5able):
     
     def is_infinite(self) -> bool:
         """Check if the value is infinite."""
-        return self._wrapped_real_scalar.is_infinite
+        return self._wrapped_real_scalar.is_infinite()
     
     def is_finite(self) -> bool:
         """Check if the value is finite."""
-        return self._wrapped_real_scalar.is_finite
+        return self._wrapped_real_scalar.is_finite()
     
-    def compatible_with(self, other: "RealScalar") -> bool:
+    def compatible_with(self, other: "RealUnitedScalar") -> bool:
         """Check if this scalar is compatible (same dimension) with another."""
         return self._wrapped_real_scalar.compatible_to(other._wrapped_real_scalar)
     
@@ -198,13 +211,13 @@ class RealScalar(JSONable, HDF5able):
         return self._wrapped_real_scalar.to_json()
     
     @classmethod
-    def from_json(cls, data: dict) -> "RealScalar":
-        return cls(RealUnitedScalar.from_json(data))
+    def from_json(cls, data: dict) -> "RealUnitedScalar":
+        return cls(InternalRealUnitedScalar.from_json(data))
     
     def to_hdf5(self, hdf5_group: h5py.Group) -> None:
         """Convert to HDF5 group for serialization."""
         self._wrapped_real_scalar.to_hdf5(hdf5_group)
     
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group) -> "RealScalar":
-        return cls(RealUnitedScalar.from_hdf5(hdf5_group))
+    def from_hdf5(cls, hdf5_group: h5py.Group) -> "RealUnitedScalar":
+        return cls(InternalRealUnitedScalar.from_hdf5(hdf5_group))

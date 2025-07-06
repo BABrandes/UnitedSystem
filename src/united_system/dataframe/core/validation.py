@@ -15,8 +15,8 @@ from ...scalars.united_scalar import UnitedScalar
 from ...utils import JSONable, HDF5able
 from ...units.utils import United
 from ...arrays.utils import ArrayLike
-from ..legacy.utils import ColumnKey, ColumnInformation
-from ..legacy.column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
+from ..utils import ColumnKey, ColumnInformation
+from ..column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
 CK_CF = TypeVar("CK_CF", bound=ColumnKey|str, default=str)

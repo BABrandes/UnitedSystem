@@ -1,43 +1,37 @@
-from h5py._hl.group import Group
-from ..units.base_classes.base_unit import BaseUnit, UnitQuantity
-from ..scalars.united_scalar import UnitedScalar
-import pandas as pd
-import numpy as np
-from typing import Callable, Generic, TypeVar, overload, cast, Iterator, Literal
-from datetime import datetime
-from pandas._typing import Dtype
-from ..arrays.united_array.united_array import UnitedArray
-from ..units.unit_quantity import UnitQuantity
-from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
-from ..united_dataframe._column_accessor import _ColumnAccessor
-from ..united_dataframe._row_accessor import _RowAccessor
-from ..united_dataframe._group import GroupBy
-from contextlib import ExitStack
-from readerwriterlock import rwlock
-import math
-from typing import Any
+
+from typing import Callable, Generic, TypeVar, overload, cast, Iterator, Literal, Any
 import operator
-from ..utils import JSONable, HDF5able
-from ..units.utils import United
-from ..arrays.utils import ArrayLike
-from ..scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from ..scalars.complex_united_scalar.complex_united_scalar import ComplexUnitedScalar
-from ..arrays.real_united_array.real_united_array import RealUnitedArray
-from ..arrays.complex_united_array import ComplexUnitedArray
-from ..arrays.string_array import StringArray
-from ..arrays.int_array import IntArray
-from ..arrays.float_array import FloatArray
-from ..arrays.bool_array import BoolArray
-from ..arrays.timestamp_array import TimestampArray
-from ..arrays.complex_array import ComplexArray
+import math
+import pandas as pd
 from pandas import Timestamp
-from ..united_dataframe.legacy.utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
-from ..united_dataframe.legacy.column_type import ColumnType, SCALAR_TYPE, ARRAY_TYPE
+from pandas._typing import Dtype
+from contextlib import ExitStack
+import numpy as np
+from readerwriterlock import rwlock
+from h5py import Group
+
+from .dimension import Dimension
+from .unit import Unit
+from .real_united_scalar import RealUnitedScalar
+from .complex_united_scalar import ComplexUnitedScalar
+from .real_united_array import RealUnitedArray
+from .complex_united_array import ComplexUnitedArray
+from .string_array import StringArray
+from .int_array import IntArray
+from .float_array import FloatArray
+from .bool_array import BoolArray
+from .timestamp_array import TimestampArray
+from .complex_array import ComplexArray
+
+from .utils import JSONable, HDF5able
+from .units.united import United
+from .dataframe.column_type import ColumnType, ARRAY_TYPE, SCALAR_TYPE, UNITED_ARRAY_TYPE, ARRAY_STORAGE_TYPE, NUMPY_STORAGE_TYPE, UNITED_SCALAR_TYPE, NUMERIC_SCALAR_TYPE
+from .dataframe.utils import ColumnKey, ColumnInformation, InternalDataFrameNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
+from .dataframe._column_accessor import _ColumnAccessor
+from .dataframe._row_accessor import _RowAccessor
+from .dataframe._group_by import _GroupBy
 
 CK = TypeVar("CK", bound=ColumnKey|str, default=str)
-CK_I2 = TypeVar("CK_I2", bound=ColumnKey|str, default=str)
-
 CK_CF = TypeVar("CK_CF", bound=ColumnKey|str, default=str)
 
 class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
@@ -95,8 +89,8 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         
         # Step 3: Generate the dictionaries from the column information
         self._column_keys: list[CK] = list(self._column_information.keys())
-        self._unit_quantities: dict[CK, UnitQuantity|None] = {column_key: column_information.unit_quantity for column_key, column_information in self._column_information.items()}
-        self._display_units: dict[CK, BaseUnit|None] = {column_key: column_information.display_unit for column_key, column_information in self._column_information.items()}
+        self._dimensions: dict[CK, Dimension|None] = {column_key: column_information.unit_quantity for column_key, column_information in self._column_information.items()}
+        self._display_units: dict[CK, Unit|None] = {column_key: column_information.display_unit for column_key, column_information in self._column_information.items()}
         self._column_types: dict[CK, ColumnType] = {column_key: column_information.column_type for column_key, column_information in self._column_information.items()}
         self._internal_dataframe_column_strings: dict[CK, str] = {column_key: column_information.internal_dataframe_column_name(column_key, self._internal_dataframe_column_name_formatter) for column_key, column_information in self._column_information.items()}
 
@@ -121,6 +115,27 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return len(self._internal_canonical_dataframe)
     
+    def is_empty(self) -> bool:
+        """
+        Check if the dataframe is empty.
+        """
+        with self._rlock:
+            return len(self._internal_canonical_dataframe) == 0
+        
+    def is_numeric(self, column_key: CK) -> bool:
+        """
+        Check if a column is numeric.
+        """
+        with self._rlock:
+            return self.column_type(column_key).is_numeric()
+        
+    def has_unit(self, column_key: CK) -> bool:
+        """
+        Check if a column has a unit.
+        """
+        with self._rlock:
+            return self.column_type(column_key).has_unit()
+
     @property
     def cols(self) -> int:
         """
@@ -162,7 +177,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     def column_information(self, column_key: CK) -> ColumnInformation[CK]:
         with self._rlock:
-            return ColumnInformation(column_key, self._unit_quantities[column_key], self._value_types[column_key])
+            return ColumnInformation(column_key, self._dimensions[column_key], self._value_types[column_key])
         
     def compatible_with_column(self, column_key: CK, value: SCALAR_TYPE|ARRAY_TYPE|np.ndarray|pd.Series) -> bool:
         """Check if a value is compatible with a value type and /or unit."""
@@ -172,7 +187,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             match column_type.value.has_unit, isinstance(value, United):
                 case True, True:
                     # Good so far: The column has a unit, and the value has a unit.
-                    if value.unit_quantity != self.unit_quantities(column_key):
+                    if value.unit_quantity != self.dimensions(column_key):
                         # Failed: The units are not the same.
                         return False
                 case True, False:
@@ -352,27 +367,27 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
     
     # ----------- Retrievals: Display Units ------------
 
-    def display_unit(self, column_key: CK) -> BaseUnit:
+    def display_unit(self, column_key: CK) -> Unit:
         with self._rlock:
             return self._display_units[column_key]
 
     @overload
-    def display_units(self, column_keys: CK) -> BaseUnit:
+    def display_units(self, column_keys: CK) -> Unit:
         ... 
 
     @overload
-    def display_units(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[BaseUnit]:
+    def display_units(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[Unit]:
         ...
 
     @overload
-    def display_units(self, column_keys: list[CK]) -> list[BaseUnit]:
+    def display_units(self, column_keys: list[CK]) -> list[Unit]:
         ...
 
     @overload
-    def display_units(self, column_keys: set[CK]) -> set[BaseUnit]:
+    def display_units(self, column_keys: set[CK]) -> set[Unit]:
         ...
 
-    def display_units(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> BaseUnit|list[BaseUnit]|set[BaseUnit]:
+    def display_units(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> Unit|list[Unit]|set[Unit]:
         """
         Get the display unit(s) by column key(s).
         
@@ -391,12 +406,12 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     else:
                         return [self._display_units[column_keys]] + [self._display_units[more_column_key] for more_column_key in more_column_keys]
                 case list():
-                    display_units_as_list: list[BaseUnit] = []
+                    display_units_as_list: list[Unit] = []
                     for column_key in column_keys:
                         display_units_as_list.append(self._display_units[column_key])
                     return display_units_as_list
                 case set():
-                    display_units_as_set: set[BaseUnit] = set()
+                    display_units_as_set: set[Unit] = set()
                     for column_key in column_keys:
                         display_units_as_set.add(self._display_units[column_key])
                     return display_units_as_set
@@ -404,7 +419,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     raise ValueError(f"Invalid column keys: {column_keys}.")
     
     @property
-    def display_unit_dict(self) -> dict[CK, BaseUnit]:
+    def display_unit_dict(self) -> dict[CK, Unit]:
         """
         Get a dictionary mapping column keys to their display units.
         
@@ -416,67 +431,67 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- Retrievals: UnitQuantity ------------
 
-    def UnitQuantity(self, column_key: CK) -> UnitQuantity:
+    def Dimension(self, column_key: CK) -> Dimension:
         with self._rlock:
-            return self._unit_quantities[column_key]
+            return self._dimensions[column_key]
 
     @overload
-    def unit_quantities(self, column_keys: CK) -> UnitQuantity:
+    def dimensions(self, column_keys: CK) -> Dimension:
         ...
 
     @overload
-    def unit_quantities(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[UnitQuantity]:
+    def dimensions(self, column_keys: CK|None=None, *more_column_keys: CK) -> list[Dimension]:
         ...
 
     @overload
-    def unit_quantities(self, column_keys: list[CK]) -> list[UnitQuantity]:
+    def dimensions(self, column_keys: list[CK]) -> list[Dimension]:
         ...
 
     @overload
-    def unit_quantities(self, column_keys: set[CK]) -> set[UnitQuantity]:
+    def dimensions(self, column_keys: set[CK]) -> set[Dimension]:
         ...
 
-    def unit_quantities(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> UnitQuantity|list[UnitQuantity]|set[UnitQuantity]:
+    def dimensions(self, column_keys: CK|list[CK]|set[CK]|None=None, *more_column_keys: CK) -> Dimension|list[Dimension]|set[Dimension]:
         """
-        Get the SI quantity(ies) by column key(s).
+        Get the dimension(s) by column key(s).
         
         Args:
-            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the SI quantity(ies) of. If None, all column keys are used.
+            column_keys (CK|list[CK]|set[CK]|None): The column key(s) to get the dimension(s) of. If None, all column keys are used.
             *more_column_keys (CK): Additional column keys to get the value type(s) of.
             
         Returns:
-            UnitQuantity|list[UnitQuantity]|set[UnitQuantity]: The SI quantity(ies) of the specified column(s)
+            Dimension|list[Dimension]|set[Dimension]: The dimension(s) of the specified column(s)
         """
         with self._rlock:
             match column_keys:
                 case ColumnKey()|str():
                     if len(more_column_keys) == 0:
-                        return self._unit_quantities[column_keys]
+                        return self._dimensions[column_keys]
                     else:
-                        return [self._unit_quantities[column_keys]] + [self._unit_quantities[more_column_key] for more_column_key in more_column_keys]
+                        return [self._dimensions[column_keys]] + [self._dimensions[more_column_key] for more_column_key in more_column_keys]
                 case list():
-                    si_quantities_as_list: list[UnitQuantity] = []
+                    dimensions_as_list: list[Dimension] = []
                     for column_key in column_keys:
-                        si_quantities_as_list.append(self._unit_quantities[column_key])
-                    return si_quantities_as_list
+                        dimensions_as_list.append(self._dimensions[column_key])
+                    return dimensions_as_list
                 case set():
-                    si_quantities_as_set: set[UnitQuantity] = set()
+                    dimensions_as_set: set[Dimension] = set()
                     for column_key in column_keys:
-                        si_quantities_as_set.add(self._unit_quantities[column_key])
-                    return si_quantities_as_set
+                        dimensions_as_set.add(self._dimensions[column_key])
+                    return dimensions_as_set
                 case _:
                     raise ValueError(f"Invalid column keys: {column_keys}.")
     
     @property
-    def UnitQuantity_dict(self) -> dict[CK, UnitQuantity]:
+    def Dimensions_dict(self) -> dict[CK, Dimension]:
         """
-        Get a dictionary mapping column keys to their SI quantities.
+        Get a dictionary mapping column keys to their dimensions.
         
         Returns:
-            dict[CK, UnitQuantity]: Dictionary mapping column keys to SI quantities
+            dict[CK, Dimension]: Dictionary mapping column keys to dimensions
         """
         with self._rlock:
-            return self._unit_quantities.copy()
+            return self._dimensions.copy()
 
     # ----------- Internal Dataframe Column Strings ------------
 
@@ -549,7 +564,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         Get the column information list.
         """
         with self._rlock:
-            return {column_key: ColumnInformation[CK](column_key, self._unit_quantities[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
+            return {column_key: ColumnInformation[CK](column_key, self._dimensions[column_key], self._column_types[column_key], self._display_units[column_key]) for column_key in self._column_keys}
 
     def column_information_of_type(self, *column_key_types: type[CK_CF]) -> list[tuple[CK_CF, ColumnInformation[CK_CF]]]:
         """
@@ -563,7 +578,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 if isinstance(column_key_filtered_type, tuple(column_key_types)):
                     column_information_of_type.append(ColumnInformation[CK_CF](
                         column_key_filtered_type,
-                        self._unit_quantities[column_key],
+                        self._dimensions[column_key],
                         self._column_types[column_key],
                         self._display_units[column_key]))
             return [(column_key, column_information) for column_key, column_information in column_information_of_type]
@@ -644,13 +659,13 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self._column_keys[self._column_keys.index(current_column_key)] = new_column_key
             self._internal_dataframe_column_strings.pop(current_column_key)
             self._internal_dataframe_column_strings[new_column_key] = new_internal_dataframe_column_name
-            self._unit_quantities[new_column_key] = self._unit_quantities.pop(current_column_key)
+            self._dimensions[new_column_key] = self._dimensions.pop(current_column_key)
             self._column_types[new_column_key] = self._column_types.pop(current_column_key)
             self._display_units[new_column_key] = self._display_units.pop(current_column_key)
 
     # ----------- Column operations ------------
 
-    def column_values_as_numpy_array(self, column_key: CK, in_units: BaseUnit|None=None, precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> np.ndarray:
+    def column_values_as_numpy_array(self, column_key: CK, in_units: Unit|None=None, precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> np.ndarray:
         """
         Get a column as a numpy array in the specified units.
         
@@ -677,9 +692,9 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 case False, _:
                     raise ValueError(f"Column {dataframe_column_name} must not have a unit, but got {in_units}.")
                 case True, _:
-                    unit_quantity: UnitQuantity = self._unit_quantities[column_key]
-                    if in_units.unit_quantity != unit_quantity:
-                        raise ValueError(f"Unit {in_units} is not compatible with the unit quantity {unit_quantity} of the column {dataframe_column_name}.")
+                    dimension: Dimension = self._dimensions[column_key]
+                    if in_units.unit_quantity != dimension:
+                        raise ValueError(f"Unit {in_units} is not compatible with the unit quantity {dimension} of the column {dataframe_column_name}.")
                     return in_units.from_canonical_value(self._internal_canonical_dataframe[dataframe_column_name].to_numpy()).astype(numpy_type)
         
     def column_values_as_numpy_array_in_canonical_units(self, column_key: CK) -> np.ndarray:
@@ -690,9 +705,9 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             column_type: ColumnType = self._column_types[column_key]
             if not column_type.value.has_unit:
                 raise ValueError(f"There is no canonical unit for column {column_key}.")
-            return self.column_values_as_numpy_array(column_key, self._unit_quantities[column_key].canonical_unit())
+            return self.column_values_as_numpy_array(column_key, self._dimensions[column_key].canonical_unit())
 
-    def column_values_as_array(self, column_key: CK, display_unit: BaseUnit|None=None) -> ArrayLike[RealUnitedScalar|ComplexUnitedArray|float|int|str|bool|Timestamp]:
+    def column_values_as_array(self, column_key: CK, display_unit: Unit|None=None) -> ARRAY_TYPE:
         """
         Get a column as a United_Array with its display unit.
         
@@ -735,7 +750,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 case _:
                     raise ValueError(f"Column {column_key} is not a United_Array of type {column_type.value.array_type}.")
 
-    def column_values_as_real_united_array(self, column_key: CK, display_unit: BaseUnit|None=None) -> RealUnitedArray:
+    def column_values_as_real_united_array(self, column_key: CK, display_unit: Unit|None=None) -> RealUnitedArray:
         """
         Get a column as a RealUnitedArray with its display unit.
         """
@@ -744,7 +759,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 raise ValueError(f"Column {column_key} is not a RealUnitedArray.")
             return cast(RealUnitedArray, self.column_values_as_array(column_key, display_unit))
         
-    def column_values_as_string_array(self, column_key: CK, display_unit: BaseUnit|None=None) -> ComplexUnitedArray:
+    def column_values_as_string_array(self, column_key: CK, display_unit: Unit|None=None) -> ComplexUnitedArray:
         """
         Get a column as a ComplexUnitedArray with its display unit.
         """
@@ -753,7 +768,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 raise ValueError(f"Column {column_key} is not a StringArray.")
             return cast(StringArray, self.column_values_as_array(column_key, display_unit))
 
-    def set_column_values_from_numpy_array(self, column_key: CK, values: np.ndarray, unit: BaseUnit, precision: Literal["32", "64"]|None=None) -> None:
+    def set_column_values_from_numpy_array(self, column_key: CK, values: np.ndarray, unit: Unit, precision: Literal["32", "64"]|None=None) -> None:
         """
         Set column values from a numpy array with the specified unit.
         
@@ -772,13 +787,13 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if len(values) != len(self._internal_canonical_dataframe):
                 raise ValueError(f"The number of values ({len(values)}) does not match the number of rows ({len(self._internal_canonical_dataframe)}).")
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if unit.unit_quantity != self._unit_quantities[column_key]:
-                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._unit_quantities[column_key]} of column {column_key}.")
+            if unit.unit_quantity != self._dimensions[column_key]:
+                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._dimensions[column_key]} of column {column_key}.")
             array: np.ndarray = unit.to_canonical_value(values)
             array = array.astype(self.column_type(column_key).value.dataframe_storage_type)
             self._internal_canonical_dataframe[dataframe_column_name] = array
 
-    def set_column_values_from_list(self, column_key: CK, values: list, unit: BaseUnit) -> None:
+    def set_column_values_from_list(self, column_key: CK, values: list, unit: Unit) -> None:
         """
         Set column values from a list with the specified unit.
         
@@ -797,14 +812,14 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if len(values) != len(self._internal_canonical_dataframe):
                 raise ValueError(f"The number of values ({len(values)}) does not match the number of rows ({len(self._internal_canonical_dataframe)}).")
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if unit.UnitQuantity != self._unit_quantities[column_key]:
-                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._unit_quantities[column_key]} of the column {dataframe_column_name}.")
+            if unit.UnitQuantity != self._dimensions[column_key]:
+                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._dimensions[column_key]} of the column {dataframe_column_name}.")
             array: np.ndarray = np.array(values, dtype=self.column_type(column_key).value.dataframe_storage_type)
             array = unit.to_canonical_value(array)
             array = array.astype(self.column_type(column_key).value.dataframe_storage_type)
             self._internal_canonical_dataframe[dataframe_column_name] = array
 
-    def set_column_values_from_pandas_series(self, column_key: CK, values: pd.Series, unit: BaseUnit) -> None:
+    def set_column_values_from_pandas_series(self, column_key: CK, values: pd.Series, unit: Unit) -> None:
         """
         Set column values from a pandas Series with the specified unit.
         
@@ -823,13 +838,13 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if len(values) != len(self._internal_canonical_dataframe):
                 raise ValueError(f"The number of values ({len(values)}) does not match the number of rows ({len(self._internal_canonical_dataframe)}).")
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if unit.UnitQuantity != self._unit_quantities[column_key]:
-                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._unit_quantities[column_key]} of the column {dataframe_column_name}.")
+            if unit.UnitQuantity != self._dimensions[column_key]:
+                raise ValueError(f"Unit {unit} is not compatible with the SI quantity {self._dimensions[column_key]} of the column {dataframe_column_name}.")
             array: np.ndarray = unit.to_canonical_value(values.to_numpy())
             array = array.astype(self.column_type(column_key).value.dataframe_storage_type)
             self._internal_canonical_dataframe[dataframe_column_name] = array
 
-    def set_column_values_from_united_array(self, column_key: CK, values: UnitedArray) -> None:
+    def set_column_values_from_united_array(self, column_key: CK, values: UNITED_ARRAY_TYPE) -> None:
         """
         Set column values from a United_Array.
         
@@ -847,23 +862,23 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if len(values) != len(self._internal_canonical_dataframe):
                 raise ValueError(f"The number of values ({len(values)}) does not match the number of rows ({len(self._internal_canonical_dataframe)}).")
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if values.unit_quantity != self._unit_quantities[column_key]:
-                raise ValueError(f"Unit {values.unit_quantity} is not compatible with the unit quantity {self._unit_quantities[column_key]} of the column {dataframe_column_name}.")
+            if values.dimension != self._dimensions[column_key]:
+                raise ValueError(f"Unit {values.dimension} is not compatible with the dimension {self._dimensions[column_key]} of the column {dataframe_column_name}.")
             array: np.ndarray = values.get_as_numpy_array().astype(self.column_type(column_key).value.dataframe_storage_type)
             self._internal_canonical_dataframe[dataframe_column_name] = array
 
-    def add_empty_column(self, column_key: CK, unit_quantity: UnitQuantity|BaseUnit, value_type: ColumnType) -> None:
+    def add_empty_column(self, column_key: CK, dimension: Dimension|Unit, value_type: ColumnType) -> None:
         """
         Add an empty column to the dataframe.
         
         Args:
             column_key (CK): The key for the new column
-            UnitQuantity_or_display_unit (UnitQuantity|Unit): The SI quantity or display unit for the column
+            dimension_or_display_unit (Dimension|Unit): The dimension or display unit for the column
             value_type (Value_Type): The value type for the column
             
         Raises:
             ValueError: If the dataframe is read-only, the column key already exists,
-                                       or the SI quantity and value type are incompatible
+                                       or the dimension and value type are incompatible
         """
         with self._wlock:
             if self._read_only:
@@ -871,23 +886,23 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} already exists in the dataframe.")
         
-            if isinstance(unit_quantity, UnitQuantity):
-                unit_quantity: UnitQuantity = unit_quantity
-                display_unit: BaseUnit = unit_quantity.canonical_unit()
-            elif isinstance(unit_quantity, BaseUnit):
-                display_unit: BaseUnit = unit_quantity
-                unit_quantity: UnitQuantity = display_unit.unit_quantity
+            if isinstance(dimension, Dimension):
+                dimension: Dimension = dimension
+                display_unit: Unit = dimension.canonical_unit()
+            elif isinstance(dimension, Unit):
+                display_unit: Unit = dimension
+                dimension: Dimension = display_unit.unit_quantity
             else:
-                raise ValueError(f"Unit quantity {unit_quantity} is not a UnitQuantity or Unit.")
+                raise ValueError(f"Dimension {dimension} is not a Dimension or Unit.")
 
             dataframe_column_name: str = self.create_internal_dataframe_column_name(column_key)
             if dataframe_column_name in self._internal_canonical_dataframe.columns:
                 raise ValueError(f"Column key {column_key} already exists in the dataframe.")
             self._internal_canonical_dataframe[dataframe_column_name] = pd.Series([pd.NA] * len(self._internal_canonical_dataframe), dtype=value_type.value.corresponding_pandas_type)
-            self._column_information[column_key] = ColumnInformation(unit_quantity, value_type, display_unit)
+            self._column_information[column_key] = ColumnInformation(dimension, value_type, display_unit)
             self._column_keys.append(column_key)
             self._internal_dataframe_column_strings.append(dataframe_column_name)
-            self._unit_quantities[column_key] = unit_quantity
+            self._dimensions[column_key] = dimension
             self._column_types[column_key] = value_type
 
     def remove_column(self, column_key: CK) -> None:
@@ -911,7 +926,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self._internal_dataframe_column_strings.pop(dataframe_column_name)
             self._column_keys.remove(column_key)
             self._column_information.pop(column_key)
-            self._unit_quantities.pop(column_key)
+            self._dimensions.pop(column_key)
             self._column_types.pop(column_key)
 
     def remove_columns(self, column_keys: list[CK]|set[CK]) -> None:
@@ -921,7 +936,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             for column_key in column_keys:
                 self.remove_column(column_key)
 
-    def add_column_from_list(self, column_key: CK, values: list, unit: BaseUnit, column_type: ColumnType) -> None:
+    def add_column_from_list(self, column_key: CK, values: list, unit: Unit, column_type: ColumnType) -> None:
         """
         Add a new column with data from a list.
         
@@ -943,7 +958,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self.add_empty_column(column_key, unit, column_type)
             self.set_column_values_from_list(column_key, values, unit)
     
-    def add_column_from_numpy_array(self, column_key: CK, values: np.ndarray, unit: BaseUnit, column_type: ColumnType) -> None:
+    def add_column_from_numpy_array(self, column_key: CK, values: np.ndarray, unit: Unit, column_type: ColumnType) -> None:
         """
         Add a new column with data from a numpy array.
         
@@ -965,7 +980,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self.add_empty_column(column_key, unit, column_type)
             self.set_column_values_from_numpy_array(column_key, values, unit)
     
-    def add_column_from_pandas_series(self, column_key: CK, values: pd.Series, unit: BaseUnit, column_type: ColumnType) -> None:
+    def add_column_from_pandas_series(self, column_key: CK, values: pd.Series, unit: Unit, column_type: ColumnType) -> None:
         """
         Add a new column with data from a pandas Series.
         
@@ -1009,7 +1024,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self.add_empty_column(column_key, values.unit_quantity, column_type)
             self.set_column_values_from_array(column_key, values)
             
-    def get_iterator_for_column(self, column_key: CK) -> Iterator[UnitedScalar]:
+    def get_iterator_for_column(self, column_key: CK) -> Iterator[UNITED_SCALAR_TYPE]:
         """
         Get an iterator over the values of a column.
 
@@ -1024,7 +1039,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- Row operations ------------
 
-    def row(self, row_index: int) -> dict[CK, UnitedScalar]:
+    def row(self, row_index: int) -> dict[CK, UNITED_SCALAR_TYPE]:
         """
         Get a row from the dataframe.
 
@@ -1037,7 +1052,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         with self._rlock:
             return {column_key: self.cell_value_get(row_index, column_key) for column_key in self._column_keys}
     
-    def iterrows(self) -> Iterator[tuple[int, dict[CK, UnitedScalar]]]:
+    def iterrows(self) -> Iterator[tuple[int, dict[CK, UNITED_SCALAR_TYPE]]]:
         """
         Iterate over dataframe rows as (row_index, row_dict) pairs.
         """
@@ -1045,7 +1060,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             for row_index in range(len(self._internal_canonical_dataframe)):
                 yield (row_index, self.row(row_index))
 
-    def get_iterator_for_row(self, row_index: int) -> Iterator[UnitedScalar]:
+    def get_iterator_for_row(self, row_index: int) -> Iterator[UNITED_SCALAR_TYPE]:
         """
         Get an iterator over the values of a row.
 
@@ -1088,7 +1103,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 for row_index in sorted(row_indices, reverse=True):
                     self.remove_row(row_index)
 
-    def insert_row(self, row: int, values: list[UnitedScalar]|dict[CK, UnitedScalar]) -> None:
+    def insert_row(self, row: int, values: list[UNITED_SCALAR_TYPE]|dict[CK, UNITED_SCALAR_TYPE]) -> None:
         """
         Insert a row at the specified index.
         """
@@ -1118,7 +1133,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 for column_key in self._column_keys:
                     dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
                     if column_key in values:
-                        value: UnitedScalar = values[column_key]
+                        value: UNITED_SCALAR_TYPE = values[column_key]
                         if self._check_scalar_compatibility(column_key, value):
                             self._internal_canonical_dataframe.at[row, dataframe_column_name] = self._internal_canonical_dataframe[dataframe_column_name].dtype.type(value.canonical_value)
                         else:
@@ -1126,7 +1141,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     else:
                         self._internal_canonical_dataframe.at[row, dataframe_column_name] = pd.NA
 
-    def add_row(self, values: list[UnitedScalar]|dict[CK, UnitedScalar]) -> None:
+    def add_row(self, values: list[UNITED_SCALAR_TYPE]|dict[CK, UNITED_SCALAR_TYPE]) -> None:
         """
         Add a row to the dataframe.
         """
@@ -1249,7 +1264,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         """
         ...
 
-    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: int|CK|list[int]|set[int]|slice|list[CK]|set[CK]|tuple[int, CK]|tuple[CK, int]) -> "_ColumnAccessor[CK] | _RowAccessor[CK] | UnitedDataframe[CK] | UnitedScalar":
+    def __getitem__(self, column_key_or_row_key_or_list_of_column_keys_or_list_of_row_indices_or_cell_position: int|CK|list[int]|set[int]|slice|list[CK]|set[CK]|tuple[int, CK]|tuple[CK, int]) -> "_ColumnAccessor[CK] | _RowAccessor[CK] | UnitedDataframe[CK] | SCALAR_TYPE":
         """
         Get a column accessor for pandas-like column access.
         
@@ -1346,7 +1361,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
                     self._internal_canonical_dataframe.at[row_index, dataframe_column_name] = column_type.cast_value(value)
     
-    def __setitem__(self, cell_position: tuple[int, CK]|tuple[CK, int], value: UnitedScalar):
+    def __setitem__(self, cell_position: tuple[int, CK]|tuple[CK, int], value: SCALAR_TYPE):
         """
         Set a cell value using pandas-like syntax.
         
@@ -1378,7 +1393,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- Column functions operations ------------
 
-    def colfun_min(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> RealUnitedScalar:
+    def colfun_min(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> NUMERIC_SCALAR_TYPE:
         """
         Get the minimum value of a column with optional filtering.
         
@@ -1403,7 +1418,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             if len(self._internal_canonical_dataframe) == 0:
-                return RealUnitedScalar.create_converted_to_unit(np.nan, self._display_units[column_key])
+                return self.column_type(column_key).create_scalar_from_value(None, self._display_units[column_key])
 
             match case:
                 case "only_positive":
@@ -1420,9 +1435,11 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     raise ValueError(f"Invalid case: {case}")
             
             if len(values) == 0:
-                return RealUnitedScalar.create_converted_to_unit(np.nan, self._display_units[column_key])
+                value = None
             else:
-                return RealUnitedScalar.create_converted_to_unit(np.min(values), self._display_units[column_key])
+                value = np.min(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
 
     def colfun_max(self, column_key: CK, case: Literal["only_positive", "only_negative", "only_non_negative", "only_non_positive", "all"] = "all") -> RealUnitedScalar:
         """
@@ -1447,9 +1464,12 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             if len(self._internal_canonical_dataframe) == 0:
-                return RealUnitedScalar.create_converted_to_unit(np.nan, self._display_units[column_key])
+                return self._helper_fun_return_numerical_value(column_key, None)
             
             match case:
                 case "only_positive":
@@ -1466,9 +1486,11 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                     raise ValueError(f"Invalid case: {case}")
         
             if len(values) == 0:
-                return RealUnitedScalar.create_converted_to_unit(np.nan, self._display_units[column_key])
+                value = None
             else:
-                return RealUnitedScalar.create_converted_to_unit(np.max(values), self._display_units[column_key])
+                value = np.max(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
 
     def colfun_sum(self, column_key: CK) -> RealUnitedScalar:
         """
@@ -1487,7 +1509,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             if self.is_numeric(column_key):
                 values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                return RealUnitedScalar.create_converted_to_unit(np.sum(values), self._display_units[column_key])
+                return self._helper_fun_return_numerical_value(column_key, np.sum(values))
             else:
                 raise ValueError(f"Column '{column_key}' is not numeric.")
 
@@ -1505,12 +1527,22 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             ValueError: If the column doesn't exist or is not numeric
         """
         with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if self.is_numeric(column_key):
-                values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                return RealUnitedScalar.create_converted_to_unit(np.mean(values), self._display_units[column_key])
+
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+
+            if len(values) == 0:
+                value = None
             else:
-                raise ValueError(f"Column '{column_key}' is not numeric.")
+                value = np.mean(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
 
     def colfun_std(self, column_key: CK) -> RealUnitedScalar:
         """
@@ -1526,14 +1558,25 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             ValueError: If the column doesn't exist or is not numeric
         """
         with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            if self.is_numeric(column_key):
-                values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-                return RealUnitedScalar.create_converted_to_unit(np.std(values), self._display_units[column_key])
+            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+
+            if len(values) == 0:
+                value = None
+            elif len(values) == 1:
+                value = np.inf
             else:
-                raise ValueError(f"Column '{column_key}' is not numeric.")
+                value = np.std(values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
     
-    def colfun_unique(self, column_key: CK) -> list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int]:
+    def colfun_unique_as_list(self, column_key: CK) -> list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int]:
         """
         Get the unique values of a column.
 
@@ -1544,31 +1587,19 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             list[UnitedScalar]: The unique values with appropriate unit information
         """
         with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
             unique_values: list[RealUnitedScalar]|list[ComplexUnitedScalar]|list[str]|list[bool]|list[Timestamp]|list[float]|list[int] = []
-            
-            match self.column_type(column_key):
-                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    display_unit: BaseUnit = self._display_units[column_key]
-                    for value in values.unique():
-                        unique_values.append(RealUnitedScalar.create_converted_to_unit(value, display_unit))
-                case ColumnType.COMPLEX_NUMBER_128:
-                    display_unit: BaseUnit = self._display_units[column_key]
-                    for value in values.unique():
-                        unique_values.append(ComplexUnitedScalar.create(value, display_unit))
-                case ColumnType.STRING:
-                    for value in values.unique():
-                        unique_values.append(value)
-                case ColumnType.BOOL:
-                    for value in values.unique():
-                        unique_values.append(value)
-                case ColumnType.TIMESTAMP:
-                    for value in values.unique():
-                        unique_values.append(value)
-                case _:
-                    raise ValueError(f"Invalid value type: {self.column_type(column_key)}")
-            
+
+            for value in values.unique():
+                unique_values.append(self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key]))
+
             return unique_values
         
     def colfun_unique_as_array(self, column_key: CK) -> RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray:
@@ -1582,29 +1613,19 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             list[UnitedScalar]: The unique values with appropriate unit information
         """
         with self._rlock:
+            if not self.has_column(column_key):
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
             values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
             unique_values: np.ndarray = values.unique()
-            
-            match self.column_type(column_key):
-                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    display_unit: BaseUnit = self._display_units[column_key]
-                    return RealUnitedArray.create(unique_values, display_unit)
-                case ColumnType.COMPLEX_NUMBER_128:
-                    display_unit: BaseUnit = self._display_units[column_key]
-                    return ComplexUnitedArray.create(unique_values, display_unit)
-                case ColumnType.STRING:
-                    return StringArray.create(unique_values)
-                case ColumnType.BOOL:
-                    return BoolArray.create(unique_values)
-                case ColumnType.TIMESTAMP:
-                    return TimestampArray.create(unique_values)
-                case _:
-                    raise ValueError(f"Invalid value type: {self.column_type(column_key)}")
-            
-            return unique_values
-        
-    def colfun_smallest_positive_nonzero_value(self, column_key: CK) -> UnitedScalar:
+
+            return self.column_type(column_key).create_array_from_canonical_values(unique_values, self._display_units[column_key])
+
+    def colfun_smallest_positive_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
         """
         Get the smallest positive non-zero value of a column.
         """
@@ -1612,14 +1633,21 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            positive_nonzero_values: pd.Series = values[(values > 0) & values.notna()]
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
+
             if len(positive_nonzero_values) == 0:
-                return UnitedScalar.united_number(np.nan, self._display_units[column_key])
-            return UnitedScalar.united_number(np.min(positive_nonzero_values), self._display_units[column_key])
+                value = None
+            else:
+                value = np.min(positive_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
         
-    def colfun_largest_positive_nonzero_value(self, column_key: CK) -> UnitedScalar:
+    def colfun_largest_positive_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
         """
         Get the largest positive non-zero value of a column.
         """
@@ -1627,14 +1655,21 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            positive_nonzero_values: pd.Series = values[(values > 0) & values.notna()]
-            if len(positive_nonzero_values) == 0:
-                return UnitedScalar.united_number(np.nan, self._display_units[column_key])
-            return UnitedScalar.united_number(np.max(positive_nonzero_values), self._display_units[column_key])
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            positive_nonzero_values: pd.Series = canonical_values[(canonical_values > 0) & canonical_values.notna()]
 
-    def colfun_largest_negative_nonzero_value(self, column_key: CK) -> UnitedScalar:
+            if len(positive_nonzero_values) == 0:
+                value = None
+            else:
+                value = np.max(positive_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
+
+    def colfun_largest_negative_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
         """
         Get the largest negative non-zero value of a column.
         """
@@ -1642,14 +1677,21 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            negative_nonzero_values: pd.Series = values[(values < 0) & values.notna()]
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
+
             if len(negative_nonzero_values) == 0:
-                return UnitedScalar.united_number(np.nan, self._display_units[column_key])
-            return UnitedScalar.united_number(np.max(negative_nonzero_values), self._display_units[column_key])
+                value = None
+            else:
+                value = np.max(negative_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
         
-    def colfun_smallest_negative_nonzero_value(self, column_key: CK) -> UnitedScalar:
+    def colfun_smallest_negative_nonzero_value(self, column_key: CK) -> NUMERIC_SCALAR_TYPE:
         """
         Get the smallest negative non-zero value of a column.
         """
@@ -1657,31 +1699,38 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
+            if not self.is_numeric(column_key):
+                raise ValueError(f"Column key {column_key} is not numeric.")
+            
             dataframe_column_name: str = self.internal_dataframe_column_string(column_key)
-            values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
-            negative_nonzero_values: pd.Series = values[(values < 0) & values.notna()]
+            canonical_values: pd.Series = self._internal_canonical_dataframe[dataframe_column_name]
+            negative_nonzero_values: pd.Series = canonical_values[(canonical_values < 0) & canonical_values.notna()]
+
             if len(negative_nonzero_values) == 0:
-                return UnitedScalar.united_number(np.nan, self._display_units[column_key])
-            return UnitedScalar.united_number(np.min(negative_nonzero_values), self._display_units[column_key])
+                value = None
+            else:
+                value = np.min(negative_nonzero_values)
+
+            return self.column_type(column_key).create_scalar_from_value(value, self._display_units[column_key])
     
     @overload
-    def colfun_count_value_occurances(self, column_key: CK) -> dict[UnitedScalar, int]:
+    def colfun_count_value_occurances(self, column_key: CK) -> dict[SCALAR_TYPE, int]:
         """Count the number of occurrences of each unique value in the column."""
         ...
     @overload
-    def colfun_count_value_occurances(self, column_key: CK, value_to_count: UnitedScalar) -> int:
+    def colfun_count_value_occurances(self, column_key: CK, value_to_count: SCALAR_TYPE) -> int:
         """Count the number of occurrences of the specified value in the column."""
         ...
-    def colfun_count_value_occurances(self, column_key: CK, value_to_count: SCALAR_TYPE|None = None) -> dict[UnitedScalar, int]|int:
+    def colfun_count_value_occurances(self, column_key: CK, value_to_count: SCALAR_TYPE|None = None) -> dict[SCALAR_TYPE, int]|int:
         with self._rlock:
             if not self.has_column(column_key):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             column_type: ColumnType = self.column_type(column_key)
-            display_unit: BaseUnit|None = self._display_units[column_key]
+            display_unit: Unit|None = self._display_units[column_key]
             if value_to_count is None:
                 unique_values: np.ndarray = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)].unique()
                 column_as_pd_series: pd.Series = self._internal_canonical_dataframe[self.internal_dataframe_column_string(column_key)]
-                occurance_counts_dict: dict[UnitedScalar, int] = {}
+                occurance_counts_dict: dict[SCALAR_TYPE, int] = {}
                 for value in unique_values:
                     occurance_count: int = column_as_pd_series.eq(value).sum()
                     value_key: SCALAR_TYPE = column_type.create_scalar_from_value(value, display_unit)
@@ -1695,7 +1744,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 occurance_count: int = column_values.eq(value_casted_for_dataframe).sum()
                 return occurance_count
             
-    def colfun_row_index(self, column_key: CK, value: UnitedScalar, case: Literal["first", "last"] = "first") -> int:
+    def colfun_row_index(self, column_key: CK, value: SCALAR_TYPE, case: Literal["first", "last"] = "first") -> int:
         """
         Get the row index of the first occurrence of a value in a column.
 
@@ -1808,8 +1857,8 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             self.symbol = symbol
 
         def _wrap(self, op, other):
-            if isinstance(other, UnitedScalar):
-                val = other.canonical_float
+            if isinstance(other, RealUnitedScalar) or isinstance(other, ComplexUnitedScalar):
+                val: float|complex = other.canonical_value
                 # Return a numpy-compatible ufunc style lambda
                 return lambda x: op(x, val)
             raise TypeError("Only comparisons against UnitedScalar are supported.")
@@ -1821,7 +1870,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         def __eq__(self, other): return self._wrap(operator.eq, other)
         def __ne__(self, other): return self._wrap(operator.ne, other)
 
-    def _convert_filter(self, filter_function: Callable[[UnitedScalar], bool]) -> Callable[[np.ndarray], np.ndarray]:
+    def _convert_filter(self, filter_function: Callable[[SCALAR_TYPE], bool]) -> Callable[[np.ndarray], np.ndarray]:
         proxy: UnitedDataframe._UnitedScalar_Proxy = UnitedDataframe._UnitedScalar_Proxy()
         scalar_filter: bool = filter_function(proxy) # type: ignore[arg-type]
 
@@ -1835,7 +1884,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     def maskfun_get_from_filter(
         self,
-        column_key_and_callable: dict[CK, Callable[[UnitedScalar], bool] | Callable[[str], bool]]
+        column_key_and_callable: dict[CK, Callable[[SCALAR_TYPE], bool] | Callable[[str], bool]]
     ) -> np.ndarray:
         """
         Return a boolean mask of rows that satisfy all filter functions on selected columns.
@@ -1853,14 +1902,14 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             for column_key, filter_function in column_key_and_callable.items():
                 column_type: ColumnType = self.column_type(column_key)
 
-                if column_type.is_numeric:
+                if column_type.is_numeric():
                     # Numeric column
-                    column_array = self.column_values_as_numpy_array(
-                        column_key,
-                        self.display_unit(column_key)
-                    )
-                    float_mask_func = self._convert_filter(filter_function)  # type: ignore[arg-type]
-                    mask_of_column = float_mask_func(column_array)
+                    column_array_canonical_units = self.column_values_as_numpy_array_in_canonical_units(column_key)
+                    if column_type.has_unit():
+                        float_mask_func = self._convert_filter(filter_function)  # type: ignore[arg-type]
+                        mask_of_column = float_mask_func(column_array_canonical_units)
+                    else:
+                        mask_of_column = filter_function(column_array_canonical_units)
 
                 elif column_type == ColumnType.STRING:
                     # String column
@@ -2182,7 +2231,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 self._column_information,
                 self._internal_dataframe_column_name_formatter)
 
-    def fillna(self, value: UnitedScalar, subset: list[CK] | None = None) -> "UnitedDataframe[CK]":
+    def fillna(self, value: SCALAR_TYPE, subset: list[CK] | None = None) -> "UnitedDataframe[CK]":
         raise NotImplementedError("Not implemented")
 
     @classmethod
@@ -2238,7 +2287,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             dataframe._column_information,
             dataframe._internal_dataframe_column_name_formatter)
 
-    def mask_in_range(self, column_key: CK, min_val: UnitedScalar, max_val: UnitedScalar) -> np.ndarray:
+    def mask_in_range(self, column_key: CK, min_val: SCALAR_TYPE, max_val: SCALAR_TYPE) -> np.ndarray:
         """
         Check which rows have values in the specified range.
         
@@ -2264,7 +2313,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
             else:
                 raise ValueError(f"Column '{column_key}' is not numeric.")
 
-    def colfun_clamp_column(self, column_key: CK, min_val: UnitedScalar, max_val: UnitedScalar, inclusive: Literal["both", "neither", "left", "right"] = "both") -> None:
+    def colfun_clamp_column(self, column_key: CK, min_val: SCALAR_TYPE, max_val: SCALAR_TYPE, inclusive: Literal["both", "neither", "left", "right"] = "both") -> None:
         """
         Clamp all values in a column to the specified range.
         
@@ -2435,7 +2484,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
         dataframe: pd.DataFrame,
         dataframe_column_names: dict[CK, str],
         column_keys: list[CK] = [],
-        units: list[BaseUnit]|dict[CK, BaseUnit] = [],
+        units: list[Unit]|dict[CK, Unit] = [],
         value_types: list[ColumnType]|dict[CK, ColumnType] = [],
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
         deepcopy_dataframe: bool = True,
@@ -2468,7 +2517,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
     def create_empty(
         cls,
         column_keys: list[CK] = [],
-        units: list[BaseUnit]|dict[CK, BaseUnit] = [],
+        units: list[Unit]|dict[CK, Unit] = [],
         column_types: list[ColumnType]|dict[CK, ColumnType] = [],
         initial_number_of_rows: int = 0,
         internal_column_name_formatter: InternalDataFrameNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
@@ -2524,7 +2573,7 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
 
     # ----------- GroupBy functionality ------------
 
-    def groupby(self, by: CK|list[CK]|set[CK]) -> "GroupBy[CK]":
+    def groupby(self, by: CK|list[CK]|set[CK]) -> "_GroupBy[CK]":
         """
         Group the dataframe by one or more columns.
         
@@ -2556,4 +2605,4 @@ class UnitedDataframe(JSONable, HDF5able, Generic[CK]):
                 if not self.has_column(col):
                     raise ValueError(f"Grouping column {col} does not exist in the dataframe.")
             
-            return GroupBy(self, by)
+            return _GroupBy(self, by)

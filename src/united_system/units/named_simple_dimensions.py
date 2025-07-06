@@ -98,7 +98,7 @@ class NamedSimpleDimension(Enum):
     DYNAMIC_VISCOSITY = NamedSimpleDimensionInformation.create(       (1, -1, -1, 0, 0, 0, 0), (0, 0),    True,   "Pa*s")
 
     @property
-    def simple_unit_dimension(self) -> SimpleDimension:
+    def simple_dimension(self) -> SimpleDimension:
         return self.value.unit_dimension
     
     @property
@@ -119,7 +119,7 @@ class NamedSimpleDimension(Enum):
     @classmethod
     def find_named_unit_dimension(cls, canonical_dimension: BaseDimension) -> "NamedSimpleDimension|None":
         for named_canonical_dimension in cls:
-            if named_canonical_dimension.simple_unit_dimension == canonical_dimension:
+            if named_canonical_dimension.simple_dimension == canonical_dimension:
                 return named_canonical_dimension
         return None
     
