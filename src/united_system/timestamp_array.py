@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import h5py
-from .utils import JSONable, HDF5able
-from .arrays.timestamp_array import TimestampArray as InternalTimestampArray
 from pandas import Timestamp
+from .arrays.timestamp_array import TimestampArray as InternalTimestampArray
+from .utils import JSONable, HDF5able
+from .bool_array import BoolArray
 
 @dataclass(frozen=True, slots=True, init=False)
 class TimestampArray(JSONable, HDF5able):

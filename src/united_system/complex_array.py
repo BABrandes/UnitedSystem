@@ -4,6 +4,8 @@ import numpy as np
 import h5py
 from .utils import JSONable, HDF5able
 from .arrays.complex_array import ComplexArray as InternalComplexArray
+from .bool_array import BoolArray
+from .float_array import FloatArray
 
 @dataclass(frozen=True, slots=True, init=False)
 class ComplexArray(JSONable, HDF5able):

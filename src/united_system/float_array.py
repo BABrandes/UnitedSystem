@@ -4,6 +4,7 @@ import numpy as np
 import h5py
 from .utils import JSONable, HDF5able
 from .arrays.float_array import FloatArray as InternalFloatArray
+from .bool_array import BoolArray
 
 @dataclass(frozen=True, slots=True, init=False)
 class FloatArray(JSONable, HDF5able):
