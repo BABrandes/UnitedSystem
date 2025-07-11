@@ -71,6 +71,14 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:
             mask = self.mask_get_greater_than(column_key, value)
             return self._mask_apply_to_dataframe(mask)
+        
+    def filter_column_greater_equal(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where column is greater than or equal to a specific value.
+        """
+        with self._rlock:
+            mask = self.mask_get_greater_equal(column_key, value)
+            return self._mask_apply_to_dataframe(mask)
 
     def filter_column_less_than(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
         """
@@ -85,6 +93,14 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:
             mask = self.mask_get_less_than(column_key, value)
+            return self._mask_apply_to_dataframe(mask)
+        
+    def filter_column_less_equal(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where column is less than or equal to a specific value.
+        """
+        with self._rlock:
+            mask = self.mask_get_less_equal(column_key, value)
             return self._mask_apply_to_dataframe(mask)
 
     def filter_column_in_range(self, column_key: CK, min_value: Any, max_value: Any) -> "UnitedDataframe[CK]":
@@ -101,6 +117,22 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:
             mask: BoolArray = self.mask_get_in_range(column_key, min_value, max_value)
+            return self._mask_apply_to_dataframe(mask)
+        
+    def filter_column_get_complete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where column is missing.
+        """
+        with self._rlock:
+            mask: BoolArray = self.mask_get_complete_rows(*column_keys)
+            return self._mask_apply_to_dataframe(mask)
+        
+    def filter_column_get_incomplete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where column is not missing.
+        """
+        with self._rlock:
+            mask: BoolArray = self.mask_get_incomplete_rows(*column_keys)
             return self._mask_apply_to_dataframe(mask)
 
 

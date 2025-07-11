@@ -43,25 +43,50 @@ class IterMixin(UnitedDataframeProtocol[CK]):
             next_column_key: CK = next(self._column_keys) # type: ignore[no-any-return]
             return next_column_key # type: ignore[no-any-return]
         
-    def iterrows(self) -> Iterator[tuple[int, RowAccessor[CK]]]:
+    def iter_rows(self) -> Iterator[RowAccessor[CK]]:
         """
-        Iterate over (row_index, row_accessor) pairs.
+        Iterate over row accessors.
 
         Returns:
-            Iterator[Tuple[int, _RowAccessor[CK]]]
+            Iterator[RowAccessor[CK]]
         """
         for row_index in range(self._number_of_rows()):
-            yield row_index, self._row_get_as_row_accessor(row_index)
+            yield self._row_get_as_row_accessor(row_index)
 
-    def itercolumns(self) -> Iterator[tuple[CK, ColumnAccessor[CK]]]:
+    def iter_columns(self) -> Iterator[ColumnAccessor[CK]]:
         """
-        Iterate over (column_key, column_accessor) pairs.
+        Iterate over column keys.
 
         Returns:
-            Iterator[Tuple[CK, _ColumnAccessor[CK]]]
+            Iterator[CK]
         """
         for column_key in self._column_keys:
-            yield column_key, self._column_get_as_column_accessor(column_key)
+            yield self._column_get_as_column_accessor(column_key)
+
+    def iter_units(self) -> Iterator[Unit|None]:
+        """
+        Iterate over units.
+        """
+        for column_key in self._column_keys:
+            yield self._unit_get(column_key)
+
+    def iter_dimensions(self) -> Iterator[Dimension|None]:
+        """
+        Iterate over (column_key, dimension) pairs.
+        """
+        for column_key in self._column_keys:
+            unit: Unit|None = self._column_units[column_key]
+            if unit is not None:
+                yield unit.dimension
+            else:
+                yield None
+
+    def iter_coltypes(self) -> Iterator[ColumnType]:
+        """
+        Iterate over column types.
+        """
+        for column_key in self._column_keys:
+            yield self._column_types[column_key]
 
     def column_items(self) -> Iterator[tuple[CK, ColumnAccessor[CK]]]:
         """

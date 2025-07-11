@@ -149,7 +149,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             
             self._row_insert_empty(len(self._internal_canonical_dataframe), number_of_rows)
 
-    def row_add_with_values(self, values: Dict[CK, list[Any] | Dict[CK, Any]]) -> None:
+    def row_add_values(self, values: Dict[CK, list[Any] | Dict[CK, Any]]) -> None:
         """
         Add rows with values to the end of the dataframe.
         
@@ -181,7 +181,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             self._row_insert_empty(start_index, number_of_rows_to_add)
             self._row_set_values(slice(start_index, start_index + number_of_rows_to_add), values) # type: ignore
 
-    def row_insert_empty(self, row_index: int, number_of_rows: int) -> None:
+    def row_insert_empty(self, row_index: int|slice, number_of_rows: int) -> None:
         """
         Insert empty rows at a specific index.
         """
@@ -190,12 +190,18 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
 
-            if row_index < 0 or row_index > len(self._internal_canonical_dataframe):
-                raise ValueError(f"Row index {row_index} is out of bounds for insertion.")
+            if isinstance(row_index, slice):
+                if row_index.step not in (None, 1):
+                    raise ValueError("Only slices with step=None or step=1 are supported.")
+                if row_index.start is None or row_index.stop is None:
+                    raise ValueError("Slice must have start and stop defined.")
+                insert_index = row_index.start
+            else:
+                insert_index = row_index
+            
+            self._row_insert_empty(insert_index, number_of_rows)
 
-            self._row_insert_empty(row_index, number_of_rows)
-
-    def row_insert_with_values(self, row_index_or_slice: int|slice, values: Dict[CK, list[Any]|Dict[CK, Any]]) -> None:
+    def row_insert_values(self, row_index: int|slice, values: Dict[CK, list[Any]|Dict[CK, Any]]) -> None:
         """
         Insert rows with values at a specific index.
         """
@@ -217,19 +223,19 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             number_of_rows_to_add = len(next(iter(values.values())))
             
             # Handle slice vs int for row_index_or_slice
-            if isinstance(row_index_or_slice, slice):
-                if row_index_or_slice.step not in (None, 1):
+            if isinstance(row_index, slice):
+                if row_index.step not in (None, 1):
                     raise ValueError("Only slices with step=None or step=1 are supported.")
-                if row_index_or_slice.start is None or row_index_or_slice.stop is None:
+                if row_index.start is None or row_index.stop is None:
                     raise ValueError("Slice must have start and stop defined.")
-                insert_index = row_index_or_slice.start
+                insert_index = row_index.start
             else:
-                insert_index = row_index_or_slice
+                insert_index = row_index
             
             self._row_insert_empty(insert_index, number_of_rows_to_add)
             self._row_set_values(slice(insert_index, insert_index + number_of_rows_to_add), values) # type: ignore
 
-    def row_set_with_values(self, row_index_or_slice: int|slice, values: Dict[CK, list[Any]|Dict[CK, Any]]) -> None:
+    def row_set_values(self, row_index: int|slice, values: Dict[CK, list[Any]|Dict[CK, Any]]) -> None:
         """
         Replace rows with values at a specific index.
         """
@@ -252,15 +258,15 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             number_of_rows_to_replace = len(next(iter(values.values())))
             
             # Handle slice vs int for row_index_or_slice
-            if isinstance(row_index_or_slice, slice):
-                if row_index_or_slice.step not in (None, 1):
+            if isinstance(row_index, slice):
+                if row_index.step not in (None, 1):
                     raise ValueError("Only slices with step=None or step=1 are supported.")
-                if row_index_or_slice.start is None or row_index_or_slice.stop is None:
+                if row_index.start is None or row_index.stop is None:
                     raise ValueError("Slice must have start and stop defined.")
-                row_start = row_index_or_slice.start
-                row_stop = row_index_or_slice.stop
+                row_start = row_index.start
+                row_stop = row_index.stop
             else:
-                row_start = row_index_or_slice
+                row_start = row_index
                 row_stop = row_start + number_of_rows_to_replace
             
             self._row_remove(row_start, row_stop)

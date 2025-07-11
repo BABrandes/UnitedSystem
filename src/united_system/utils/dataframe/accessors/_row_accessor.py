@@ -30,10 +30,10 @@ class RowAccessor(Generic[CK]):
         if isinstance(column_key, Sequence):
             return RowAccessor[CK](self._parent, self._row_index, column_key) # type: ignore[no-any-return]
         else:
-            return self._parent.cell_get(self._row_index, column_key)
+            return self._parent.cell_get_value(self._row_index, column_key)
     
     def __setitem__(self, column_key: CK, value: UnitedScalar[Any, Any, Any, Any]):
-        self._parent.cell_set(self._row_index, column_key, value)
+        self._parent.cell_set_value(self._row_index, column_key, value)
     
     def __len__(self) -> int:
         return len(self._parent.colkeys)
@@ -45,4 +45,4 @@ class RowAccessor(Generic[CK]):
         raise NotImplementedError("Row contains not yet implemented")
     
     def as_dict(self) -> dict[CK, SCALAR_TYPE]:
-        return {column_key: self._parent.cell_get(self._row_index, column_key) for column_key in self._column_keys}
+        return {column_key: self._parent.cell_get_value(self._row_index, column_key) for column_key in self._column_keys}

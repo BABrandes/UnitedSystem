@@ -43,7 +43,7 @@ class DimensionMixin(UnitedDataframeProtocol[CK]):
                     dimensions[column_key] = None
             return dimensions
         
-    def get_dimension(self, column_key: CK) -> Dimension:
+    def dim_get_dimension(self, column_key: CK) -> Dimension:
         """
         Get the dimension for a column.
         
@@ -60,20 +60,16 @@ class DimensionMixin(UnitedDataframeProtocol[CK]):
             if unit is None:
                 raise ValueError(f"Column key {column_key} does not have a unit.")
             return unit.dimension
-
-    # ----------- Internal dataframe column string operations ------------
-
-    def internal_dataframe_column_string(self, column_key: CK) -> str:
-        """
-        Get the internal dataframe column string for a column key.
         
-        Args:
-            column_key (CK): The column key
-            
-        Returns:
-            str: The internal column string
+    def dim_has_dimension(self, column_key: CK) -> bool:
+        """
+        Check if a column has a dimension.
         """
         with self._rlock:
-            if column_key not in self._column_keys:
-                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            return self._internal_dataframe_column_names[column_key] 
+            return self._dim_has_dimension(column_key)
+        
+    def _dim_has_dimension(self, column_key: CK) -> bool:
+        """
+        Internal: Check if a column has a dimension. (no lock, no read-only check)
+        """
+        return self._column_units[column_key] is not None

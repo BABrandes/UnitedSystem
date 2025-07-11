@@ -4,7 +4,11 @@ Core functionality mixin for UnitedDataframe.
 Contains basic properties, initialization helpers, and core utility methods.
 """
 
-from typing import Any, Optional, Sequence
+from typing import Any, Optional, Sequence, TYPE_CHECKING
+from collections.abc import Sequence
+import pandas as pd
+from pandas._typing import Dtype
+import numpy as np
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
@@ -13,6 +17,8 @@ from ....unit import Unit
 from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from ...units.base_classes.base_dimension import BaseDimension
 
+if TYPE_CHECKING:
+    from ...dataframe import UnitedDataframe
 
 class CoreMixin(UnitedDataframeProtocol[CK]):
     """
@@ -70,17 +76,6 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:
             return len(self._internal_dataframe)
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        """
-        Get the shape of the dataframe as (rows, columns).
-        
-        Returns:
-            tuple[int, int]: A tuple containing (number_of_rows, number_of_columns)
-        """
-        with self._rlock:
-            return self._internal_dataframe.shape
 
     @property
     def size(self) -> int:
@@ -231,3 +226,85 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:
             return [column_key for column_key in self._column_keys if self._colkey_is_numeric(column_key)]
+        
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.__repr__()
+        
+    def __repr_html__(self) -> str:
+        """
+        Return an HTML representation of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.to_html() # type: ignore
+        
+    def to_html(self, **kwargs: Any) -> str:
+        """
+        Return an HTML representation of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.to_html(**kwargs) # type: ignore
+        
+    def __contains__(self, item: Any) -> bool:
+        """
+        Check if the dataframe contains a column key.
+        """
+        with self._rlock:
+            return item in self._column_keys
+        
+    @property
+    def shape(self) -> tuple[int, int]:
+        """
+        Return the shape of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.shape
+        
+    @property
+    def dtypes(self) -> pd.Series[Dtype]:
+        """
+        Return the dtypes of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.dtypes # type: ignore
+        
+    @property
+    def index(self) -> pd.Index[Any]:
+        """
+        Return the index of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.index # type: ignore
+        
+    @property
+    def columns(self) -> pd.Index[str]:
+        """
+        Return the columns of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.columns # type: ignore
+
+    @property
+    def values(self) -> np.ndarray:
+        """
+        Return the values of the dataframe.
+        """
+        with self._rlock:
+            return self._internal_dataframe.values
+        
+    def head(self, n: int = 5) -> UnitedDataframe[CK]:
+        """
+        Return the first n rows of the dataframe.
+        """
+        with self._rlock:
+            return self._create_with_replaced_dataframe(self._internal_dataframe.head(n))
+        
+    def tail(self, n: int = 5) -> UnitedDataframe[CK]:
+        """
+        Return the last n rows of the dataframe.
+        """
+        with self._rlock:
+            return self._create_with_replaced_dataframe(self._internal_dataframe.tail(n))

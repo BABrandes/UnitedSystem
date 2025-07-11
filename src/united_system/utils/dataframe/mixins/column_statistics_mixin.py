@@ -208,7 +208,7 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Column Statistics: Count/Variance ------------
 
-    def column_get_count(self, column_key: CK) -> int:
+    def column_count_non_missing_values(self, column_key: CK) -> int:
         """
         Get the count of non-missing values in a column.
         
@@ -220,6 +220,13 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:
             return self._column_get_as_pd_series(column_key).count() # type: ignore
+        
+    def column_count_missing_values(self, column_key: CK) -> int:
+        """
+        Get the count of missing values in a column.
+        """
+        with self._rlock:
+            return self._internal_dataframe[column_key].isna().sum() # type: ignore
 
     @overload
     def column_get_variance(self, column_key: CK) -> NUMERIC_SCALAR_TYPE: ...

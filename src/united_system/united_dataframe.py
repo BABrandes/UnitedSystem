@@ -7,6 +7,7 @@ the mixins to provide a complete dataframe implementation with units support.
 
 from dataclasses import dataclass, field
 from typing import Generic, Dict, Optional, Type
+from collections.abc import Sequence
 from types import TracebackType
 import pandas as pd
 from readerwriterlock import rwlock
@@ -16,7 +17,6 @@ from .utils.dataframe.mixins.dataframe_protocol import CK
 from .utils.dataframe.column_type import ColumnType
 from .utils.dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from .unit import Unit
-from .utils.general import JSONable, HDF5able
 
 @dataclass(init=False)
 class UnitedDataframe(
@@ -82,7 +82,7 @@ class UnitedDataframe(
     def __init__(
             self,
             dataframe: pd.DataFrame,
-            column_keys: list[CK],
+            column_keys: Sequence[CK],
             column_types: Dict[CK, ColumnType],
             column_units: Dict[CK, Optional[Unit]],
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
@@ -119,7 +119,7 @@ class UnitedDataframe(
         object.__setattr__(self, '_wlock', self._lock.gen_wlock())
         
         # Initialize derived data structures
-        object.__setattr__(self, '_column_keys', column_keys)
+        object.__setattr__(self, '_column_keys', list(column_keys))
         object.__setattr__(self, '_column_types', column_types)
         object.__setattr__(self, '_column_units', column_units)
         object.__setattr__(self, '_internal_dataframe', dataframe)

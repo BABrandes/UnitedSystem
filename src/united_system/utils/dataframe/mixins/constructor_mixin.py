@@ -338,6 +338,13 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             rename_dataframe_columns=False
         )
     
+    def crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> UnitedDataframe[CK]:
+        """
+        Crop the dataframe to the number of rows in the dataframe.
+        """
+        with self._rlock:
+            return self._crop_dataframe(column_keys, row_indices)
+
     def _crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> UnitedDataframe[CK]:
         """
         Internal: Crop the dataframe to the number of rows in the dataframe. (No locks, no read-only check)

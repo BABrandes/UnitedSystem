@@ -142,6 +142,31 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
             else:
                 is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] > value
             return BoolArray(is_greater_mask) # type: ignore
+        
+    def mask_get_greater_equal(self, column_key: CK, value: Any) -> BoolArray:
+        """
+        Get a boolean mask for values greater than or equal to a specific value.
+        
+        Args:
+            column_key (CK): The column key
+            value (Any): The value to compare against
+            
+        Returns:
+            BoolArray: Boolean mask where True indicates greater values
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._get_internal_dataframe_column_name(column_key)
+            if isinstance(value, UnitedScalar):
+                if not self._unit_has(column_key):
+                    raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
+                unit: Unit = self._unit_get(column_key)
+                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] >= value.value_in_unit(unit) # type: ignore
+            else:
+                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] >= value
+            return BoolArray(is_greater_mask) # type: ignore
 
     def mask_get_less_than(self, column_key: CK, value: Any) -> BoolArray:
         """
@@ -166,6 +191,24 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] < value.value_in_unit(unit) # type: ignore
             else:
                 is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] < value
+            return BoolArray(is_less_mask) # type: ignore
+        
+    def mask_get_less_equal(self, column_key: CK, value: Any) -> BoolArray:
+        """
+        Get a boolean mask for values less than or equal to a specific value.
+        """
+        with self._rlock:
+            if column_key not in self._column_keys:
+                raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+            
+            internal_column_name = self._get_internal_dataframe_column_name(column_key)
+            if isinstance(value, UnitedScalar):
+                if not self._unit_has(column_key):
+                    raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
+                unit: Unit = self._unit_get(column_key)
+                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] <= value.value_in_unit(unit) # type: ignore
+            else:
+                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] <= value
             return BoolArray(is_less_mask) # type: ignore
 
     def mask_get_in_range(self, column_key: CK, min_value: Any, max_value: Any) -> BoolArray:

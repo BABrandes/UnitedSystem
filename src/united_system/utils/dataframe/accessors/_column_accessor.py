@@ -30,10 +30,10 @@ class ColumnAccessor(Generic[CK]):
             self._slice: slice = slice(0, len(self._parent), 1)
         
     def __getitem__(self, row: int) -> SCALAR_TYPE:
-        return self._parent.cell_get(row, self._column_key)
+        return self._parent.cell_get_value(row, self._column_key)
     
     def __setitem__(self, row: int, value: SCALAR_TYPE) -> None:
-        self._parent.cell_set(row, self._column_key, value)
+        self._parent.cell_set_value(row, self._column_key, value)
 
     def __len__(self) -> int:
         return len(self._parent)
@@ -125,7 +125,7 @@ class ColumnAccessor(Generic[CK]):
 
     def count(self, value: SCALAR_TYPE|None=None) -> int|dict[SCALAR_TYPE, int]:
         if value is None:
-            return self._parent.column_get_count(self._column_key)
+            return self._parent.column_count_non_missing_values(self._column_key)
         else:
             # This would need to be implemented in the parent dataframe
             raise NotImplementedError("Column count with value not yet implemented")
@@ -224,21 +224,21 @@ class ColumnAccessor(Generic[CK]):
     
     @property
     def unit(self) -> Unit:
-        return self._parent.unit_get(self._column_key)
+        return self._parent.unit_get_unit(self._column_key)
     
     @property
     def unit_has(self) -> bool:
-        return self._parent.unit_has(self._column_key)
+        return self._parent.unit_has_unit(self._column_key)
 
     @property
     def dimension(self) -> Dimension:
         if not self.dimension_has:
             raise ValueError(f"Column {self._column_key} has no dimension.")
-        return self._parent.dimension_get(self._column_key)
+        return self._parent.dim_get_dimension(self._column_key)
 
     @property
     def dimension_has(self) -> bool:
-        return self._parent.dimension_has(self._column_key)
+        return self._parent.dim_has_dimension(self._column_key)
 
     @property
     def column_type(self) -> ColumnType:

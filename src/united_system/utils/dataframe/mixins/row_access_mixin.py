@@ -42,7 +42,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK]):
         Internal: Get a row as a row accessor. (no lock, no read-only check)
         """
         return RowAccessor[CK](self, row_index, column_keys) # type: ignore
-
+    
     # ----------- Row Access: Head/Tail ------------
 
     def row_get_head(self, n: int = 5) -> list[dict[CK, SCALAR_TYPE]]:
@@ -106,3 +106,19 @@ class RowAccessMixin(UnitedDataframeProtocol[CK]):
             if self._number_of_rows() == 0:
                 raise ValueError("Dataframe is empty.")
             return self._row_get_as_dict(self._number_of_rows() - 1)
+        
+    def row_get_by_slice(self, start: int, stop: int, step: int = 1) -> list[dict[CK, SCALAR_TYPE]]:
+        """
+        Return a slice of the dataframe.
+        """
+        with self._rlock:
+            if start < 0 or stop < 0 or step <= 0:
+                raise ValueError("Invalid slice parameters.")
+            if start >= self._number_of_rows() or stop >= self._number_of_rows():
+                raise ValueError("Slice out of bounds.")
+            if start >= stop:
+                raise ValueError("Invalid slice parameters.")
+            if step > self._number_of_rows():
+                raise ValueError("Step is too large.")
+            row_indices: list[int] = list(range(start, stop, step))
+            return [self._row_get_as_dict(row_index) for row_index in row_indices]

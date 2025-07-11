@@ -49,14 +49,14 @@ class UnitMixin(UnitedDataframeProtocol[CK]):
             raise ValueError(f"Column {column_key} has no unit.")
         return unit
     
-    def unit_has(self, column_key: CK) -> bool:
+    def unit_has_unit(self, column_key: CK) -> bool:
         """
         Check if a column has a unit.
         """
         with self._rlock:
             return self._unit_has(column_key)
 
-    def unit_get(self, column_key: CK) -> Unit:
+    def unit_get_unit(self, column_key: CK) -> Unit:
         """
         Get the unit for a column.
         
@@ -71,7 +71,7 @@ class UnitMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Setters: Units ------------
 
-    def unit_change(self, column_key: CK, unit: Unit):
+    def unit_change_unit(self, column_key: CK, unit: Unit):
         """
         Changes the unit for a column, but not the dimension.
         """
