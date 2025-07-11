@@ -1,248 +1,571 @@
-from .units.simple.simple_unit import SimpleUnit
-from .dimension import Dimension
-from .utils import JSONable, HDF5able
-from typing import Union, TYPE_CHECKING
-import h5py
 from dataclasses import dataclass, field
+from typing import Final, Tuple, List, overload, Union
+import re
+import numpy as np
 
-@dataclass(frozen=True, slots=True, init=False)
-class Unit(JSONable, HDF5able):
-    """User-friendly wrapper for SimpleUnit with convenient constructors."""
+from .utils.units.base_classes.base_unit import BaseUnit
+from .utils.units.unit_symbol import UnitSymbol
+from .dimension import Dimension
+from .utils.units.simple_unit_element import SimpleUnitElement
 
-########################################################
+# Cache for parsed units (outside the dataclass to avoid slots conflict)
+_SIMPLE_UNIT_CACHE: dict[str, "Unit"] = {}
 
-    # Fields
+@dataclass(frozen=True, slots=True)
+class Unit(BaseUnit[Dimension, "Unit"]):
+    unit_elements: Final[tuple[SimpleUnitElement, ...]] = field(init=False)
 
-    _wrapped_unit: SimpleUnit = field(init=False, compare=False)
-    _dimension: Dimension = field(init=False, hash=False, repr=False, compare=False)
+    def __init__(self, unit_elements: tuple[SimpleUnitElement, ...]):
+        object.__setattr__(self, "unit_elements", unit_elements)
+        quantity_exponents: list[float] = [0.0] * 7
+        pseudo_quantity_exponents: list[int] = [0] * 2
+        factor: float = 1
+        offset: float = 0
+        for unit_element in self.unit_elements:
 
-########################################################
+            # Set factor and offset
+            factor *= unit_element.canonical_factor
+            new_offset: float = unit_element.canonical_offset
+            if offset != 0 and new_offset != 0:
+                raise ValueError("Cannot have two non-zero offsets in the same unit")
+            offset = new_offset
+            
+            # Add quantity exponents (regardless of prefix)
+            unit_symbol: UnitSymbol = unit_element.unit_symbol
+            exponent: float = unit_element.exponent
+            for exponent_index, qty_exp in enumerate(unit_symbol.named_simple_dimension.dimension.dimension_exponents):
+                quantity_exponents[exponent_index] += float(qty_exp * exponent)
+            for exponent_index, pseudo_exp in enumerate(unit_symbol.named_simple_dimension.dimension.pseudo_dimension_exponents):
+                pseudo_quantity_exponents[exponent_index] += int(pseudo_exp * exponent)
 
-    # Constructor
+            if unit_symbol.value.offset != 0:
+                if offset != 0:
+                    raise ValueError("Cannot have two non-zero offsets in the same unit")
+                offset = unit_symbol.value.offset
 
-    def __init__(self, unit_or_dimension: Union[str, SimpleUnit, Dimension]):
+        object.__setattr__(self, "dimension", Dimension.create(quantity_exponents, pseudo_quantity_exponents))
+        object.__setattr__(self, "factor", factor)
+        object.__setattr__(self, "offset", offset)
+
+    @overload
+    @classmethod
+    def create(cls, arg: SimpleUnitElement, *args: SimpleUnitElement) -> "Unit":
+        ...
+    @overload
+    @classmethod
+    def create(cls, arg: "Unit", *args: "Unit") -> "Unit":
+        ...
+    @overload
+    @classmethod
+    def create(cls, arg: Union[List["Unit"], set["Unit"]]) -> "Unit":
+        ...
+    @classmethod
+    def create(cls, arg: Union[SimpleUnitElement, "Unit", List["Unit"], set["Unit"]], *args: Union[None, SimpleUnitElement, "Unit"]) -> "Unit":
+
+        items: list[SimpleUnitElement] = []
+        match arg:
+            case list() | set():
+                for unit in arg:
+                    items.extend(unit.unit_elements)
+            case Unit():
+                items.extend(arg.unit_elements)
+            case SimpleUnitElement():
+                items.append(arg)
+
+        for v in args:
+            match v:
+                case Unit():
+                    items.extend(v.unit_elements)
+                case SimpleUnitElement():
+                    items.append(v)
+                case _:
+                    raise ValueError(f"Invalid units: {v}")
+        return cls(tuple(items))
+    
+    @classmethod
+    def create_empty(cls) -> "Unit":
+        return cls(())
+
+    @classmethod
+    def parse_string(cls, unit_string: str) -> "Unit":
         """
-        Create a Unit from various input formats.
+        Parse a unit string into a Simple_Unit.
         
         Examples:
-            Unit("m/s")              # String parsing
-            Unit("kg*m/s^2")         # Complex unit strings
-            Unit("V")                # Simple units
-            Unit(existing_unit)      # Wrap existing
+        - "m" -> Simple_Unit(("", {"meter"}, 1))
+        - "km" -> Simple_Unit(("k", {"meter"}, 1))
+        - "m/s" -> Simple_Unit(("", {"meter"}, 1), ("s", {"second"}, -1))
+        - "V*m/ns^2" -> Simple_Unit(("", {"volt"}, 1), ("meter", {"meter"}, 1), ("n", {"second"}, -2))
         """
-        
-        match unit_or_dimension:
-            case SimpleUnit():
-                object.__setattr__(self, "_wrapped_unit", unit_or_dimension)
-                
-            case str():
-                object.__setattr__(self, "_wrapped_unit", SimpleUnit.parse_string(unit_or_dimension))
 
-            case Dimension():
-                object.__setattr__(self, "_wrapped_unit", SimpleUnit.parse_string(unit_or_dimension.canonical_unit.format_string(no_fraction=False)))
-        
-        # Initialize cached dimension
-        object.__setattr__(self, "_dimension", None)
+        if unit_string in _SIMPLE_UNIT_CACHE:
+            return _SIMPLE_UNIT_CACHE[unit_string]
 
-########################################################
+        unit_string = unit_string.strip()
+        if unit_string == "" or unit_string == "1":
+            return cls(())
+        unit_string_parts: list[str] = re.findall(r'[^*/]+|[*/][^*/]+', unit_string)
+        unit_elements: list[SimpleUnitElement] = []
+        for index, unit_string_part in enumerate(unit_string_parts):
+            
+            # Skip "1" as it represents dimensionless (no contribution)
+            if unit_string_part == "1":
+                if index == 0:
+                    continue
+                else:
+                    raise ValueError(f"Invalid unit string: {unit_string}")
 
-    # Fields of the wrapped unit
+            # Determine the initial exponent based on if the unit part is in numerator or denominator
+            if unit_string_part[0:2] == "1/":
+                unit_string_part = unit_string_part[2:]
+                unit_elements.append(SimpleUnitElement.parse_string(unit_string_part, "denominator"))
+            elif unit_string_part[0] == "/":
+                unit_string_part = unit_string_part[1:]
+                unit_elements.append(SimpleUnitElement.parse_string(unit_string_part, "denominator"))
+            elif unit_string_part[0] == "*":
+                unit_string_part = unit_string_part[1:]
+                unit_elements.append(SimpleUnitElement.parse_string(unit_string_part, "nominator"))
+            else:
+                unit_elements.append(SimpleUnitElement.parse_string(unit_string_part, "nominator"))
 
-    @property
-    def factor(self) -> float:
-        """Get the conversion factor to canonical units."""
-        return self._wrapped_unit.factor
-    
-    @property
-    def offset(self) -> float:
-        """Get the conversion offset to canonical units."""
-        return self._wrapped_unit.offset
-    
-    @property
-    def dimension(self) -> Dimension:
-        """Get the dimension of this unit."""
-        if self._dimension is None:
-            object.__setattr__(self, "_dimension", Dimension(self._wrapped_unit.dimension))
-        return self._dimension
-    
-########################################################
+        # Convert tuples to SimpleUnitElement objects
+        unit_elements_as_tuple: tuple[SimpleUnitElement, ...] = tuple(unit_elements)
+        simple_unit: Unit = cls(unit_elements_as_tuple)
+        _SIMPLE_UNIT_CACHE[unit_string] = simple_unit
+        return simple_unit
 
-    # Other methods
-
-    @property
-    def is_dimensionless(self) -> bool:
-        """Check if this is a dimensionless unit."""
-        return self.dimension.is_dimensionless()
-    
-########################################################
-
-    # Conversion methods
-
-    def to_canonical_value(self, value: Union[float, int]) -> float:
-        """Convert a value from this unit to canonical units."""
-        return self._wrapped_unit.to_canonical_value(value)
-    
-    def from_canonical_value(self, canonical_value: Union[float, int]) -> float:
-        """Convert a value from canonical units to this unit."""
-        return self._wrapped_unit.from_canonical_value(canonical_value)
-
-    def compatible_to(self, other: "Unit") -> bool:
-        """Check if this unit is compatible with another."""
-        return self._wrapped_unit.compatible_to(other._wrapped_unit)
-    
     @classmethod
-    def parse_string(cls, unit_str: str) -> "Unit":
-        """Parse a unit string like "m/s", "kg*m/s^2", etc."""
-        return cls(SimpleUnit.parse_string(unit_str))
-    
-########################################################
+    def compatible(cls, *args: "Unit|Dimension") -> bool:
+        """Check if this unit is compatible with another. (meaning they have the same dimension)"""
+        if len(args) == 0:
+            return True
+        if len(args) == 1:
+            if isinstance(args[0], Dimension):
+                return args[0] == cls.dimension
+            else:
+                return args[0].dimension == cls.dimension
+        for arg in args:
+            if isinstance(arg, Dimension):
+                if arg != cls.dimension:
+                    return False
+            elif arg.dimension != cls.dimension:
+                return False
+        return True
 
-    # Unit arithmetic
+    @overload
+    def from_canonical_value(self, canonical_value: int) -> float|int:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.float64) -> np.float64:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.float32) -> np.float32:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.float16) -> np.float16:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.complex128) -> np.complex128:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: float) -> float:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: complex) -> complex:
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.ndarray) -> np.ndarray:
+        ...
+    def from_canonical_value(self, canonical_value: int|np.float64|np.float32|np.float16|np.complex128|float|complex|np.ndarray) -> np.float64|np.float32|np.float16|np.complex128|float|int|complex|np.ndarray:
 
-    def __mul__(self, other: "Unit") -> "Unit":
-        """Multiply units."""
-        return Unit(self._wrapped_unit * other._wrapped_unit)
-    
-    def __truediv__(self, other: "Unit") -> "Unit":
-        """Divide units."""
-        return Unit(self._wrapped_unit / other._wrapped_unit)
-    
-    def __pow__(self, exponent: float|int) -> "Unit":
-        """Raise unit to a power."""
-        return Unit(self._wrapped_unit.pow(exponent))
-    
-########################################################
+        match canonical_value:
+            case int():
+                new_value = (canonical_value - self.offset) / self.factor
+                return int(new_value) if new_value.is_integer() else new_value
+            case float():
+                float_type = type(canonical_value)
+                if float_type is np.float16:
+                    return np.float16((canonical_value - self.offset) / self.factor)
+                elif float_type is np.float32:
+                    return np.float32((canonical_value - self.offset) / self.factor)
+                elif float_type is np.float64:
+                    return np.float64((canonical_value - self.offset) / self.factor)
+                else:
+                    return (canonical_value - self.offset) / self.factor
+            case complex():
+                return (canonical_value - self.offset) / self.factor
+            case np.ndarray():
+                return (canonical_value - self.offset) / self.factor
+            case _:
+                raise ValueError(f"Invalid canonical value type: {type(canonical_value)}")
 
-    # Comparison operations
+    @overload
+    def to_canonical_value(self, value_in_unit: int) -> float|int:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.float64) -> np.float64:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.float32) -> np.float32:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.float16) -> np.float16:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.complex128) -> np.complex128:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: float) -> float:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: complex) -> complex:
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.ndarray) -> np.ndarray:
+        ...
+    def to_canonical_value(self, value_in_unit: int|np.float64|np.float32|np.float16|np.complex128|float|complex|np.ndarray) -> np.float64|np.float32|np.float16|np.complex128|float|int|complex|np.ndarray:
+        match value_in_unit:
+            case int():
+                new_value: float = value_in_unit * self.factor + self.offset
+                if new_value.is_integer():
+                    return int(new_value)
+                else:
+                    return new_value
+            case float():
+                float_type = type(value_in_unit)
+                if float_type is np.float16:
+                    return np.float16(value_in_unit * self.factor + self.offset)
+                elif float_type is np.float32:
+                    return np.float32(value_in_unit * self.factor + self.offset)
+                elif float_type is np.float64:
+                    return np.float64(value_in_unit * self.factor + self.offset)
+                else:
+                    return value_in_unit * self.factor + self.offset
+            case complex():
+                return value_in_unit * self.factor + self.offset
+            case np.ndarray():
+                return value_in_unit * self.factor + self.offset
+            case _:
+                raise ValueError(f"Invalid value: {value_in_unit}")
 
-    def __eq__(self, other: "Unit") -> bool:
-        """Check equality."""
-        return self._wrapped_unit.__eq__(other._wrapped_unit)
-    
-    def __ne__(self, other: "Unit") -> bool:
-        """Check inequality."""
-        return not self.__eq__(other)
-    
-########################################################
-   
-    # String representation
-    
+    def pow(self, exponent: float) -> "Unit":
+        new_unit_elements: list[SimpleUnitElement] = []
+        for element in self.unit_elements:
+            new_unit_elements.append(SimpleUnitElement(element.prefix, element.unit_symbol, element.exponent * exponent))
+        return Unit(tuple(new_unit_elements))
+        
     def __str__(self) -> str:
-        """String representation."""
-        return str(self._wrapped_unit)
-    
-    def __repr__(self) -> str:
-        """Detailed string representation for debugging."""
-        return f"Unit({self._wrapped_unit!r})"
-    
-    def format_string(self, no_fraction: bool = False) -> str:
+        return self.format_string(no_fraction=False)
+        
+    def reduced_unit(self) -> "Unit":
+        return self
+
+    def format_string(self, no_fraction: bool) -> str:
+        if not self.unit_elements:
+            return ""
+        
+        nominator_parts: list[str] = []
+        denominator_parts: list[str] = []
+        
+        for element in self.unit_elements:
+            formatted, position = element.format_string(no_fraction)
+            if formatted:  # Skip empty strings (zero exponents)
+                if position == "nominator":
+                    nominator_parts.append(formatted)
+                else:  # position == "denominator"
+                    denominator_parts.append(formatted)
+        
+        # Build the final string
+        if not nominator_parts and not denominator_parts:
+            return ""
+        elif not denominator_parts:
+            return "*".join(nominator_parts)
+        elif not nominator_parts:
+            return "1/" + "*".join(denominator_parts)
+        else:
+            return "*".join(nominator_parts) + "/" + "*".join(denominator_parts)
+        
+    @staticmethod
+    def suggest_units(dimension: Dimension, canonical_value: float|None, must_include: set[SimpleUnitElement]|list[SimpleUnitElement]=set(), n: int = 1000) -> Tuple["Unit", list["Unit"]]:
         """
-        Format the unit as a string.
+        Suggest units for a given dimension and canonical value, optimized for readability.
+        
+        The method finds units that make the numerical value "nice" - preferably 1-9 digits
+        before the decimal point with minimal zeros and decimal places.
+        
+        This method works without relying on NamedUnit by generating all possible combinations
+        of unit symbols and prefixes.
         
         Args:
-            no_fraction: If True, avoid fraction notation (use negative exponents)
+            quantity: The unit dimension to match
+            canonical_value: The value in canonical units to optimize for
+            must_include: Unit elements that must be included in suggestions
+            n: Maximum number of suggestions to return
             
         Returns:
-            Formatted unit string.
+            Tuple of (best_unit, list_of_alternative_units)
         """
-        return self._wrapped_unit.format_string(no_fraction)
-    
-########################################################
-
-    # Unit suggestion
-
-    @classmethod
-    def suggest_units(cls, dimension: Dimension, canonical_value: Union[float, int, None] = None, n: int = 10) -> list["Unit"]:
-        """
-        Suggest units for a given dimension and value.
+        from .utils.units.unit_symbol import UnitSymbol
+        from .utils.units.utils import PREFIX_PAIRS
+        from .utils.units.simple_unit_element import SimpleUnitElement
         
-        Args:
-            dimension: The dimension to suggest units for
-            value: The value to optimize suggestions for (optional)
-            n: Number of suggestions to return
-            
-        Returns:
-            List of suggested units, best first.
-        """
-        best_unit, alternatives = SimpleUnit.suggest_units(dimension, canonical_value, n=n)
-        return [Unit(unit) for unit in [best_unit] + alternatives]
-    
-    @classmethod
-    def suggest_best_unit(cls, dimension: Dimension, canonical_value: Union[float, int, None] = None) -> "Unit":
-        """
-        Suggest the best unit for a given dimension and value.
+        if canonical_value is None:
+            # If no value given, just return a basic canonical unit
+            canonical_unit = dimension.canonical_unit
+            return canonical_unit, [canonical_unit]
         
-        Args:
-            dimension: The dimension to suggest a unit for
-            value: The value to optimize the suggestion for (optional)
+        # Generate all possible unit combinations
+        compatible_units: list[Unit] = []
+        seen_units: set[str] = set()  # To avoid duplicates
+        
+        # Get all unit symbols
+        all_symbols = list(UnitSymbol)
+        
+        # Generate single-symbol units with various prefixes
+        for symbol in all_symbols:
+            # Try without prefix
+            try:
+                unit = Unit((SimpleUnitElement("", symbol, 1.0),))
+                if unit.compatible_to(dimension):
+                    unit_str = unit.format_string(no_fraction=False)
+                    if unit_str not in seen_units:
+                        compatible_units.append(unit)
+                        seen_units.add(unit_str)
+            except:
+                pass
             
-        Returns:
-            The best suggested unit.
+            # Try with different prefixes
+            for prefix in PREFIX_PAIRS.keys():
+                if prefix == "":  # Skip empty prefix as we already tried it
+                    continue
+                try:
+                    unit = Unit((SimpleUnitElement(prefix, symbol, 1.0),))
+                    if unit.compatible_to(dimension):
+                        unit_str = unit.format_string(no_fraction=False)
+                        if unit_str not in seen_units:
+                            compatible_units.append(unit)
+                            seen_units.add(unit_str)
+                except:
+                    pass
+        
+        # Generate compound units for common derived dimensions
+        # This is more complex but we'll do some basic combinations
+        if len(compatible_units) == 0:
+            # Try some basic compound units
+            for symbol1 in all_symbols:
+                for symbol2 in all_symbols:
+                    if symbol1 == symbol2:
+                        continue
+                    # Try combinations like m/s, kg*m/s^2, etc.
+                    for exp1 in [1, -1, 2, -2]:
+                        for exp2 in [1, -1, 2, -2]:
+                            try:
+                                unit = Unit((
+                                    SimpleUnitElement("", symbol1, exp1),
+                                    SimpleUnitElement("", symbol2, exp2)
+                                ))
+                                if unit.compatible_to(dimension):
+                                    unit_str = unit.format_string(no_fraction=False)
+                                    if unit_str not in seen_units:
+                                        compatible_units.append(unit)
+                                        seen_units.add(unit_str)
+                                        if len(compatible_units) >= 50:  # Limit to prevent explosion
+                                            break
+                            except:
+                                pass
+                        if len(compatible_units) >= 50:
+                            break
+                    if len(compatible_units) >= 50:
+                        break
+                if len(compatible_units) >= 50:
+                    break
+        
+        # Add must_include elements if specified
+        if must_include:
+            required_elements = list(must_include) if isinstance(must_include, set) else must_include
+            for element in required_elements:
+                try:
+                    unit = Unit((element,))
+                    if unit.compatible_to(dimension):
+                        unit_str = unit.format_string(no_fraction=False)
+                        if unit_str not in seen_units:
+                            compatible_units.append(unit)
+                            seen_units.add(unit_str)
+                except:
+                    pass
+        
+        if not compatible_units:
+            # Fallback to canonical unit
+            canonical_unit = dimension.canonical_unit
+            return canonical_unit, [canonical_unit]
+        
+        # Score each unit based on how "nice" the resulting value would be
+        scored_units: list[Tuple[float, Unit, str]] = []
+        
+        for unit in compatible_units:
+            try:
+                # Convert canonical value to this unit
+                value_in_unit = unit.from_canonical_value(canonical_value)
+                value_str = f"{value_in_unit:g}"  # Format without unnecessary trailing zeros
+                unit_str = unit.format_string(no_fraction=False)
+                
+                # Calculate score (lower is better)
+                score = Unit._calculate_value_score(value_str, unit_str)
+                scored_units.append((score, unit, value_str))
+                
+            except (ValueError, ZeroDivisionError, OverflowError):
+                # Skip units that cause conversion errors
+                continue
+        
+        # Sort by score (ascending - lower is better)
+        scored_units.sort(key=lambda x: x[0])
+        
+        # Return top n suggestions
+        suggestions = [unit for _, unit, _ in scored_units[:n]]
+        
+        if suggestions:
+            return suggestions[0], suggestions
+        else:
+            # Fallback
+            canonical_unit = dimension.canonical_unit
+            return canonical_unit, [canonical_unit]
+    
+    @staticmethod
+    def _calculate_value_score(value_str: str, unit_str: str) -> float:
         """
-        return cls.suggest_units(dimension, canonical_value, n=1)[0]
-    
-########################################################
-
-    # Factory methods
-
-    @classmethod
-    def dimensionless(cls) -> "Unit":
-        """Create a dimensionless unit."""
-        return cls("")
-    
-    @classmethod
-    def meter(cls) -> "Unit":
-        """Create a meter unit."""
-        return cls("m")
-    
-    @classmethod
-    def second(cls) -> "Unit":
-        """Create a second unit."""
-        return cls("s")
-    
-    @classmethod
-    def kilogram(cls) -> "Unit":
-        """Create a kilogram unit."""
-        return cls("kg")
-    
-    @classmethod
-    def ampere(cls) -> "Unit":
-        """Create an ampere unit."""
-        return cls("A")
-    
-    @classmethod
-    def kelvin(cls) -> "Unit":
-        """Create a kelvin unit."""
-        return cls("K")
-    
-    @classmethod
-    def mole(cls) -> "Unit":
-        """Create a mole unit."""
-        return cls("mol")
-    
-    @classmethod
-    def candela(cls) -> "Unit":
-        """Create a candela unit."""
-        return cls("cd")
-    
-########################################################
-
-    # Serialization
-
-    def to_json(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return self._wrapped_unit.to_json()
-    
-    @classmethod
-    def from_json(cls, data: dict) -> "Unit":
-        """Create from JSON dictionary."""
-        return cls(SimpleUnit.from_json(data))
-    
-    def to_hdf5(self, hdf5_group: h5py.Group) -> None:
-        """Convert to HDF5 group for serialization."""
-        self._wrapped_unit.to_hdf5(hdf5_group)
-    
-    @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group) -> "Unit":
-        """Create from HDF5 group."""
-        return cls(SimpleUnit.from_hdf5(hdf5_group))
+        Calculate a score for how "nice" a value/unit combination is.
+        Lower scores are better.
+        """
+        import math
+        import re
+        
+        # Parse the numeric value
+        try:
+            numeric_value = float(value_str)
+        except ValueError:
+            return float('inf')  # Invalid numbers get worst score
+        
+        if numeric_value == 0:
+            return 0.0  # Zero is perfect
+        
+        score = 0.0
+        
+        # 1. Prefer values between 1 and 999 (1-3 digits before decimal)
+        abs_value = abs(numeric_value)
+        if 1 <= abs_value < 10:
+            score += 0.0  # Perfect range
+        elif 10 <= abs_value < 100:
+            score += 1.0  # Good range
+        elif 100 <= abs_value < 1000:
+            score += 2.0  # Acceptable range
+        elif 0.1 <= abs_value < 1:
+            score += 3.0  # Small decimals
+        elif 0.01 <= abs_value < 0.1:
+            score += 5.0  # Very small decimals
+        else:
+            # Very large or very small numbers
+            log_value = math.log10(abs_value)
+            score += 10.0 + abs(log_value)
+        
+        # 2. Penalize decimal places and zeros
+        if '.' in value_str:
+            decimal_part = value_str.split('.')[1]
+            score += len(decimal_part) * 0.5  # Each decimal place adds penalty
+            score += decimal_part.count('0') * 0.3  # Extra penalty for trailing zeros
+        
+        # 3. Penalize leading/trailing zeros in the whole number
+        if 'e' not in value_str.lower():  # Avoid scientific notation
+            score += value_str.count('0') * 0.2
+        
+        # 4. Prefer shorter unit strings
+        score += len(unit_str) * 0.1
+        
+        # 5. Total character count (value + unit)
+        score += len(value_str) * 0.1
+        
+        # 6. Heavily penalize scientific notation
+        if 'e' in value_str.lower():
+            score += 20.0
+        
+        # 7. HEAVILY penalize fractional exponents in unit strings
+        # Look for patterns like ^0.5, ^-0.5, ^1.5, ^-1.5, etc.
+        fractional_exponent_pattern = r'\^(-?\d*\.\d+)'
+        fractional_matches = re.findall(fractional_exponent_pattern, unit_str)
+        
+        for exponent_str in fractional_matches:
+            try:
+                exponent = float(exponent_str)
+                # Heavy penalty for fractional exponents
+                score += 50.0  # Base penalty for any fractional exponent
+                
+                # Extra penalty for "weird" fractions
+                if abs(exponent - 0.5) < 1e-10 or abs(exponent + 0.5) < 1e-10:
+                    score += 10.0  # ±0.5 is less bad than other fractions
+                elif abs(exponent - 1.5) < 1e-10 or abs(exponent + 1.5) < 1e-10:
+                    score += 20.0  # ±1.5 is worse
+                else:
+                    score += 30.0  # Other fractions are worst
+                    
+            except ValueError:
+                # If we can't parse the exponent, it's definitely bad
+                score += 100.0
+        
+        # 8. Prefer simple integer exponents
+        # Look for patterns like ^2, ^3, ^-1, ^-2, etc.
+        integer_exponent_pattern = r'\^(-?\d+)(?!\.\d)'  # Negative lookbehind to avoid matching 2.5 as 2
+        integer_matches = re.findall(integer_exponent_pattern, unit_str)
+        
+        for exponent_str in integer_matches:
+            try:
+                exponent = int(exponent_str)
+                # Small penalty for high integer exponents
+                if abs(exponent) > 3:
+                    score += abs(exponent) * 0.5
+            except ValueError:
+                pass
+        
+        # 9. Prefer simple compound units over complex derived units
+        # Count the number of different unit symbols in the string
+        # Use Unicode letter pattern to handle symbols like ν, Ω, μ, etc.
+        unit_symbols = re.findall(r'[\w\u0080-\uFFFF]+', unit_str)
+        # Filter to keep only letter-containing symbols (exclude pure numbers)
+        unit_symbols = [s for s in unit_symbols if re.search(r'[A-Za-z\u0080-\uFFFF]', s)]
+        
+        if len(unit_symbols) > 3:
+            score += (len(unit_symbols) - 3) * 2.0  # Penalty for too many different symbols
+        
+        # 10. Use UnitSymbolTag to prefer SI units over non-SI units
+        from .utils.units.unit_symbol import UnitSymbol, UNIT_SYMBOL_TAG
+        
+        for symbol in unit_symbols:
+            # Remove common prefixes to get the base symbol
+            base_symbol = symbol
+            common_prefixes = ['k', 'M', 'G', 'T', 'c', 'm', 'μ', 'µ', 'n', 'p', 'f', 'a']
+            for prefix in common_prefixes:
+                if symbol.startswith(prefix) and len(symbol) > len(prefix):
+                    base_symbol = symbol[len(prefix):]
+                    break
+            
+            try:
+                unit_symbol = UnitSymbol.from_symbol(base_symbol)
+                tags = unit_symbol.value.symbol_tags
+                
+                # Apply scoring based on tags
+                if UNIT_SYMBOL_TAG.SI_BASE_UNIT in tags:
+                    score += 0.0  # Best score for SI base units
+                elif UNIT_SYMBOL_TAG.SI_DERIVED_UNIT in tags:
+                    score += 0.1  # Slightly less preferred than base units
+                elif UNIT_SYMBOL_TAG.SI_BASE_UNIT_EQUIVALENT in tags:
+                    score += 0.2  # Even less preferred
+                elif UNIT_SYMBOL_TAG.NON_SI_SYSTEM in tags:
+                    score += 2.0  # Penalty for non-SI units
+                elif UNIT_SYMBOL_TAG.US_CUSTOMARY_SYSTEM in tags or UNIT_SYMBOL_TAG.IMPERIAL_SYSTEM in tags:
+                    score += 3.0  # Higher penalty for non-metric systems
+                else:
+                    score += 1.0  # Default penalty for unclassified units
+                    
+            except ValueError:
+                # Symbol not found in UnitSymbol enum - likely obscure
+                score += 5.0  # Heavy penalty for unknown symbols
+        
+        return score

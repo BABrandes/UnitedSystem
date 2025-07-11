@@ -1,4 +1,4 @@
-from .units.named_simple_dimensions import NamedSimpleDimension
+from .utils.units.named_simple_dimensions import NamedSimpleDimension
 from enum import Enum
 from dataclasses import dataclass, field
 
@@ -15,7 +15,7 @@ class DimensionExponents():
     log_level: int = field(default=0)
 
 class NamedDimension(Enum):
-    value: NamedSimpleDimension|DimensionExponents
+    value: NamedSimpleDimension|DimensionExponents # type: ignore
     """User-friendly named dimensions wrapping all NamedSimpleUnitDimension values."""
     
     # Base dimensions

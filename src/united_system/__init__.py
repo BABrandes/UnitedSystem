@@ -5,18 +5,18 @@ This package provides type-safe, efficient handling of physical quantities
 with automatic unit conversion and dimensional analysis.
 """
 
-from .real_united_scalar import RealUnitedScalar
-from .real_united_array import RealUnitedArray
-from .dimension import Dimension
-from .unit import Unit
+from ..depreciated.real_united_scalar_depreciated import RealUnitedScalar
+from ..depreciated.real_united_array_depreciated import RealUnitedArray
+from ..depreciated.dimension import Dimension
+from ..depreciated.unit import Unit
 from .named_dimensions import NamedDimension, DimensionExponents
-from .dataframe import UnitedDataframe  # Import from new modular dataframe package
-from .arrays.int_array import IntArray
-from .arrays.string_array import StringArray
-from .arrays.timestamp_array import TimestampArray
-from .arrays.bool_array import BoolArray
-from .arrays.complex_array import ComplexArray
-from .arrays.float_array import FloatArray
+from .united_dataframe import UnitedDataframe
+from .int_array import IntArray
+from .string_array import StringArray
+from .timestamp_array import TimestampArray
+from .bool_array import BoolArray
+from .complex_array import ComplexArray
+from .float_array import FloatArray
 
 __all__ = [
     'RealUnitedScalar',

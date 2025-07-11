@@ -6,38 +6,41 @@ the mixins to provide a complete dataframe implementation with units support.
 """
 
 from dataclasses import dataclass, field
-from typing import TypeVar, Generic, Dict, Any, Callable, Union
+from typing import Generic, Dict, Optional, Type
+from types import TracebackType
 import pandas as pd
 from readerwriterlock import rwlock
 
-from .dataframe.mixins import *
-from .dataframe.column_information import ColumnInformation, InternalDataFrameNameFormatter
-from .dataframe.column_key import ColumnKey
-from .dataframe.column_type import ColumnType
+from .utils.dataframe.mixins import *
+from .utils.dataframe.mixins.dataframe_protocol import CK
+from .utils.dataframe.column_type import ColumnType
+from .utils.dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from .unit import Unit
-from .dimension import Dimension
+from .utils.general import JSONable, HDF5able
 
-CK = TypeVar("CK", bound=Union[ColumnKey, str])
-
-@dataclass
+@dataclass(init=False)
 class UnitedDataframe(
     CoreMixin[CK],
-    ColumnKeyMixin[CK],
-    ColumnTypeMixin[CK],
-    DisplayUnitMixin[CK],
+    ColKeyMixin[CK],
+    ColTypeMixin[CK],
+    UnitMixin[CK],
     DimensionMixin[CK],
+    ColumnAccessMixin[CK],
     ColumnOperationsMixin[CK],
     ColumnStatisticsMixin[CK],
     RowOperationsMixin[CK],
+    RowAccessMixin[CK],
+    RowStatisticsMixin[CK],
     CellOperationsMixin[CK],
     MaskOperationsMixin[CK],
-    RowAccessMixin[CK],
     FilterMixin[CK],
     SerializationMixin[CK],
     ConstructorMixin[CK],
     GroupbyMixin[CK],
-    AccessorMixin[CK],
-    Generic[CK]
+    IterMixin[CK],
+    AccessorGetitemMixin[CK],
+    AccessorSetitemMixin[CK],
+    Generic[CK],
 ):
     """
     A dataframe implementation with full units support.
@@ -59,107 +62,88 @@ class UnitedDataframe(
     """
     
     # Core data structures
-    _internal_canonical_dataframe: pd.DataFrame
-    _column_information: Dict[CK, ColumnInformation]
-    _internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter
-    
+    _internal_dataframe: pd.DataFrame
+    _internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter
+    _internal_dataframe_column_names: Dict[CK, str] = field(default_factory=dict, init=False)
+
     # Derived data structures (populated in __post_init__)
     _column_keys: list[CK] = field(default_factory=list, init=False)
     _column_types: Dict[CK, ColumnType] = field(default_factory=dict, init=False)
-    _display_units: Dict[CK, Unit] = field(default_factory=dict, init=False)
-    _dimensions: Dict[CK, Dimension] = field(default_factory=dict, init=False)
-    _internal_dataframe_column_strings: Dict[CK, str] = field(default_factory=dict, init=False)
+    _column_units: Dict[CK, Optional[Unit]] = field(default_factory=dict, init=False)
     
     # Read-only state
     _read_only: bool = False
     
     # Thread safety
-    _lock: rwlock.RWLockFairD = field(default=None, init=False)
-    _rlock: rwlock.RWLockFairD._aReader = field(default=None, init=False)
-    _wlock: rwlock.RWLockFairD._aWriter = field(default=None, init=False)
+    _lock: rwlock.RWLockFairD = field(init=False)
+    _rlock: rwlock.RWLockFairD._aReader = field(init=False) # type: ignore
+    _wlock: rwlock.RWLockFairD._aWriter = field(init=False) # type: ignore
 
-    def __post_init__(self):
+    def __init__(
+            self,
+            dataframe: pd.DataFrame,
+            column_keys: list[CK],
+            column_types: Dict[CK, ColumnType],
+            column_units: Dict[CK, Optional[Unit]],
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
+            read_only: bool = False,
+            copy_dataframe: bool = False,
+            rename_dataframe_columns: bool = False
+    ) -> None:
         """
         Initialize derived data structures and set up thread safety.
         """
+
+        if len(dataframe.columns) != len(column_keys):
+            raise ValueError(f"Number of columns in dataframe ({len(dataframe.columns)}) does not match number of column keys ({len(column_keys)}).")
+        if len(column_keys) != len(column_types):
+            raise ValueError(f"Number of column keys ({len(column_keys)}) does not match number of column types ({len(column_types)}).")
+        if len(column_keys) != len(column_units):
+            raise ValueError(f"Number of column keys ({len(column_keys)}) does not match number of column units ({len(column_units)}).")
+        
+        dataframe_column_names: Dict[CK, str] = {}
+        for column_index, column_key in enumerate(column_keys):
+            dataframe_column_names[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
+            if dataframe_column_names[column_key] != dataframe.columns[column_index]:
+                if rename_dataframe_columns:
+                    dataframe.rename(columns={dataframe.columns[column_index]: dataframe_column_names[column_key]}, inplace=True)
+                else:
+                    raise ValueError(f"Column {column_key} predicts a different name in the dataframe ({dataframe_column_names[column_key]}) than the actual name in the dataframe ({dataframe.columns[column_index]}).")
+
+        if copy_dataframe:
+            dataframe = dataframe.copy(deep=True)
+
         # Initialize locks
         self._lock = rwlock.RWLockFairD()
         object.__setattr__(self, '_rlock', self._lock.gen_rlock())
         object.__setattr__(self, '_wlock', self._lock.gen_wlock())
         
         # Initialize derived data structures
-        object.__setattr__(self, '_column_keys', list(self._column_information.keys()))
-        object.__setattr__(self, '_column_types', {})
-        object.__setattr__(self, '_display_units', {})
-        object.__setattr__(self, '_dimensions', {})
-        object.__setattr__(self, '_internal_dataframe_column_strings', {})
-        
-        # Populate derived data structures
-        for column_key, column_info in self._column_information.items():
-            self._column_types[column_key] = column_info.column_type
-            self._display_units[column_key] = column_info.display_unit
-            self._dimensions[column_key] = column_info.dimension
-            self._internal_dataframe_column_strings[column_key] = self._internal_dataframe_column_name_formatter(column_info)
+        object.__setattr__(self, '_column_keys', column_keys)
+        object.__setattr__(self, '_column_types', column_types)
+        object.__setattr__(self, '_column_units', column_units)
+        object.__setattr__(self, '_internal_dataframe', dataframe)
+        object.__setattr__(self, '_internal_dataframe_column_names', dataframe_column_names)
+        object.__setattr__(self, '_internal_dataframe_column_name_formatter', internal_dataframe_column_name_formatter)
+        object.__setattr__(self, '_read_only', read_only)
 
     def __str__(self) -> str:
         """
         Return a string representation of the dataframe.
         """
         with self._rlock:
-            return f"UnitedDataframe[{type(self).__name__}]({self.shape[0]} rows, {self.shape[1]} columns)"
+            rows = len(self._internal_dataframe)
+            cols = len(self._column_keys)
+            return f"UnitedDataframe[{type(self).__name__}]({rows} rows, {cols} columns)"
 
     def __repr__(self) -> str:
         """
         Return a detailed string representation of the dataframe.
         """
         with self._rlock:
-            return f"UnitedDataframe[{type(self).__name__}](\n  Shape: {self.shape},\n  Columns: {self.column_keys},\n  Read-only: {self._read_only}\n)"
-
-
-
-    # Alternative constructor methods
-    @classmethod
-    def from_dataframe_and_column_information_list(
-        cls,
-        dataframe: pd.DataFrame,
-        column_information: Dict[CK, ColumnInformation],
-        internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter,
-        read_only: bool = False
-    ) -> "UnitedDataframe[CK]":
-        """
-        Create a UnitedDataframe from a pandas DataFrame and column information.
-        
-        Args:
-            dataframe: The pandas DataFrame containing the data
-            column_information: Dictionary mapping column keys to their information
-            internal_dataframe_column_name_formatter: Function to format internal column names
-            read_only: Whether the dataframe should be read-only
-            
-        Returns:
-            UnitedDataframe: New instance with the provided data
-        """
-        instance = cls(
-            dataframe.copy(),
-            column_information,
-            internal_dataframe_column_name_formatter
-        )
-        instance._read_only = read_only
-        return instance
-
-    @classmethod
-    def create_from_dataframe_and_column_information_list(
-        cls,
-        dataframe: pd.DataFrame,
-        column_information: Dict[CK, ColumnInformation],
-        internal_dataframe_column_name_formatter: InternalDataFrameNameFormatter,
-        read_only: bool = False
-    ) -> "UnitedDataframe[CK]":
-        """
-        Alternative name for from_dataframe_and_column_information_list for backward compatibility.
-        """
-        return cls.from_dataframe_and_column_information_list(
-            dataframe, column_information, internal_dataframe_column_name_formatter, read_only
-        )
+            rows = len(self._internal_dataframe)
+            cols = len(self._column_keys)
+            return f"UnitedDataframe[{type(self).__name__}](\n  Shape: ({rows}, {cols}),\n  Columns: {self._column_keys},\n  Read-only: {self._read_only}\n)"
 
     # Context manager support
     def __enter__(self) -> "UnitedDataframe[CK]":
@@ -169,8 +153,8 @@ class UnitedDataframe(
         self._wlock.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[Exception], exc_tb: Optional[TracebackType]) -> Optional[bool]:
         """
         Exit context manager (release write lock).
         """
-        self._wlock.__exit__(exc_type, exc_val, exc_tb)
+        return self._wlock.__exit__(exc_type, exc_val, exc_tb)
