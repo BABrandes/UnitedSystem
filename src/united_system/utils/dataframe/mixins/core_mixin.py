@@ -53,6 +53,13 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         Internal: Get the number of columns in the dataframe (no lock).
         """
         return len(self._column_keys)
+    
+    @property
+    def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter:
+        """
+        Get the internal dataframe column name formatter.
+        """
+        return self._internal_dataframe_column_name_formatter
 
     def has_unit(self, column_key: CK) -> bool:
         """
@@ -127,7 +134,7 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         return self._internal_dataframe_column_names[column_key]
 
-    def get_internal_dataframe_column_string(self, column_key: CK) -> str:
+    def get_internal_dataframe_column_name(self, column_key: CK) -> str:
         """
         Public: Get the internal dataframe column string for a column key (with lock).
         
@@ -140,14 +147,23 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:
             return self._get_internal_dataframe_column_name(column_key)
         
-    def _get_internal_dataframe_column_names(self, column_key: CK|Sequence[CK]) -> list[str]:
+    def _get_internal_dataframe_column_names(self, column_key: CK|Sequence[CK]|None = None) -> list[str]:
         """
         Internal: Get the internal dataframe column strings for a list of column keys (no lock).
         """
+        if column_key is None:
+            column_key = self._column_keys
         if isinstance(column_key, Sequence):
             return [self._get_internal_dataframe_column_name(column_key) for column_key in column_key] # type: ignore
         else:
             return [self._get_internal_dataframe_column_name(column_key)]
+
+    def get_internal_dataframe_column_names(self, column_key: CK|Sequence[CK]|None = None) -> list[str]:
+        """
+        Public: Get the internal dataframe column strings for a list of column keys (with lock).
+        """
+        with self._rlock:
+            return self._get_internal_dataframe_column_names(column_key)
 
     @staticmethod
     def column_key_to_string(column_key: CK, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, column_unit: Optional[Unit]) -> str:

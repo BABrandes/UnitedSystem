@@ -40,6 +40,7 @@ class UnitedDataframe(
     IterMixin[CK],
     AccessorGetitemMixin[CK],
     AccessorSetitemMixin[CK],
+    SegmentMixin[CK],
     Generic[CK],
 ):
     """

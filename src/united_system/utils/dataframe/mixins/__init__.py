@@ -26,6 +26,7 @@ Mixins included:
 - GroupbyMixin: Complete groupby functionality
 - AccessorGetitemMixin: Magic methods (__getitem__, __iter__)
 - AccessorSetitemMixin: Magic methods (__setitem__)
+- SegmentMixin: Complete segment functionality
 """
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
@@ -43,12 +44,13 @@ from .mask_operations_mixin import MaskOperationsMixin
 from .filter_mixin import FilterMixin
 from .serialization_mixin import SerializationMixin
 from .constructor_mixin import ConstructorMixin
-from .groupby_mixin import GroupbyMixin
+from .group_mixin import GroupbyMixin
 from .accessor_getitem_mixin import AccessorGetitemMixin
 from .accessor_setitem_mixin import AccessorSetitemMixin
 from .iter_mixin import IterMixin
 from .row_statistics_mixin import RowStatisticsMixin
 from .unit_mixin import UnitMixin
+from .segment_mixin import SegmentMixin
 
 __all__ = [
     # Protocol
@@ -68,6 +70,7 @@ __all__ = [
     "RowOperationsMixin",
     "CellOperationsMixin",
     "MaskOperationsMixin",
+    "SegmentMixin",
     "RowAccessMixin",
     "FilterMixin", 
     "SerializationMixin",

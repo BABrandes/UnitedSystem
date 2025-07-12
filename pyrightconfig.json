@@ -7,5 +7,10 @@
   "pythonVersion": "3.13",
   "typeCheckingMode": "strict",
   "reportMissingImports": true,
-  "reportMissingTypeStubs": false
+  "reportMissingTypeStubs": false,
+  "reportUnknownArgumentType": true,
+  "reportUnknownReturnType": true,
+  "reportUnknownLambdaType": true,
+  "reportUnknownVariableType": true,
+  "reportUnknownParameterType": true,
 } 
