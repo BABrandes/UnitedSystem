@@ -34,7 +34,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
     ################### Overloads for single indexing #########################################################
 
     @overload
-    def __getitem__(self, key: CK) -> ColumnAccessor[CK]:
+    def __getitem__(self, key: CK) -> "ColumnAccessor[CK]":
         """
         Single indexing (e.g., df[column]).
 
@@ -47,21 +47,21 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: int) -> RowAccessor[CK]:
+    def __getitem__(self, key: int) -> "RowAccessor[CK]":
         """
         Single indexing (e.g., df[row]).
         """
         ...
 
     @overload
-    def __getitem__(self, key: slice) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: slice) -> "UnitedDataframe[CK]":
         """
         Single indexing (e.g., df[slice]).
         """
         ...
 
     @overload
-    def __getitem__(self, key: Sequence[CK]) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: Sequence[CK]) -> "UnitedDataframe[CK]":
         """
         Single indexing (e.g., df[sequence of columns]).
         """
@@ -96,7 +96,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
     
     @overload
-    def __getitem__(self, key: tuple[CK, slice]) -> ColumnAccessor[CK]:
+    def __getitem__(self, key: tuple[CK, slice]) -> "ColumnAccessor[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -109,7 +109,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[slice, CK]) -> ColumnAccessor[CK]:
+    def __getitem__(self, key: tuple[slice, CK]) -> "ColumnAccessor[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -122,7 +122,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[int, Sequence[CK]]) -> RowAccessor[CK]:
+    def __getitem__(self, key: tuple[int, Sequence[CK]]) -> "RowAccessor[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -135,7 +135,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[Sequence[CK], int]) -> RowAccessor[CK]:
+    def __getitem__(self, key: tuple[Sequence[CK], int]) -> "RowAccessor[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -148,7 +148,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[Sequence[CK], slice]) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: tuple[Sequence[CK], slice]) -> "UnitedDataframe[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -161,7 +161,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
     
     @overload
-    def __getitem__(self, key: tuple[slice, Sequence[CK]]) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: tuple[slice, Sequence[CK]]) -> "UnitedDataframe[CK]":
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -176,12 +176,12 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
     ################### Overloads for other #########################################################
 
     @overload
-    def __getitem__(self, key: pd.Series[bool]) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: pd.Series) -> "UnitedDataframe[CK]": # type: ignore[no-any-return]
         """
         Boolean row filtering.
 
         Args:
-            key (pd.Series[bool]): A boolean Series with the same length as the DataFrame.
+            key (pd.Series): A boolean Series with the same length as the DataFrame.
 
         Returns:
             UnitedDataframe[CK]: The dataframe.
@@ -189,7 +189,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: BoolArray) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: BoolArray) -> "UnitedDataframe[CK]":
         """
         Boolean row filtering.
 
@@ -202,7 +202,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         ...
 
     @overload
-    def __getitem__(self, key: np.ndarray) -> UnitedDataframe[CK]:
+    def __getitem__(self, key: np.ndarray) -> "UnitedDataframe[CK]":
         """
         Boolean row filtering.
 
@@ -216,7 +216,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
 
     ################### Implementation #########################################################
 
-    def __getitem__(self, key: Union[
+    def __getitem__(self, key: Union[ # type: ignore[no-any-return]
         CK,
         int,
         slice,
@@ -229,11 +229,11 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
         tuple[Sequence[CK], int],
         tuple[Sequence[CK], slice],
         tuple[slice, Sequence[CK]],
-        pd.Series[bool],
+        pd.Series, # type: ignore[no-any-return]
         BoolArray,
         np.ndarray,
         ]
-    ) -> LOWLEVEL_TYPE | ColumnAccessor[CK] | RowAccessor[CK] | UnitedDataframe[CK]:
+    ) -> Union[LOWLEVEL_TYPE, "ColumnAccessor[CK]", "RowAccessor[CK]", "UnitedDataframe[CK]"]:
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -314,8 +314,8 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
                 
             elif isinstance(key, pd.Series):
                 # Get sequence of row indices based on boolean Series
-                if len(key) != self._number_of_rows():
-                    raise ValueError(f"Boolean Series must have the same length as the number of rows in the DataFrame. Got {len(key)} rows, expected {self._number_of_rows()}.")
+                if len(key) != self._number_of_rows(): # type: ignore[arg-type]
+                    raise ValueError(f"Boolean Series must have the same length as the number of rows in the DataFrame. Got {len(key)} rows, expected {self._number_of_rows()}.") # type: ignore[arg-type]
                 row_indices: Sequence[int] = []
                 for i in range(self._number_of_rows()):
                     if key[i]:

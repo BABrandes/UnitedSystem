@@ -22,8 +22,8 @@ class BaseUnit(ABC, JSONable, HDF5able, Generic[DT, UT]):
     def compatible_to(self, *args: UT|DT) -> bool:
         return self.compatible(*args)
     
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def compatible(cls, *args: UT|DT) -> bool:
         raise NotImplementedError("compatible_to is not implemented for this unit")
 
@@ -177,8 +177,8 @@ class BaseUnit(ABC, JSONable, HDF5able, Generic[DT, UT]):
     def format_string(self, no_fraction: bool) -> str:
         ...
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def parse_string(cls, unit_string: str) -> UT:
         ...
 

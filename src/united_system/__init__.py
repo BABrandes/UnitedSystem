@@ -5,10 +5,10 @@ This package provides type-safe, efficient handling of physical quantities
 with automatic unit conversion and dimensional analysis.
 """
 
-from ..depreciated.real_united_scalar_depreciated import RealUnitedScalar
-from ..depreciated.real_united_array_depreciated import RealUnitedArray
-from ..depreciated.dimension import Dimension
-from ..depreciated.unit import Unit
+from .real_united_scalar import RealUnitedScalar
+from .real_united_array import RealUnitedArray
+from .dimension import Dimension
+from .unit import Unit
 from .named_dimensions import NamedDimension, DimensionExponents
 from .united_dataframe import UnitedDataframe
 from .int_array import IntArray

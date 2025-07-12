@@ -6,7 +6,8 @@ The main class is UnitedDataframe, which combines functionality from multiple mi
 to provide a complete dataframe solution.
 """
 
-from ...united_dataframe import UnitedDataframe
+from typing import TYPE_CHECKING
+
 from .internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from .column_key import ColumnKey
 from .column_type import ColumnType
@@ -30,6 +31,9 @@ from .mixins import (
     ConstructorMixin,
     GroupbyMixin,
 )
+
+if TYPE_CHECKING:
+    from ...united_dataframe import UnitedDataframe
 
 __all__ = [
     # Main class

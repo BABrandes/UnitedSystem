@@ -2,6 +2,7 @@ from .unit import Unit
 from .utils.arrays.base_united_array import BaseUnitedArray
 from .real_united_scalar import RealUnitedScalar
 from .dimension import Dimension
+from .named_dimensions import NamedDimension
 from dataclasses import dataclass
 from typing import Optional
 import numpy as np
@@ -10,7 +11,11 @@ import numpy as np
 class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, Unit, Dimension, float]):
     """Array of real numbers with units."""
 
-    def __init__(self, canonical_np_array: np.ndarray, dimension: Dimension, display_unit: Optional[Unit] = None):
+    def __init__(self, canonical_np_array: np.ndarray, dimension: Dimension|NamedDimension, display_unit: Optional[Unit] = None):
+
+        if isinstance(dimension, NamedDimension):
+            dimension = dimension.dimension
+
         object.__setattr__(self, "canonical_np_array", canonical_np_array)
         object.__setattr__(self, "dimension", dimension)
         object.__setattr__(self, "_display_unit", display_unit)

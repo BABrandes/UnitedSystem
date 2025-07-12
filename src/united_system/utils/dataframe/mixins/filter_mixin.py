@@ -27,7 +27,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Filter Operations: Single Column ------------
 
-    def filter_column_equals(self, column_key: CK, value: Any) -> UnitedDataframe[CK]:
+    def filter_column_equals(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column equals a specific value.
         
@@ -138,7 +138,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Filter Operations: Multiple Conditions ------------
 
-    def filter_and(self, *masks: BoolArray) -> UnitedDataframe[CK]:
+    def filter_and(self, *masks: BoolArray) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using AND logic on multiple boolean masks.
         
@@ -159,7 +159,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
             
             return self._mask_apply_to_dataframe(combined_mask)
 
-    def filter_or(self, *masks: BoolArray) -> UnitedDataframe[CK]:
+    def filter_or(self, *masks: BoolArray) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using OR logic on multiple boolean masks.
         
@@ -180,7 +180,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
             
             return self._mask_apply_to_dataframe(combined_mask)
 
-    def filter_not(self, mask: BoolArray) -> UnitedDataframe[CK]:
+    def filter_not(self, mask: BoolArray) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using NOT logic on a boolean mask.
         
@@ -196,7 +196,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Filter Operations: Custom Functions ------------
 
-    def filter_by_function(self, filter_func: Callable[[dict[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> UnitedDataframe[CK]:
+    def filter_by_function(self, filter_func: Callable[[dict[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using a custom function on a column.
         
@@ -213,7 +213,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Filter Operations: Missing Values ------------
 
-    def filter_valid_values(self, column_key: CK) -> UnitedDataframe[CK]:
+    def filter_valid_values(self, column_key: CK) -> "UnitedDataframe[CK]":
         """
         Filter dataframe to keep only rows with valid (non-missing) values in the specified column.
         
@@ -227,7 +227,7 @@ class FilterMixin(UnitedDataframeProtocol[CK]):
             mask: BoolArray = self.mask_get_complete_rows()
             return self._mask_apply_to_dataframe(mask)
 
-    def filter_missing_values(self, column_key: CK) -> UnitedDataframe[CK]:
+    def filter_missing_values(self, column_key: CK) -> "UnitedDataframe[CK]":
         """
         Filter dataframe to keep only rows with missing values in the specified column.
         

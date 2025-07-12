@@ -3,7 +3,6 @@
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
     from .....unit import Unit
     from .....dimension import Dimension
 
@@ -12,13 +11,14 @@ class ComparisonMixin:
     
     # These will be provided by the core class
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
     
     # compatible_to method is provided by core mixin
 
     def __eq__(self, other: object) -> bool:
         """Check if two scalars are equal."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -27,6 +27,7 @@ class ComparisonMixin:
 
     def __ne__(self, other: object) -> bool:
         """Check if two scalars are not equal."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return True
         if self.dimension != other.dimension:
@@ -35,6 +36,7 @@ class ComparisonMixin:
 
     def __lt__(self, other: object) -> bool:
         """Check if this scalar is less than another."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -43,6 +45,7 @@ class ComparisonMixin:
 
     def __le__(self, other: object) -> bool:
         """Check if this scalar is less than or equal to another."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -51,6 +54,7 @@ class ComparisonMixin:
 
     def __gt__(self, other: object) -> bool:
         """Check if this scalar is greater than another."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -59,6 +63,7 @@ class ComparisonMixin:
 
     def __ge__(self, other: object) -> bool:
         """Check if this scalar is greater than or equal to another."""
+        from .....real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:

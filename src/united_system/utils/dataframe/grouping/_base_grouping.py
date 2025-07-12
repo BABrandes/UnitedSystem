@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Tuple, Callable, cast
+from typing import Generic, TypeVar, Tuple, Callable, cast, TYPE_CHECKING
 from collections.abc import Sequence
 from bidict import bidict
 import pandas as pd
@@ -7,18 +7,20 @@ import numpy as np
 from enum import Enum, auto
 
 from ..column_key import ColumnKey
-from ....united_dataframe import UnitedDataframe
 from ..column_type import SCALAR_TYPE, ColumnType, LOWLEVEL_TYPE
 from ..accessors._row_accessor import RowAccessor
 from ....unit import Unit
 from ...scalars.united_scalar import UnitedScalar
+
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
 
 
 CK = TypeVar("CK", bound="ColumnKey|str")
 
 @dataclass
 class GroupingContainer(Generic[CK]):
-    parent_united_dataframe: UnitedDataframe[CK]
+    parent_united_dataframe: "UnitedDataframe[CK]"
     dataframe: pd.DataFrame
     internal_dataframe_column_names: bidict[CK, str]
     available_column_keys: list[CK]
@@ -26,9 +28,9 @@ class GroupingContainer(Generic[CK]):
     available_column_units: dict[CK, Unit|None]
     categorical_column_keys: list[CK]
     categorical_key_values: Tuple[LOWLEVEL_TYPE, ...]
-    _united_dataframe: UnitedDataframe[CK]|None = field(init=False, repr=False, default=None)
+    _united_dataframe: "UnitedDataframe[CK]|None" = field(init=False, repr=False, default=None)
 
-    def united_dataframe(self, column_keys: Sequence[CK] | None = None) -> UnitedDataframe[CK]:
+    def united_dataframe(self, column_keys: Sequence[CK] | None = None) -> "UnitedDataframe[CK]":
         """
         Get the UnitedDataframe for this group.
 
@@ -36,7 +38,7 @@ class GroupingContainer(Generic[CK]):
             column_keys: List of column keys to include in the UnitedDataframe, if None, all column keys are included
 
         Returns:
-            UnitedDataframe[CK]: The UnitedDataframe for this group
+            "UnitedDataframe[CK]": The UnitedDataframe for this group
         """
         if column_keys is None:
             _column_keys: list[CK] = self.available_column_keys
@@ -49,7 +51,7 @@ class GroupingContainer(Generic[CK]):
         _column_units: dict[CK, Unit|None] = {col: self.available_column_units[col] for col in _column_keys}
 
         if self._united_dataframe is None:
-            self._united_dataframe = UnitedDataframe[CK](
+            self._united_dataframe = UnitedDataframe[CK](  # type: ignore
                 dataframe=self.dataframe,
                 column_keys=_column_keys,
                 column_types=_column_types,
@@ -80,9 +82,9 @@ class BaseGrouping(Generic[CK]):
     
     def __init__(
             self,
-            dataframe: UnitedDataframe[CK],
+            dataframe: "UnitedDataframe[CK]",
             by_unique_values_of_columns: Sequence[CK] = [],
-            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[[RowAccessor[CK]], SCALAR_TYPE]]] = []):
+            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[["RowAccessor[CK]"], SCALAR_TYPE]]] = []):
         """
         Initialize a BaseGrouping object.
         
@@ -93,7 +95,7 @@ class BaseGrouping(Generic[CK]):
         """
 
         # Store original dataframe
-        self._dataframe: UnitedDataframe[CK] = dataframe
+        self._dataframe: "UnitedDataframe[CK]" = dataframe
         
         # Initialize grouping infrastructure
         self._grouping_containers: list[GroupingContainer[CK]] = []
@@ -115,7 +117,7 @@ class BaseGrouping(Generic[CK]):
     def _setup_grouping_columns(
             self, 
             by_unique_values_of_columns: Sequence[CK], 
-            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[[RowAccessor[CK]], SCALAR_TYPE]]]
+            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[["RowAccessor[CK]"], SCALAR_TYPE]]]
     ) -> None:
         """Setup columns used for grouping."""
         # Add existing columns to group by
@@ -148,7 +150,7 @@ class BaseGrouping(Generic[CK]):
 
     def _evaluate_row_functions(
             self, 
-            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[[RowAccessor[CK]], SCALAR_TYPE]]]
+            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[["RowAccessor[CK]"], SCALAR_TYPE]]]
     ) -> None:
         """Evaluate row functions and store results."""
 
@@ -157,7 +159,7 @@ class BaseGrouping(Generic[CK]):
         
         # Evaluate functions for each row
         for row_index in range(len(self._dataframe)):
-            row_accessor: RowAccessor[CK] = RowAccessor(self._dataframe, row_index)
+            row_accessor: "RowAccessor[CK]" = RowAccessor(self._dataframe, row_index)
             
             for column_key, row_function in by_unique_results_of_row_functions:
                 # Evaluate function
@@ -202,7 +204,7 @@ class BaseGrouping(Generic[CK]):
         
         # Create column information
         column_information: ColumnInformation = ColumnInformation(
-            column_type=ColumnType.infer_approbiate_column_type(result_type),
+            column_type=ColumnType.infer_approbiate_column_type(result_type), # type: ignore[reportUnknownReturnType]
             column_unit=unit,
             internal_dataframe_column_name=internal_dataframe_column_name
         )
@@ -229,7 +231,7 @@ class BaseGrouping(Generic[CK]):
 
     ######################### Properties #########################
     
-    def groupings(self, column_keys: Sequence[CK] | None = None) -> list[UnitedDataframe[CK]]:
+    def groupings(self, column_keys: Sequence[CK] | None = None) -> list["UnitedDataframe[CK]"]:
         """
         Get the grouped dataframes.
         
@@ -274,7 +276,7 @@ class BaseGrouping(Generic[CK]):
             keep_non_numeric_columns_set_to_nan: bool = False,
             ignore_rowfun_columns: bool = True,
             column_keys_to_aggregate: Sequence[CK] | None = None
-    ) -> UnitedDataframe[CK]:
+    ) -> "UnitedDataframe[CK]":
         """
         Helper method for numeric aggregation operations (sum, mean, etc.).
         
@@ -368,7 +370,7 @@ class BaseGrouping(Generic[CK]):
                     result_column_types[result_key] = ColumnType.FLOAT_64
                     result_column_units[result_key] = None
 
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -379,7 +381,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
 
-    def size(self, size_column_key: CK, size_column_type: ColumnType = ColumnType.INTEGER_64) -> UnitedDataframe[CK]:
+    def size(self, size_column_key: CK, size_column_type: ColumnType = ColumnType.INTEGER_64) -> "UnitedDataframe[CK]":
         """
         Get the size of each group.
         
@@ -415,7 +417,7 @@ class BaseGrouping(Generic[CK]):
             result_column_units = {col: col_info.column_unit for col, col_info in self._categorical_column_information.items()}
             result_column_units[size_column_key] = None
 
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -426,7 +428,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
 
-    def sum(self, column_keys_to_aggregate: Sequence[CK] | None = None, keep_non_numeric_columns_set_to_nan: bool = False, ignore_rowfun_columns: bool = True) -> UnitedDataframe[CK]:
+    def sum(self, column_keys_to_aggregate: Sequence[CK] | None = None, keep_non_numeric_columns_set_to_nan: bool = False, ignore_rowfun_columns: bool = True) -> "UnitedDataframe[CK]":
         """
         Calculate the sum of numeric columns for each group.
         
@@ -473,7 +475,7 @@ class BaseGrouping(Generic[CK]):
             column_keys_to_consider: Sequence[CK] | None = None,
             result_column_type: ColumnType = ColumnType.INTEGER_64,
             ignore_rowfun_columns: bool = True, 
-    ) -> UnitedDataframe[CK]:
+    ) -> "UnitedDataframe[CK]":
         """
         Count non-null values for each group.
         
@@ -536,7 +538,7 @@ class BaseGrouping(Generic[CK]):
                 result_column_types[result_key] = self._available_column_information[col].column_type
                 result_column_units[result_key] = self._available_column_information[col].column_unit
             
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -547,7 +549,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
     
-    def apply(self, func_tuple: Tuple[CK, Callable[[UnitedDataframe[CK]], SCALAR_TYPE]]) -> UnitedDataframe[CK]:
+    def apply(self, func_tuple: Tuple[CK, Callable[["UnitedDataframe[CK]"], SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
         """
         Apply a function to each group.
         
@@ -579,7 +581,7 @@ class BaseGrouping(Generic[CK]):
                 # Determine column type and unit from first result
                 if first_result:
                     result_type = type(result)
-                    result_column_type = ColumnType.infer_approbiate_column_type(result_type)
+                    result_column_type = ColumnType.infer_approbiate_column_type(result_type) # type: ignore[reportUnknownReturnType]
                     
                     # Get unit if result is a UnitedScalar
                     if isinstance(result, UnitedScalar):
@@ -607,7 +609,7 @@ class BaseGrouping(Generic[CK]):
                 result_column_types[result_column_key] = result_column_type
                 result_column_units[result_column_key] = result_column_unit
             
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -618,7 +620,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
     
-    def head(self, n: int = 1) -> UnitedDataframe[CK]:
+    def head(self, n: int = 1) -> "UnitedDataframe[CK]":
         """
         Return the first n rows from each group.
         
@@ -645,7 +647,7 @@ class BaseGrouping(Generic[CK]):
                 result_df = pd.DataFrame()
             
             # Create United_Dataframe for result
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=self._dataframe.colkeys,
                 column_types=self._dataframe.coltypes,
@@ -656,7 +658,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
     
-    def first(self) -> UnitedDataframe[CK]:
+    def first(self) -> "UnitedDataframe[CK]":
         """
         Return the first row from each group.
         
@@ -692,7 +694,7 @@ class BaseGrouping(Generic[CK]):
                 result_df = pd.DataFrame()
             
             # Create United_Dataframe for result
-            return UnitedDataframe[CK](
+            return UnitedDataframe[CK](  # type: ignore
                 dataframe=result_df,
                 column_keys=self._dataframe.colkeys,
                 column_types=self._dataframe.coltypes,
@@ -703,7 +705,7 @@ class BaseGrouping(Generic[CK]):
                 rename_dataframe_columns=False
             )
     
-    def last(self) -> UnitedDataframe[CK]:
+    def last(self) -> "UnitedDataframe[CK]":
         """
         Return the last row from each group.
         

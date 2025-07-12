@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 def _to_std_str(value: float) -> str:
     """Convert float to standard string representation."""
     if math.isinf(value):
-        return "∞" if value > 0 else "-∞"
+        return "\u221e" if value > 0 else "-\u221e"
     elif math.isnan(value):
         return "NaN"
     else:
@@ -21,8 +21,8 @@ class FormattingMixin:
     
     # These will be provided by the core class
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
 
     def __str__(self) -> str:
         """Return string representation using format method."""
@@ -32,7 +32,7 @@ class FormattingMixin:
         """Return detailed string representation for debugging."""
         return f"RealUnitedScalar(canonical_value={self.canonical_value}, dimension={self.dimension}, display_unit={self._display_unit})"
 
-    def format(self, unit: Union[str, Unit, None] = None, decimals: int = 0, do_not_print_unit: bool = False) -> str:
+    def format(self, unit: Union[str, "Unit", None] = None, decimals: int = 0, do_not_print_unit: bool = False) -> str:
         """
         Format the scalar as a string with optional unit specification.
         
@@ -44,13 +44,13 @@ class FormattingMixin:
         Returns:
             Formatted string representation.
         """
-        
+        from .....unit import Unit
         if unit is None:
             _unit, _ = Unit.suggest_units(self.dimension, float(self.canonical_value))
         elif isinstance(unit, str):
-            _unit: Unit = Unit.parse_string(unit)
+            _unit: "Unit" = Unit.parse_string(unit)
         else:
-            _unit: Unit = unit
+            _unit: "Unit" = unit
         
         if _unit.dimension != self.dimension:
             raise ValueError(f"The requested display unit {_unit} is not compatible with the scalar's dimension {self.dimension}")

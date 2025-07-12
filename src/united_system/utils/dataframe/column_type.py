@@ -141,7 +141,7 @@ class ColumnType(Enum):
                         raise ValueError(f"Unit in dataframe is not allowed for Timestamp.")
                     return Timestamp(value)
 
-    def get_values_for_dataframe(self, values: ARRAY_TYPE, dataframe_unit: Unit|None) -> pd.Series[Any]:
+    def get_values_for_dataframe(self, values: ARRAY_TYPE, dataframe_unit: Unit|None) -> pd.Series: # type: ignore[no-any-return]
         """
         Get the values from an array for the dataframe.
 
@@ -150,7 +150,7 @@ class ColumnType(Enum):
             dataframe_unit (Unit|None): The unit in the dataframe. If the column has a unit, this is required.
 
         Returns:
-            pd.Series[Any]: The values for the dataframe.
+            pd.Series: The values for the dataframe.
         """
 
         dtype: Dtype = self.value.dataframe_storage_type
@@ -167,7 +167,7 @@ class ColumnType(Enum):
                     raise ValueError(f"Value {values} is not a FloatArray.")
                 if not dataframe_unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for FloatArray.")
-                return pd.Series(values, dtype=dtype)
+                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
             case ColumnType.COMPLEX_NUMBER_128:
                 if not isinstance(values, ComplexUnitedArray):
                     raise ValueError(f"Value {values} is not a ComplexUnitedArray.")
@@ -185,25 +185,25 @@ class ColumnType(Enum):
                     raise ValueError(f"Value {values} is not an IntArray.")
                 if not dataframe_unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for IntArray.")
-                return pd.Series(values, dtype=dtype)
+                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
             case ColumnType.STRING:
                 if not isinstance(values, StringArray):
                     raise ValueError(f"Value {values} is not a StringArray.")
                 if not dataframe_unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for StringArray.")
-                return pd.Series(values, dtype=dtype)
+                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
             case ColumnType.BOOL:
                 if not isinstance(values, BoolArray):
                     raise ValueError(f"Value {values} is not a BoolArray.")
                 if not dataframe_unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for BoolArray.")
-                return pd.Series(values, dtype=dtype)
+                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
             case ColumnType.TIMESTAMP:
                 if not isinstance(values, TimestampArray):
                     raise ValueError(f"Value {values} is not a TimestampArray.")
                 if not dataframe_unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for TimestampArray.")
-                return pd.Series(values, dtype=dtype)
+                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
             
     # ------------ Get values from dataframe ------------
 
@@ -303,7 +303,7 @@ class ColumnType(Enum):
                     raise ValueError(f"Value {value} is not a Timestamp.")
                 return Timestamp(value)
             
-    def get_numpy_array_from_dataframe(self, pandas_series: pd.Series[Any]) -> np.ndarray[Any, Any]:
+    def get_numpy_array_from_dataframe(self, pandas_series: pd.Series) -> np.ndarray[Any, Any]: # type: ignore[reportUnknownReturnType]
         """
         Get the numpy array from a dataframe.
         """
@@ -354,7 +354,7 @@ class ColumnType(Enum):
                 numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=np.datetime64) # type: ignore[reportUnknownReturnType]
                 return numpy_array
             
-    def get_array_from_dataframe(self, pandas_series: pd.Series[Any], unit: Unit|None = None) -> ARRAY_TYPE:
+    def get_array_from_dataframe(self, pandas_series: pd.Series, unit: Unit|None = None) -> ARRAY_TYPE: # type: ignore[reportUnknownReturnType]
         """
         Get the array from a dataframe.
         """
@@ -386,7 +386,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return TimestampArray(pandas_series.to_numpy(dtype=np.datetime64)) # type: ignore[reportUnknownReturnType]
             
-    def get_list_from_dataframe(self, pandas_series: pd.Series[Any]) -> list[float]|list[complex]|list[int]|list[str]|list[bool]|list[Timestamp]:
+    def get_list_from_dataframe(self, pandas_series: pd.Series) -> list[float]|list[complex]|list[int]|list[str]|list[bool]|list[Timestamp]: # type: ignore[reportUnknownReturnType]
         """
         Get the array from a dataframe.
         """
@@ -398,26 +398,26 @@ class ColumnType(Enum):
         
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.COMPLEX_NUMBER_128:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.COMPLEX_128:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.STRING:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.BOOL:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             case ColumnType.TIMESTAMP:
-                return pandas_series.to_list()
+                return pandas_series.to_list() # type: ignore[reportUnknownReturnType]
             
     # ------------ Infer the column type from a pandas Series ------------
                 
     @classmethod
-    def from_dtype(cls, dtype: pd.Series[Any] | pd.api.extensions.ExtensionDtype | np.dtype[Any] | str, has_unit: bool = False) -> "ColumnType":
+    def from_dtype(cls, dtype: pd.Series | pd.api.extensions.ExtensionDtype | np.dtype[Any] | str, has_unit: bool = False) -> "ColumnType": # type: ignore[reportUnknownReturnType]
         """
         Infer the ColumnType from a pandas Series, dtype, or dtype string.
         Uses `has_unit` to distinguish between united and raw types.
@@ -458,13 +458,13 @@ class ColumnType(Enum):
     def infer_approbiate_column_type(cls, scalar_or_array_type: type[ARRAY_TYPE], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": ...
     @overload
     @classmethod
-    def infer_approbiate_column_type(cls, scalar_or_array_type: pd.Series[Any]) -> "ColumnType": ...
+    def infer_approbiate_column_type(cls, scalar_or_array_type: pd.Series) -> "ColumnType": ... # type: ignore[reportUnknownReturnType]
     @classmethod
-    def infer_approbiate_column_type(cls, scalar_or_array_type: type[SCALAR_TYPE]|type[ARRAY_TYPE]|pd.Series[Any], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType":
+    def infer_approbiate_column_type(cls, scalar_or_array_type: type[SCALAR_TYPE]|type[ARRAY_TYPE]|pd.Series, precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": # type: ignore[reportUnknownReturnType]
         options: list[ColumnType] = []
         if isinstance(scalar_or_array_type, pd.Series):
             dtype: Dtype = scalar_or_array_type.dtype
-            return cls.from_dtype(dtype)
+            return cls.from_dtype(dtype) # type: ignore[reportUnknownReturnType]
         else:
             for column_type in cls:
                 if column_type.value.scalar_type == scalar_or_array_type:

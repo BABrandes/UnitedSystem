@@ -12,12 +12,12 @@ class RealUnitedScalarCore:
     
     # These will be provided by the dataclass
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
 
 # dimension is provided by the dataclass field, no property needed
 
-    def compatible_to(self, *args: RealUnitedScalar) -> bool:
+    def compatible_to(self, *args: "RealUnitedScalar") -> bool:
         """Check if this scalar is compatible with other scalars."""
         if len(args) == 0:
             return True

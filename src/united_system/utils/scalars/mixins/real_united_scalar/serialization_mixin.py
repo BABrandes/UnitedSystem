@@ -13,8 +13,8 @@ class SerializationMixin:
     
     # These will be provided by the core class
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
 
     def to_json(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -25,13 +25,13 @@ class SerializationMixin:
         }
     
     @classmethod
-    def from_json(cls, data: dict[str, Any], **_: Type[Unit]) -> "RealUnitedScalar":
+    def from_json(cls, data: dict[str, Any], **_: Type["Unit"]) -> "RealUnitedScalar":
         """Create from dictionary (JSON deserialization)."""
         from .....unit import Unit
         from .....real_united_scalar import RealUnitedScalar
 
         canonical_unit = Unit.parse_string(data["canonical_unit"])
-        display_unit: Optional[Unit] = Unit.parse_string(data["display_unit"]) if data["display_unit"] is not None else None
+        display_unit: Optional["Unit"] = Unit.parse_string(data["display_unit"]) if data["display_unit"] is not None else None
         
         return RealUnitedScalar(
             canonical_value=data["canonical_value"],
@@ -60,8 +60,8 @@ class SerializationMixin:
         from .....real_united_scalar import RealUnitedScalar
         
         canonical_value: float = float(hdf5_group["canonical_value"][()]) # type: ignore   
-        canonical_unit: Unit = Unit.parse_string(hdf5_group["canonical_unit"][()].decode('utf-8')) # type: ignore
-        display_unit: Optional[Unit] = Unit.parse_string(hdf5_group["display_unit"][()].decode('utf-8')) if hdf5_group["display_unit"][()] is not None else None # type: ignore
+        canonical_unit: "Unit" = Unit.parse_string(hdf5_group["canonical_unit"][()].decode('utf-8')) # type: ignore
+        display_unit: Optional["Unit"] = Unit.parse_string(hdf5_group["display_unit"][()].decode('utf-8')) if hdf5_group["display_unit"][()] is not None else None # type: ignore
         
         return RealUnitedScalar(
             canonical_value=canonical_value,

@@ -23,8 +23,9 @@ class NamedSimpleDimensionInformation():
         return cls(dimension, has_canonical_unit, unit_string, tags)
 
     @property
-    def canonical_unit(self) -> Unit:
+    def canonical_unit(self) -> "Unit":
         if self._canonical_unit is None:
+            from ...unit import Unit
             object.__setattr__(self, '_canonical_unit', Unit.parse_string(self.canonical_unit_string))
         if self._canonical_unit is None:
             raise ValueError(f"Canonical unit is not set for {self.canonical_unit_string}")
@@ -102,7 +103,7 @@ class NamedSimpleDimension(Enum):
         return self.value.unit_dimension
     
     @property
-    def canonical_unit(self) -> Unit:
+    def canonical_unit(self) -> "Unit":
         return self.value.canonical_unit
     
     def __getitem__(self, canonical_dimension: Dimension) -> "NamedSimpleDimension":

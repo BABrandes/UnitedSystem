@@ -76,7 +76,7 @@ class BaseDimension(ABC, Generic[DT,UT]):
     def compatible_to(self, other: DT) -> bool:
         ...
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def zero_dimension(cls) -> "BaseDimension[DT, UT]":
         ...

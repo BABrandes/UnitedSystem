@@ -49,7 +49,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             return json_data
         
     @classmethod
-    def from_json(cls, data: dict[str, Any], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> UnitedDataframe[CK]:
+    def from_json(cls, data: dict[str, Any], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
 
         """
         Load dataframe from JSON format.
@@ -62,7 +62,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
         import pandas as pd
 
         df: pd.DataFrame = pd.read_json(data["dataframe"], orient="records") # type: ignore
-        united_dataframe: UnitedDataframe[CK] = UnitedDataframe[CK].create_dataframe_from_pandas_with_correct_column_names(
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_dataframe_from_pandas_with_correct_column_names(
             pandas_dataframe=df,
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
             deep_copy=False
@@ -122,7 +122,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             self._internal_canonical_dataframe.to_hdf(hdf5_group, "dataframe") # type: ignore
 
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> UnitedDataframe[CK]:
+    def from_hdf5(cls, hdf5_group: h5py.Group, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
         """
         Load dataframe from HDF5 format.
         
@@ -133,7 +133,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
         """
         import pandas as pd
         df: pd.DataFrame = pd.read_hdf(hdf5_group, "dataframe") # type: ignore
-        united_dataframe: UnitedDataframe[CK] = UnitedDataframe[CK].create_dataframe_from_pandas_with_correct_column_names(
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_dataframe_from_pandas_with_correct_column_names(
             pandas_dataframe=df,
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
             deep_copy=False
@@ -156,7 +156,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
                 pickle.dump(self, f)
 
     @classmethod
-    def from_pickle(cls, path: str|None = None, **kwargs: Any) -> UnitedDataframe[CK]:
+    def from_pickle(cls, path: str|None = None, **kwargs: Any) -> "UnitedDataframe[CK]":
         """
         Load UnitedDataframe from pickle format.
         

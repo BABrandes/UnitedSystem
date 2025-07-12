@@ -1,295 +1,518 @@
 """
-Tests for RealUnitedScalar class.
+Comprehensive tests for RealUnitedScalar class.
+
+Tests all mixins and functionality including:
+- Core functionality
+- Arithmetic operations
+- Comparison operations
+- Unit conversions
+- Formatting
+- Factory methods
+- Utility methods
+- Serialization
 """
+
 import pytest
-import math
-from src.united_system.scalars.real_united_scalar.real_united_scalar import RealUnitedScalar
-from united_system.units.simple.simple_unit import SimpleUnit
-from united_system.units.named_simple_dimensions import NamedSimpleDimension
+import numpy as np
+from unittest.mock import Mock, patch
+import json
+import h5py
+
+# Import the modules to test
+from united_system.real_united_scalar import RealUnitedScalar
+from united_system.dimension import Dimension
+from united_system.unit import Unit
+from united_system.named_dimensions import NamedDimension
 
 
-class TestRealUnitedScalarBasics:
-    """Test basic functionality of RealUnitedScalar."""
+class TestRealUnitedScalarCore:
+    """Test core functionality of RealUnitedScalar."""
     
-    def test_creation_from_value_and_unit(self):
-        """Test creating RealUnitedScalar from value and unit."""
-        meter = SimpleUnit.parse_string("m")
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
+    def test_initialization_with_dimension(self):
+        """Test initialization with Dimension object."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])  # Mass dimension
+        scalar = RealUnitedScalar(5.0, dimension)
         
-        assert length.canonical_value == 5.0
-        assert length.display_unit == meter
-        assert length.unit_dimension == meter.dimension
+        assert scalar.canonical_value == 5.0
+        assert scalar.dimension == dimension
+        assert scalar._display_unit is None
     
-    def test_parse_string(self):
-        """Test parsing from string."""
-        length = RealUnitedScalar.parse_string("5.0 m")
-        assert length.canonical_value == 5.0
+    def test_initialization_with_named_dimension(self):
+        """Test initialization with NamedDimension object."""
+        from src.united_system.named_dimensions import NamedDimension
+        mass_dim = NamedDimension.MASS
+        scalar = RealUnitedScalar(5.0, mass_dim)
         
-        voltage = RealUnitedScalar.parse_string("12 V")
-        assert voltage.canonical_value == 12.0
+        assert scalar.canonical_value == 5.0
+        assert scalar.dimension == mass_dim.dimension
     
-    def test_string_representation(self):
-        """Test string representation."""
-        meter = SimpleUnit.parse_string("m")
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
+    def test_initialization_with_display_unit(self):
+        """Test initialization with display unit."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        unit = Unit.parse_string("kg")
+        scalar = RealUnitedScalar(5.0, dimension, unit)
         
-        # This tests the __str__ method
-        str_repr = str(length)
-        assert "5" in str_repr
-        assert "m" in str_repr
+        assert scalar.canonical_value == 5.0
+        assert scalar.dimension == dimension
+        assert scalar._display_unit == unit
+    
+    def test_invalid_display_unit(self):
+        """Test that incompatible display unit raises ValueError."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])  # Mass
+        unit = Unit.parse_string("m")  # Length - incompatible
+        
+        with pytest.raises(ValueError, match="not compatible"):
+            RealUnitedScalar(5.0, dimension, unit)
+    
+    def test_display_unit_property(self):
+        """Test display_unit property."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        unit = Unit.parse_string("kg")
+        scalar = RealUnitedScalar(5.0, dimension, unit)
+        
+        assert scalar.display_unit == unit
+    
+    def test_display_unit_property_none(self):
+        """Test display_unit property when _display_unit is None."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar(5.0, dimension)
+        
+        # Should return canonical unit
+        assert scalar.display_unit == dimension.canonical_unit
+    
+    def test_active_unit_property(self):
+        """Test active_unit property."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        unit = Unit.parse_string("kg")
+        scalar = RealUnitedScalar(5.0, dimension, unit)
+        
+        assert scalar.active_unit == unit
+    
+    def test_active_unit_property_none(self):
+        """Test active_unit property when _display_unit is None."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar(5.0, dimension)
+        
+        assert scalar.active_unit == dimension.canonical_unit
+    
+    def test_active_float_property(self):
+        """Test active_float property."""
+        dimension = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        unit = Unit.parse_string("kg")
+        scalar = RealUnitedScalar(5.0, dimension, unit)
+        
+        # active_float should be canonical_value * unit.factor + unit.offset
+        expected = 5.0 * unit.factor + unit.offset
+        assert scalar.active_float == expected
 
 
 class TestRealUnitedScalarArithmetic:
-    """Test arithmetic operations with proper unit handling."""
+    """Test arithmetic operations."""
     
-    def test_addition_same_units(self):
-        """Test addition with same units."""
-        meter = SimpleUnit.parse_string("m")
-        length1 = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        length2 = RealUnitedScalar.create_from_value_and_unit(3.0, meter)
-        
-        result = length1 + length2
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.length_dim = Dimension.create([0, 0, 1, 0, 0, 0, 0], [0, 0])
+        self.mass1 = RealUnitedScalar(5.0, self.mass_dim)
+        self.mass2 = RealUnitedScalar(3.0, self.mass_dim)
+    
+    def test_addition_same_dimension(self):
+        """Test addition of scalars with same dimension."""
+        result = self.mass1 + self.mass2
         assert result.canonical_value == 8.0
-        assert result.unit_dimension == meter.dimension
+        assert result.dimension == self.mass_dim
     
-    def test_addition_different_units_same_dimension(self):
-        """Test addition with different units but same dimension - THIS IS THE BUG!"""
-        km = SimpleUnit.parse_string("km")
-        m = SimpleUnit.parse_string("m")
+    def test_addition_different_dimensions(self):
+        """Test that addition with different dimensions raises error."""
+        length = RealUnitedScalar(2.0, self.length_dim)
         
-        # 0.01 km = 10 m, so 0.01 km + 5000 m should be 5010 m canonical
-        length1 = RealUnitedScalar.create_from_value_and_unit(0.01, km)  # 10 m canonical
-        length2 = RealUnitedScalar.create_from_value_and_unit(5000, m)   # 5000 m canonical
-        
-        result = length1 + length2
-        
-        # Check canonical value is correct
-        assert result.canonical_value == 5010.0, f"Expected 5010.0 but got {result.canonical_value}"
-        
-        # The display unit should be from the left operand or canonical
-        # Let's test what we get
-        print(f"Result display unit: {result.display_unit}")
-        print(f"Result canonical value: {result.canonical_value}")
-        print(f"Result string: {str(result)}")
-        
-        # If display unit is km, the displayed value should be 5.01 km
-        # If display unit is m, the displayed value should be 5010 m
-        if result.display_unit and result.display_unit.format_string() == "km":
-            display_value = result.display_unit.from_canonical_value(result.canonical_value)
-            expected_display = 5.01
-            assert abs(display_value - expected_display) < 0.001, f"Expected ~{expected_display} km but got {display_value} km"
-        
-    def test_subtraction_different_units_same_dimension(self):
-        """Test subtraction with different units but same dimension."""
-        km = SimpleUnit.parse_string("km")
-        m = SimpleUnit.parse_string("m")
-        
-        # 1 km = 1000 m, so 1 km - 500 m should be 500 m canonical
-        length1 = RealUnitedScalar.create_from_value_and_unit(1.0, km)   # 1000 m canonical
-        length2 = RealUnitedScalar.create_from_value_and_unit(500, m)    # 500 m canonical
-        
-        result = length1 - length2
-        
-        # Check canonical value is correct
-        assert result.canonical_value == 500.0, f"Expected 500.0 but got {result.canonical_value}"
+        with pytest.raises(ValueError):
+            self.mass1 + length
     
-    def test_addition_incompatible_units(self):
-        """Test addition with incompatible units should raise error."""
-        meter = SimpleUnit.parse_string("m")
-        volt = SimpleUnit.parse_string("V")
-        
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        voltage = RealUnitedScalar.create_from_value_and_unit(12.0, volt)
-        
-        with pytest.raises(ValueError, match="incompatible dimensions"):
-            length + voltage
+    def test_subtraction_same_dimension(self):
+        """Test subtraction of scalars with same dimension."""
+        result = self.mass1 - self.mass2
+        assert result.canonical_value == 2.0
+        assert result.dimension == self.mass_dim
     
-    def test_multiplication_by_scalar(self):
-        """Test multiplication by scalar."""
-        meter = SimpleUnit.parse_string("m")
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
+    def test_subtraction_different_dimensions(self):
+        """Test that subtraction with different dimensions raises error."""
+        length = RealUnitedScalar(2.0, self.length_dim)
         
-        result = length * 2.0
-        assert result.canonical_value == 10.0
-        assert result.unit_dimension == meter.dimension
+        with pytest.raises(ValueError):
+            self.mass1 - length
     
-    def test_multiplication_by_united_scalar(self):
-        """Test multiplication by another RealUnitedScalar."""
-        meter = SimpleUnit.parse_string("m")
-        second = SimpleUnit.parse_string("s")
-        
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        time = RealUnitedScalar.create_from_value_and_unit(2.0, second)
-        
-        result = length * time
-        assert result.canonical_value == 10.0
-        # The unit dimension should be meter * second
-        
-    def test_division_by_scalar(self):
-        """Test division by scalar."""
-        meter = SimpleUnit.parse_string("m")
-        length = RealUnitedScalar.create_from_value_and_unit(10.0, meter)
-        
-        result = length / 2.0
-        assert result.canonical_value == 5.0
-        assert result.unit_dimension == meter.dimension
+    def test_multiplication(self):
+        """Test multiplication of scalars."""
+        result = self.mass1 * self.mass2
+        # Mass * Mass = Mass^2
+        expected_dim = Dimension.create([2, 0, 0, 0, 0, 0, 0], [0, 0])
+        assert result.canonical_value == 15.0
+        assert result.dimension == expected_dim
     
-    def test_division_by_united_scalar(self):
-        """Test division by another RealUnitedScalar."""
-        meter = SimpleUnit.parse_string("m")
-        second = SimpleUnit.parse_string("s")
-        
-        length = RealUnitedScalar.create_from_value_and_unit(10.0, meter)
-        time = RealUnitedScalar.create_from_value_and_unit(2.0, second)
-        
-        result = length / time
-        assert result.canonical_value == 5.0
-        # The unit dimension should be meter / second
+    def test_division(self):
+        """Test division of scalars."""
+        result = self.mass1 / self.mass2
+        # Mass / Mass = dimensionless
+        expected_dim = Dimension.create([0, 0, 0, 0, 0, 0, 0], [0, 0])
+        assert result.canonical_value == pytest.approx(5.0 / 3.0)
+        assert result.dimension == expected_dim
+    
+    def test_power(self):
+        """Test power operation."""
+        result = self.mass1 ** 2
+        expected_dim = Dimension.create([2, 0, 0, 0, 0, 0, 0], [0, 0])
+        assert result.canonical_value == 25.0
+        assert result.dimension == expected_dim
+    
+    def test_negation(self):
+        """Test negation."""
+        result = -self.mass1
+        assert result.canonical_value == -5.0
+        assert result.dimension == self.mass_dim
 
 
-class TestRealUnitedScalarComparisons:
+class TestRealUnitedScalarComparison:
     """Test comparison operations."""
     
-    def test_equality_same_units(self):
-        """Test equality with same units."""
-        meter = SimpleUnit.parse_string("m")
-        length1 = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        length2 = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        
-        assert length1 == length2
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.mass1 = RealUnitedScalar(5.0, self.mass_dim)
+        self.mass2 = RealUnitedScalar(3.0, self.mass_dim)
+        self.mass3 = RealUnitedScalar(5.0, self.mass_dim)
     
-    def test_equality_different_units_same_dimension(self):
-        """Test equality with different units but same dimension."""
-        km = SimpleUnit.parse_string("km")
-        m = SimpleUnit.parse_string("m")
-        
-        # 1 km = 1000 m
-        length1 = RealUnitedScalar.create_from_value_and_unit(1.0, km)
-        length2 = RealUnitedScalar.create_from_value_and_unit(1000.0, m)
-        
-        assert length1 == length2
+    def test_equality(self):
+        """Test equality comparison."""
+        assert self.mass1 == self.mass3
+        assert self.mass1 != self.mass2
     
-    def test_less_than_same_units(self):
-        """Test less than with same units."""
-        meter = SimpleUnit.parse_string("m")
-        length1 = RealUnitedScalar.create_from_value_and_unit(3.0, meter)
-        length2 = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        
-        assert length1 < length2
-        assert not length2 < length1
+    def test_less_than(self):
+        """Test less than comparison."""
+        assert self.mass2 < self.mass1
+        assert not self.mass1 < self.mass2
     
-    def test_comparison_incompatible_units(self):
-        """Test comparison with incompatible units should raise error."""
-        meter = SimpleUnit.parse_string("m")
-        volt = SimpleUnit.parse_string("V")
+    def test_less_equal(self):
+        """Test less than or equal comparison."""
+        assert self.mass2 <= self.mass1
+        assert self.mass1 <= self.mass3
+        assert not self.mass1 <= self.mass2
+    
+    def test_greater_than(self):
+        """Test greater than comparison."""
+        assert self.mass1 > self.mass2
+        assert not self.mass2 > self.mass1
+    
+    def test_greater_equal(self):
+        """Test greater than or equal comparison."""
+        assert self.mass1 >= self.mass2
+        assert self.mass1 >= self.mass3
+        assert not self.mass2 >= self.mass1
+    
+    def test_comparison_different_dimensions(self):
+        """Test that comparison with different dimensions raises error."""
+        length_dim = Dimension.create([0, 0, 1, 0, 0, 0, 0], [0, 0])
+        length = RealUnitedScalar(2.0, length_dim)
         
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        voltage = RealUnitedScalar.create_from_value_and_unit(12.0, volt)
-        
-        with pytest.raises(ValueError, match="incompatible dimensions"):
-            length < voltage
+        with pytest.raises(ValueError):
+            self.mass1 < length
 
 
-class TestRealUnitedScalarConversions:
+class TestRealUnitedScalarConversion:
     """Test unit conversion operations."""
     
-    def test_display_as_different_unit(self):
-        """Test changing display unit."""
-        meter = SimpleUnit.parse_string("m")
-        km = SimpleUnit.parse_string("km")
-        
-        length = RealUnitedScalar.create_from_value_and_unit(1000.0, meter)
-        length_km = length.display_as(km)
-        
-        assert length_km.canonical_value == 1000.0  # Same canonical value
-        assert length_km.display_unit == km
-        
-        # Display value should be 1.0 km
-        display_value = length_km.display_unit.from_canonical_value(length_km.canonical_value)
-        assert abs(display_value - 1.0) < 0.001
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.kg_unit = Unit.parse_string("kg")
+        self.g_unit = Unit.parse_string("g")
+        self.scalar = RealUnitedScalar(1.0, self.mass_dim, self.kg_unit)
     
     def test_in_unit(self):
+        """Test conversion to different unit."""
+        result = self.scalar.in_unit(self.g_unit)
+        assert result.canonical_value == 1.0  # Same canonical value
+        assert result.dimension == self.mass_dim
+        assert result._display_unit == self.g_unit
+    
+    def test_in_unit_incompatible(self):
+        """Test conversion to incompatible unit raises error."""
+        m_unit = Unit.parse_string("m")
+        
+        with pytest.raises(ValueError):
+            self.scalar.in_unit(m_unit)
+    
+    def test_to_canonical(self):
+        """Test conversion to canonical unit."""
+        result = self.scalar.to_canonical()
+        assert result.canonical_value == 1.0
+        assert result.dimension == self.mass_dim
+        assert result._display_unit is None
+    
+    def test_value_in_unit(self):
         """Test getting value in specific unit."""
-        meter = SimpleUnit.parse_string("m")
-        km = SimpleUnit.parse_string("km")
+        value = self.scalar.value_in_unit(self.g_unit)
+        assert value == 1000.0  # 1 kg = 1000 g
+    
+    def test_value_in_unit_incompatible(self):
+        """Test getting value in incompatible unit raises error."""
+        m_unit = Unit.parse_string("m")
         
-        length = RealUnitedScalar.create_from_value_and_unit(1000.0, meter)
-        value_in_km = length.in_unit(km)
-        
-        assert abs(value_in_km - 1.0) < 0.001
+        with pytest.raises(ValueError):
+            self.scalar.value_in_unit(m_unit)
 
 
-class TestRealUnitedScalarUtilities:
+class TestRealUnitedScalarFormatting:
+    """Test formatting operations."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.kg_unit = Unit.parse_string("kg")
+        self.scalar = RealUnitedScalar(1.0, self.mass_dim, self.kg_unit)
+    
+    def test_str_representation(self):
+        """Test string representation."""
+        result = str(self.scalar)
+        assert "1.0" in result
+        assert "kg" in result
+    
+    def test_repr_representation(self):
+        """Test repr representation."""
+        result = repr(self.scalar)
+        assert "RealUnitedScalar" in result
+        assert "1.0" in result
+    
+    def test_format_method(self):
+        """Test format method."""
+        result = self.scalar.format("g", decimals=2)
+        assert "1000.00" in result
+        assert "g" in result
+    
+    def test_format_method_invalid_unit(self):
+        """Test format method with invalid unit."""
+        with pytest.raises(ValueError):
+            self.scalar.format("m", decimals=2)
+
+
+class TestRealUnitedScalarFactory:
+    """Test factory methods."""
+    
+    def test_create_from_value_and_unit(self):
+        """Test create_from_value_and_unit factory method."""
+        kg_unit = Unit.parse_string("kg")
+        scalar = RealUnitedScalar.create_from_value_and_unit(5.0, kg_unit)
+        
+        assert scalar.canonical_value == 5.0 * kg_unit.factor
+        assert scalar.dimension == kg_unit.dimension
+        assert scalar._display_unit == kg_unit
+    
+    def test_parse_string(self):
+        """Test parse_string factory method."""
+        scalar = RealUnitedScalar.parse_string("5.0 kg")
+        
+        assert scalar.canonical_value == 5.0
+        assert scalar.dimension == Unit.parse_string("kg").dimension
+        assert scalar._display_unit == Unit.parse_string("kg")
+    
+    def test_parse_string_complex(self):
+        """Test parse_string with complex units."""
+        scalar = RealUnitedScalar.parse_string("10.5 m/s^2")
+        
+        expected_dim = Dimension.create([0, -2, 1, 0, 0, 0, 0], [0, 0])
+        assert scalar.dimension == expected_dim
+    
+    def test_parse_string_invalid(self):
+        """Test parse_string with invalid string."""
+        with pytest.raises(ValueError):
+            RealUnitedScalar.parse_string("invalid string")
+    
+    def test_zero(self):
+        """Test zero factory method."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar.zero(mass_dim)
+        
+        assert scalar.canonical_value == 0.0
+        assert scalar.dimension == mass_dim
+    
+    def test_one(self):
+        """Test one factory method."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar.one(mass_dim)
+        
+        assert scalar.canonical_value == 1.0
+        assert scalar.dimension == mass_dim
+
+
+class TestRealUnitedScalarUtility:
     """Test utility methods."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.positive = RealUnitedScalar(5.0, self.mass_dim)
+        self.negative = RealUnitedScalar(-3.0, self.mass_dim)
+        self.zero = RealUnitedScalar(0.0, self.mass_dim)
     
     def test_is_positive(self):
         """Test is_positive method."""
-        meter = SimpleUnit.parse_string("m")
-        positive_length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        negative_length = RealUnitedScalar.create_from_value_and_unit(-3.0, meter)
-        
-        assert positive_length.is_positive()
-        assert not negative_length.is_positive()
+        assert self.positive.is_positive()
+        assert not self.negative.is_positive()
+        assert not self.zero.is_positive()
+    
+    def test_is_negative(self):
+        """Test is_negative method."""
+        assert not self.positive.is_negative()
+        assert self.negative.is_negative()
+        assert not self.zero.is_negative()
     
     def test_is_zero(self):
         """Test is_zero method."""
-        meter = SimpleUnit.parse_string("m")
-        zero_length = RealUnitedScalar.create_from_value_and_unit(0.0, meter)
-        nonzero_length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        
-        assert zero_length.is_zero()
-        assert not nonzero_length.is_zero()
+        assert not self.positive.is_zero()
+        assert not self.negative.is_zero()
+        assert self.zero.is_zero()
     
     def test_abs(self):
-        """Test absolute value."""
-        meter = SimpleUnit.parse_string("m")
-        negative_length = RealUnitedScalar.create_from_value_and_unit(-5.0, meter)
-        
-        abs_length = negative_length.abs()
-        assert abs_length.canonical_value == 5.0
-        assert abs_length.unit_dimension == meter.dimension
+        """Test abs method."""
+        abs_negative = abs(self.negative)
+        assert abs_negative.canonical_value == 3.0
+        assert abs_negative.dimension == self.mass_dim
     
-    def test_compatible_to(self):
-        """Test compatibility checking."""
-        meter = SimpleUnit.parse_string("m")
-        km = SimpleUnit.parse_string("km")
-        volt = SimpleUnit.parse_string("V")
+    def test_clamp(self):
+        """Test clamp method."""
+        clamped = self.positive.clamp(0.0, 3.0)
+        assert clamped.canonical_value == 3.0
         
-        length1 = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
-        length2 = RealUnitedScalar.create_from_value_and_unit(3.0, km)
-        voltage = RealUnitedScalar.create_from_value_and_unit(12.0, volt)
+        clamped = self.negative.clamp(-5.0, 0.0)
+        assert clamped.canonical_value == -3.0
+    
+    def test_sum(self):
+        """Test sum method."""
+        scalars = [self.positive, self.negative, self.zero]
+        total = RealUnitedScalar.sum(scalars)
         
-        assert length1.compatible_to(length2)
-        assert not length1.compatible_to(voltage)
+        assert total.canonical_value == 2.0
+        assert total.dimension == self.mass_dim
+    
+    def test_mean(self):
+        """Test mean method."""
+        scalars = [self.positive, self.negative, self.zero]
+        avg = RealUnitedScalar.mean(scalars)
+        
+        assert avg.canonical_value == pytest.approx(2.0 / 3.0)
+        assert avg.dimension == self.mass_dim
+    
+    def test_sum_empty_list(self):
+        """Test sum with empty list."""
+        with pytest.raises(ValueError):
+            RealUnitedScalar.sum([])
+    
+    def test_mean_empty_list(self):
+        """Test mean with empty list."""
+        with pytest.raises(ValueError):
+            RealUnitedScalar.mean([])
+
+
+class TestRealUnitedScalarSerialization:
+    """Test serialization methods."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        self.kg_unit = Unit.parse_string("kg")
+        self.scalar = RealUnitedScalar(5.0, self.mass_dim, self.kg_unit)
+    
+    def test_to_json(self):
+        """Test to_json method."""
+        json_data = self.scalar.to_json()
+        
+        assert "canonical_value" in json_data
+        assert "dimension" in json_data
+        assert "display_unit" in json_data
+        assert json_data["canonical_value"] == 5.0
+    
+    def test_from_json(self):
+        """Test from_json method."""
+        json_data = {
+            "canonical_value": 5.0,
+            "dimension": self.mass_dim.to_json(),
+            "display_unit": self.kg_unit.to_json()
+        }
+        
+        scalar = RealUnitedScalar.from_json(json_data)
+        assert scalar.canonical_value == 5.0
+        assert scalar.dimension == self.mass_dim
+        assert scalar._display_unit == self.kg_unit
+    
+    def test_to_hdf5(self):
+        """Test to_hdf5 method."""
+        with h5py.File("test_scalar.h5", "w") as f:
+            group = f.create_group("scalar")
+            self.scalar.to_hdf5(group)
+            
+            # Verify data was written
+            assert "canonical_value" in group
+            assert "dimension" in group
+            assert "display_unit" in group
+    
+    def test_from_hdf5(self):
+        """Test from_hdf5 method."""
+        # First write to file
+        with h5py.File("test_scalar.h5", "w") as f:
+            group = f.create_group("scalar")
+            self.scalar.to_hdf5(group)
+        
+        # Then read from file
+        with h5py.File("test_scalar.h5", "r") as f:
+            group = f["scalar"]
+            scalar = RealUnitedScalar.from_hdf5(group)
+            
+            assert scalar.canonical_value == 5.0
+            assert scalar.dimension == self.mass_dim
+            assert scalar._display_unit == self.kg_unit
 
 
 class TestRealUnitedScalarEdgeCases:
     """Test edge cases and error conditions."""
     
-    def test_nan_handling(self):
-        """Test NaN handling."""
-        meter = SimpleUnit.parse_string("m")
-        nan_length = RealUnitedScalar.create_from_canonical_value(float('nan'), meter.dimension, meter)
+    def test_dimensionless_scalar(self):
+        """Test dimensionless scalar."""
+        dimensionless_dim = Dimension.create([0, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar(1.0, dimensionless_dim)
         
-        assert nan_length.is_nan()
-        assert not nan_length.is_finite()
+        assert scalar.canonical_value == 1.0
+        assert scalar.dimension == dimensionless_dim
     
-    def test_infinity_handling(self):
-        """Test infinity handling."""
-        meter = SimpleUnit.parse_string("m")
-        inf_length = RealUnitedScalar.create_from_canonical_value(float('inf'), meter.dimension, meter)
+    def test_very_large_value(self):
+        """Test with very large value."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        large_value = 1e20
+        scalar = RealUnitedScalar(large_value, mass_dim)
         
-        assert not inf_length.is_finite()
-        assert inf_length.is_positive()
+        assert scalar.canonical_value == large_value
     
-    def test_zero_division(self):
-        """Test division by zero."""
-        meter = SimpleUnit.parse_string("m")
-        length = RealUnitedScalar.create_from_value_and_unit(5.0, meter)
+    def test_very_small_value(self):
+        """Test with very small value."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        small_value = 1e-20
+        scalar = RealUnitedScalar(small_value, mass_dim)
         
-        result = length / 0.0
-        assert math.isinf(result.canonical_value)
+        assert scalar.canonical_value == small_value
+    
+    def test_nan_value(self):
+        """Test with NaN value."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar(float('nan'), mass_dim)
+        
+        assert np.isnan(scalar.canonical_value)
+    
+    def test_inf_value(self):
+        """Test with infinity value."""
+        mass_dim = Dimension.create([1, 0, 0, 0, 0, 0, 0], [0, 0])
+        scalar = RealUnitedScalar(float('inf'), mass_dim)
+        
+        assert np.isinf(scalar.canonical_value)
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__])

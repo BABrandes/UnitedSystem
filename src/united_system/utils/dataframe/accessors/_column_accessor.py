@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Iterator, overload, Literal, TYPE_CHECKING, Any
+from typing import Generic, TypeVar, Iterator, overload, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
@@ -20,8 +20,8 @@ class ColumnAccessor(Generic[CK]):
     
     Provides a pandas-like interface for accessing individual cells.
     """
-    def __init__(self, parent: UnitedDataframe[CK], column_key: CK, slice_: slice|None = None):
-        self._parent: UnitedDataframe[CK] = parent
+    def __init__(self, parent: "UnitedDataframe[CK]", column_key: CK, slice_: slice|None = None):
+        self._parent: "UnitedDataframe[CK]" = parent
         self._column_key: CK = column_key
 
         if slice_ is not None:
@@ -49,8 +49,8 @@ class ColumnAccessor(Generic[CK]):
     def as_numpy_array(self, unit: Unit|None=None) -> np.ndarray:
         return self._parent.column_get_as_numpy_array(self._column_key)
     
-    def as_pandas_series(self, unit: Unit|None=None) -> pd.Series[Any]:
-        return self._parent.column_get_as_pd_series(self._column_key)
+    def as_pandas_series(self, unit: Unit|None=None) -> pd.Series: # type: ignore[reportUnknownReturnType]
+        return self._parent.column_get_as_pd_series(self._column_key) # type: ignore[reportUnknownReturnType]
     
     @overload
     def as_array(self) -> ARRAY_TYPE: ...

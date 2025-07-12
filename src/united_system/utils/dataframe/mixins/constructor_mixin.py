@@ -7,7 +7,7 @@ including creating empty dataframes, from arrays, and other construction pattern
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Any, Dict, List, TYPE_CHECKING, Union, cast
+from typing import Dict, List, TYPE_CHECKING, Union, cast
 from collections.abc import Sequence
 from bidict import bidict
 import pandas as pd
@@ -131,7 +131,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
         for column_key in column_keys:
             array_or_list: Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]] = arrays[column_key]
             if isinstance(array_or_list, ARRAY_TYPE):
-                final_column_types[column_key] = ColumnType.infer_approbiate_column_type(type(array_or_list))
+                final_column_types[column_key] = ColumnType.infer_approbiate_column_type(type(array_or_list)) # type: ignore
                 if isinstance(array_or_list, United):
                     column_units[column_key] = array_or_list.active_unit
                 else:
@@ -189,11 +189,11 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             unit: Unit | None = column_units[column_key]
             if isinstance(array_or_list, ARRAY_TYPE):
                 if isinstance(array_or_list, United):
-                    pandas_series: pd.Series[Any] = array_or_list.get_pandas_series(dtype=dataframe_storage_type, target_unit=unit)
+                    pandas_series: pd.Series = array_or_list.get_pandas_series(dtype=dataframe_storage_type, target_unit=unit) # type: ignore
                 else:
-                    pandas_series: pd.Series[Any] = array_or_list.get_pandas_series(dtype=dataframe_storage_type)
+                    pandas_series: pd.Series = array_or_list.get_pandas_series(dtype=dataframe_storage_type) # type: ignore
             elif isinstance(arrays[column_key], list):
-                pandas_series: pd.Series[Any] = pd.Series(array_or_list, dtype=dataframe_storage_type)
+                pandas_series: pd.Series = pd.Series(array_or_list, dtype=dataframe_storage_type) # type: ignore
             else:
                 raise ValueError(f"Array or list {arrays[column_key]} is not a valid array or list")
             dataframe[internal_column_strings[column_key]] = pandas_series
@@ -238,8 +238,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             column_key: CK = cast(CK, _column_key)
             column_keys.append(column_key)
             column_units[column_key] = column_unit
-            pandas_series: pd.Series[Any] = pandas_dataframe[column_name]
-            column_types[column_key] = ColumnType.infer_approbiate_column_type(pandas_series)
+            pandas_series: pd.Series = pandas_dataframe[column_name] # type: ignore
+            column_types[column_key] = ColumnType.infer_approbiate_column_type(pandas_series) # type: ignore
             if column_types[column_key].has_unit == column_unit is not None:
                 raise ValueError(f"Column type {column_types[column_key]} is not compatible with column unit {column_unit}")
 
@@ -322,7 +322,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             rename_dataframe_columns= False
         )
     
-    def _create_with_replaced_dataframe(self, dataframe: pd.DataFrame) -> UnitedDataframe[CK]:
+    def _create_with_replaced_dataframe(self, dataframe: pd.DataFrame) -> "UnitedDataframe[CK]":
         """
         Internal: Create a UnitedDataframe from a pandas DataFrame with incorrect column names. (No locks, no read-only check)
         """
@@ -338,14 +338,14 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             rename_dataframe_columns=False
         )
     
-    def crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> UnitedDataframe[CK]:
+    def crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> "UnitedDataframe[CK]":
         """
         Crop the dataframe to the number of rows in the dataframe.
         """
         with self._rlock:
             return self._crop_dataframe(column_keys, row_indices)
 
-    def _crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> UnitedDataframe[CK]:
+    def _crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> "UnitedDataframe[CK]":
         """
         Internal: Crop the dataframe to the number of rows in the dataframe. (No locks, no read-only check)
         """

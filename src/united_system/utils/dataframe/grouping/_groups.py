@@ -1,15 +1,17 @@
 
 
-from typing import Callable, TypeVar, Tuple
+from typing import Callable, TypeVar, Tuple, TYPE_CHECKING, Union
 from collections.abc import Sequence
 from bidict import bidict
 
-from ....united_dataframe import UnitedDataframe
 from ..column_key import ColumnKey
 from ..accessors._row_accessor import RowAccessor
 from ._base_grouping import BaseGrouping, GroupingContainer
 from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 import pandas as pd
+
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
 
 CK = TypeVar("CK", bound="ColumnKey|str")
 
@@ -25,9 +27,9 @@ class Groups(BaseGrouping[CK]):
     
     def __init__(
             self,
-            dataframe: UnitedDataframe[CK],
+            dataframe: "UnitedDataframe[CK]",
             by_unique_values_of_columns: Sequence[CK] = [],
-            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[[RowAccessor[CK]], SCALAR_TYPE]]] = []):
+            by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[["RowAccessor[CK]"], SCALAR_TYPE]]] = []):
         """
         Initialize a Groups object.
         
@@ -78,7 +80,7 @@ class Groups(BaseGrouping[CK]):
 ######################### Properties #########################
     
     @property
-    def groups(self) -> list[UnitedDataframe[CK]]:
+    def groups(self) -> list["UnitedDataframe[CK]"]:
         """
         Get the grouped dataframes.
         
@@ -97,7 +99,7 @@ class Groups(BaseGrouping[CK]):
         """
         return self.categorical_key_values
     
-    def get_group_by_key(self, group_key: tuple[LOWLEVEL_TYPE, ...]) -> UnitedDataframe[CK] | None:
+    def get_group_by_key(self, group_key: tuple[LOWLEVEL_TYPE, ...]) -> Union["UnitedDataframe[CK]", None]:
         """
         Get a specific group by its key.
         
@@ -113,7 +115,7 @@ class Groups(BaseGrouping[CK]):
         except ValueError:
             return None
     
-    def get_group_by_index(self, index: int) -> tuple[tuple[LOWLEVEL_TYPE, ...], UnitedDataframe[CK]] | None:
+    def get_group_by_index(self, index: int) -> tuple[tuple[LOWLEVEL_TYPE, ...], "UnitedDataframe[CK]"] | None:
         """
         Get a specific group by its index.
         

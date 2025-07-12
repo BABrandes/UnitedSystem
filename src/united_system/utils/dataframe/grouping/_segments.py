@@ -1,4 +1,4 @@
-from typing import TypeVar, Tuple, Callable
+from typing import TypeVar, Tuple, Callable, TYPE_CHECKING
 from collections.abc import Sequence
 from bidict import bidict
 
@@ -6,7 +6,8 @@ from ._base_grouping import BaseGrouping, GroupingContainer
 from ..column_key import ColumnKey
 from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 from ..accessors._row_accessor import RowAccessor
-from ....united_dataframe import UnitedDataframe
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
 
 CK = TypeVar("CK", bound=ColumnKey|str)
 
@@ -22,7 +23,7 @@ class Segments(BaseGrouping[CK]):
     
     def __init__(
             self,
-            dataframe: UnitedDataframe[CK],
+            dataframe: "UnitedDataframe[CK]",
             by_unique_values_of_columns: Sequence[CK] = [],
             by_unique_results_of_row_functions: Sequence[Tuple[CK, Callable[[RowAccessor[CK]], SCALAR_TYPE]]] = []):
         """
@@ -127,7 +128,7 @@ class Segments(BaseGrouping[CK]):
     ######################### Properties #########################
     
     @property
-    def segments(self) -> list[UnitedDataframe[CK]]:
+    def segments(self) -> "list[UnitedDataframe[CK]]":
         """
         Get the segmented dataframes.
         
@@ -146,7 +147,7 @@ class Segments(BaseGrouping[CK]):
         """
         return self.categorical_key_values
     
-    def get_segment_by_key(self, segment_key: tuple[LOWLEVEL_TYPE, ...]) -> UnitedDataframe[CK] | None:
+    def get_segment_by_key(self, segment_key: tuple[LOWLEVEL_TYPE, ...]) -> "UnitedDataframe[CK] | None":
         """
         Get a specific segment by its key.
         
@@ -162,7 +163,7 @@ class Segments(BaseGrouping[CK]):
         except ValueError:
             return None
     
-    def get_segment_by_index(self, index: int) -> tuple[tuple[LOWLEVEL_TYPE, ...], UnitedDataframe[CK]] | None:
+    def get_segment_by_index(self, index: int) -> "tuple[tuple[LOWLEVEL_TYPE, ...], UnitedDataframe[CK]] | None":
         """
         Get a specific segment by its index.
         

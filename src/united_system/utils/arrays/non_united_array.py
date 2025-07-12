@@ -37,7 +37,7 @@ class NonUnitedArray(BaseArray[PT, PT, AT]):
         else:
             return self.canonical_np_array[slice]
     
-    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None) -> pd.Series[Any]:
+    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None) -> pd.Series: # type: ignore
         """Get the array as a pandas Series.
         
         If slice is provided, the array is returned as a slice of the original array.

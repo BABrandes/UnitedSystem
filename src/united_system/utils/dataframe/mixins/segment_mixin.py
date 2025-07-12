@@ -71,7 +71,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:  # Full IDE support!
             return self._segment(by, sort=sort, dropna=dropna)
 
-    def segment_apply(self, by: Union[CK, Sequence[CK]], result_column_key: CK, func: Callable[[UnitedDataframe[CK]], SCALAR_TYPE]) -> UnitedDataframe[CK]:
+    def segment_apply(self, by: Union[CK, Sequence[CK]], result_column_key: CK, func: Callable[["UnitedDataframe[CK]"], SCALAR_TYPE]) -> "UnitedDataframe[CK]":
         """
         Apply a function to each segment.
         
@@ -89,7 +89,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Segment Operations: Aggregation ------------
 
-    def segment_sum(self, by: Union[CK, Sequence[CK]], columns: Optional[Sequence[CK]] = None) -> UnitedDataframe[CK]:
+    def segment_sum(self, by: Union[CK, Sequence[CK]], columns: Optional[Sequence[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Sum values in segments.
         
@@ -107,7 +107,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             else:
                 return segmented.sum(column_keys_to_aggregate=columns)
 
-    def segment_mean(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> UnitedDataframe[CK]:
+    def segment_mean(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Calculate mean values in segments.
         
@@ -125,7 +125,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             else:
                 return segmented.mean(column_keys_to_aggregate=columns)
 
-    def segment_std(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> UnitedDataframe[CK]:
+    def segment_std(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Calculate standard deviation values in segments.
         
@@ -143,7 +143,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             else:
                 return segmented.std(column_keys_to_aggregate=columns)
 
-    def segment_count(self, by: Union[CK, List[CK]], columns: Optional[Sequence[CK]] = None) -> UnitedDataframe[CK]:
+    def segment_count(self, by: Union[CK, List[CK]], columns: Optional[Sequence[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Count non-null values in segments.
         
@@ -161,7 +161,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             else:
                 return segmented.count(column_keys_to_consider=columns)
 
-    def segment_size(self, by: Union[CK, List[CK]], result_column_key: CK) -> UnitedDataframe[CK]:
+    def segment_size(self, by: Union[CK, List[CK]], result_column_key: CK) -> "UnitedDataframe[CK]":
         """
         Get the size of each segment.
         
@@ -178,7 +178,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Segment Operations: Basic Access ------------
 
-    def segment_head(self, by: Union[CK, Sequence[CK]], n: int = 1) -> UnitedDataframe[CK]:
+    def segment_head(self, by: Union[CK, Sequence[CK]], n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the first n rows from each segment.
         
@@ -193,7 +193,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             segmented: Segments[CK] = self._segment(by)
             return segmented.head(n)
 
-    def segment_first(self, by: Union[CK, Sequence[CK]]) -> UnitedDataframe[CK]:
+    def segment_first(self, by: Union[CK, Sequence[CK]]) -> "UnitedDataframe[CK]":
         """
         Get the first row from each segment.
         
@@ -207,7 +207,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             segmented: Segments[CK] = self._segment(by)
             return segmented.first()
 
-    def segment_tail(self, by: Union[CK, Sequence[CK]], n: int = 1) -> UnitedDataframe[CK]:
+    def segment_tail(self, by: Union[CK, Sequence[CK]], n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the last n rows from each segment.
         
@@ -222,7 +222,7 @@ class SegmentMixin(UnitedDataframeProtocol[CK]):
             segmented: Segments[CK] = self._segment(by)
             return segmented.tail(n)
 
-    def segment_last(self, by: Union[CK, Sequence[CK]]) -> UnitedDataframe[CK]:
+    def segment_last(self, by: Union[CK, Sequence[CK]]) -> "UnitedDataframe[CK]":
         """
         Get the last row from each segment.
         

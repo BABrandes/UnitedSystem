@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 _CANONICAL_UNIT_CACHE: dict["Dimension", "Unit"] = {}
 
 @dataclass(frozen=True, slots=True)
-class Dimension(BaseDimension["Dimension", Unit]):
+class Dimension(BaseDimension["Dimension", "Unit"]):
     dimension_exponents: Final[Tuple[float, float, float, float, float, float, float]]
     pseudo_dimension_exponents: Final[Tuple[int, int]]
 

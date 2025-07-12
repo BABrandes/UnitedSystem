@@ -55,7 +55,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
         # Create GroupBy object
         return Groups[CK](self, by) # type: ignore[reportUnknownArgumentType]
 
-    def groupby(self, by: Union[CK, List[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]:
+    def groupby(self, by: Union[CK, Sequence[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]:
         """
         Create a GroupBy object for the specified columns.
         
@@ -70,7 +70,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:  # Full IDE support!
             return self._groupby(by, sort=sort, dropna=dropna)
 
-    def group_apply(self, by: Union[CK, Sequence[CK]], result_column_key: CK, func: Callable[[UnitedDataframe[CK]], SCALAR_TYPE]) -> UnitedDataframe[CK]:
+    def group_apply(self, by: Union[CK, Sequence[CK]], result_column_key: CK, func: Callable[["UnitedDataframe[CK]"], SCALAR_TYPE]) -> "UnitedDataframe[CK]":
         """
         Apply a function to each group.
         
@@ -88,7 +88,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Groupby Operations: Aggregation ------------
 
-    def group_sum(self, by: Union[CK, Sequence[CK]], columns: Optional[Sequence[CK]] = None) -> UnitedDataframe[CK]:
+    def group_sum(self, by: Union[CK, Sequence[CK]], columns: Optional[Sequence[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Sum values in groups.
         
@@ -106,7 +106,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             else:
                 return grouped.sum(columns)
 
-    def group_mean(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> UnitedDataframe[CK]:
+    def group_mean(self, by: Union[CK, List[CK]], columns: Optional[List[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Calculate mean values in groups.
         
@@ -124,7 +124,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             else:
                 return grouped.mean(columns)
 
-    def group_count(self, by: Union[CK, List[CK]], result_column_keys: Optional[List[CK]] = None) -> UnitedDataframe[CK]:
+    def group_count(self, by: Union[CK, List[CK]], result_column_keys: Optional[List[CK]] = None) -> "UnitedDataframe[CK]":
         """
         Count non-null values in groups.
         
@@ -139,7 +139,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             grouped: Groups[CK] = self._groupby(by)
             return grouped.count(result_column_keys)
 
-    def group_size(self, by: Union[CK, List[CK]], result_column_key: CK) -> UnitedDataframe[CK]:
+    def group_size(self, by: Union[CK, List[CK]], result_column_key: CK) -> "UnitedDataframe[CK]":
         """
         Get the size of each group.
         
@@ -156,7 +156,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Groupby Operations: Basic Access ------------
 
-    def group_head(self, by: Union[CK, Sequence[CK]], n: int = 1) -> UnitedDataframe[CK]:
+    def group_head(self, by: Union[CK, Sequence[CK]], n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the first n rows from each group.
         
@@ -171,7 +171,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             grouped: Groups[CK] = self._groupby(by)
             return grouped.head(n)
 
-    def group_first(self, by: Union[CK, Sequence[CK]]) -> UnitedDataframe[CK]:
+    def group_first(self, by: Union[CK, Sequence[CK]]) -> "UnitedDataframe[CK]":
         """
         Get the first row from each group.
         
@@ -185,7 +185,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             grouped: Groups[CK] = self._groupby(by)
             return grouped.first()
 
-    def group_tail(self, by: Union[CK, Sequence[CK]], n: int = 1) -> UnitedDataframe[CK]:
+    def group_tail(self, by: Union[CK, Sequence[CK]], n: int = 1) -> "UnitedDataframe[CK]":
         """
         Get the last n rows from each group.
         
@@ -200,7 +200,7 @@ class GroupbyMixin(UnitedDataframeProtocol[CK]):
             grouped: Groups[CK] = self._groupby(by)
             return grouped.tail(n)
 
-    def group_last(self, by: Union[CK, Sequence[CK]]) -> UnitedDataframe[CK]:
+    def group_last(self, by: Union[CK, Sequence[CK]]) -> "UnitedDataframe[CK]":
         """
         Get the last row from each group.
         

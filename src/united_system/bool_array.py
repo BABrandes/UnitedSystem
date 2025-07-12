@@ -7,7 +7,7 @@ import pandas as pd
 class BoolArray(NonUnitedArray[bool, "BoolArray"]):
     """Array of booleans."""
 
-    def __init__(self, array: list[bool]|np.ndarray|pd.Series[bool]):
+    def __init__(self, array: list[bool]|np.ndarray|pd.Series): # type: ignore
 
         if isinstance(array, list):
             bool_array: np.ndarray = np.array(array)

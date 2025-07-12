@@ -1,6 +1,7 @@
 from .utils.units.named_simple_dimensions import NamedSimpleDimension
 from enum import Enum
 from dataclasses import dataclass, field
+from .dimension import Dimension
 
 @dataclass(frozen=True, slots=True)
 class DimensionExponents():
@@ -82,3 +83,13 @@ class NamedDimension(Enum):
     MOMENTUM = DimensionExponents(mass=1, length=1, time=-1)     # mass×length/time
     ANGULAR_VELOCITY = DimensionExponents(angle=1, time=-1)      # angle/time
     ANGULAR_ACCELERATION = DimensionExponents(angle=1, time=-2)  # angle/time²
+
+    @property
+    def dimension(self) -> Dimension:
+        if isinstance(self.value, NamedSimpleDimension):
+            return self.value.dimension
+        else:
+            return Dimension(
+                (self.value.mass, self.value.time, self.value.length, self.value.current, self.value.temperature, self.value.amount, self.value.luminous_intensity),
+                (self.value.angle, self.value.log_level)
+            )

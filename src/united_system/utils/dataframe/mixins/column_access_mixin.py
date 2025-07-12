@@ -27,7 +27,7 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
     UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    def _column_get_as_pd_series(self, column_key: CK, slice: slice|None = None) -> pd.Series[Any]:
+    def _column_get_as_pd_series(self, column_key: CK, slice: slice|None = None) -> pd.Series: # type: ignore
         """
         Internal: Get the column data for a column as a pandas Series. (no lock)
         """
@@ -35,17 +35,17 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
         if slice is not None:
-            pd_series: pd.Series[Any] = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
+            pd_series: pd.Series = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
         else:
-            pd_series: pd.Series[Any] = self._internal_dataframe[internal_column_name]
-        return pd_series
+            pd_series: pd.Series = self._internal_dataframe[internal_column_name] # type: ignore[no-any-return]
+        return pd_series # type: ignore[no-any-return]
     
-    def column_get_as_pd_series(self, column_key: CK, slice: slice|None = None) -> pd.Series[Any]:
+    def column_get_as_pd_series(self, column_key: CK, slice: slice|None = None) -> pd.Series: # type: ignore
         """
         Get the column data for a column as a pandas Series.
         """
         with self._rlock:
-            return self._column_get_as_pd_series(column_key, slice)
+            return self._column_get_as_pd_series(column_key, slice) # type: ignore[no-any-return]
 
     def _column_get_as_numpy_array(self, column_key: CK, slice: slice|None = None) -> np.ndarray[Any, Any]:
         """
@@ -55,9 +55,9 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
         if slice is not None:
-            pd_series: pd.Series[Any] = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
+            pd_series: pd.Series = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
         else:
-            pd_series: pd.Series[Any] = self._internal_dataframe[internal_column_name]
+            pd_series: pd.Series = self._internal_dataframe[internal_column_name] # type: ignore[no-any-return]
         return pd_series.to_numpy() # type: ignore[no-any-return]
 
     def column_get_as_numpy_array(self, column_key: CK, slice: slice|None = None) -> np.ndarray:
@@ -106,11 +106,11 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
         column_type: ColumnType = self._column_types[column_key]
         if slice is not None:
-            pandas_series: pd.Series[Any] = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
+            pandas_series: pd.Series = self._internal_dataframe[internal_column_name].iloc[slice] # type: ignore[no-any-return]
         else:
-            pandas_series: pd.Series[Any] = self._internal_dataframe[internal_column_name]
+            pandas_series: pd.Series = self._internal_dataframe[internal_column_name] # type: ignore[no-any-return]
 
-        array: ARRAY_TYPE = column_type.get_array_from_dataframe(pandas_series, self._column_units[column_key])
+        array: ARRAY_TYPE = column_type.get_array_from_dataframe(pandas_series, self._column_units[column_key]) # type: ignore[no-any-return]
         return array
     
     def _column_get_as_column_accessor(self, column_key: CK, slice: slice|None = None) -> ColumnAccessor[CK]:

@@ -1,4 +1,4 @@
-from typing import Generic, Iterator, TypeVar, TYPE_CHECKING, Any, Sequence, overload
+from typing import Generic, Iterator, TypeVar, TYPE_CHECKING, Any, Sequence, overload, Union
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
@@ -14,8 +14,8 @@ class RowAccessor(Generic[CK]):
     Internal class for row-based access to cell values.
     """
 
-    def __init__(self, parent: UnitedDataframe[CK], row_index: int, column_keys: Sequence[CK]|None = None):
-        self._parent: UnitedDataframe[CK] = parent
+    def __init__(self, parent: "UnitedDataframe[CK]", row_index: int, column_keys: Sequence[CK]|None = None):
+        self._parent: "UnitedDataframe[CK]" = parent
         self._row_index: int = row_index
         if column_keys is None:
             self._column_keys: Sequence[CK] = self._parent.colkeys
@@ -26,7 +26,7 @@ class RowAccessor(Generic[CK]):
     def __getitem__(self, column_key: CK) -> SCALAR_TYPE: ...
     @overload
     def __getitem__(self, column_key: Sequence[CK]) -> "RowAccessor[CK]": ...
-    def __getitem__(self, column_key: CK|Sequence[CK]) -> SCALAR_TYPE|"RowAccessor[CK]":
+    def __getitem__(self, column_key: Union[CK, Sequence[CK]]) -> Union[SCALAR_TYPE, "RowAccessor[CK]"]:
         if isinstance(column_key, Sequence):
             return RowAccessor[CK](self._parent, self._row_index, column_key) # type: ignore[no-any-return]
         else:

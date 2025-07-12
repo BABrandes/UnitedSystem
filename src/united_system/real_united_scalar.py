@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .utils.scalars.united_scalar import UnitedScalar
 from .dimension import Dimension
+from .named_dimensions import NamedDimension
 from .unit import Unit
 
 # Import all mixins
@@ -72,8 +73,12 @@ class RealUnitedScalar(
     dimension: Dimension
     _display_unit: Optional[Unit] = field(default=None, repr=False, compare=False, hash=False)
     
-    def __init__(self, canonical_value: float, dimension: Dimension, display_unit: Optional[Unit] = None):
+    def __init__(self, canonical_value: float, dimension: Dimension|NamedDimension, display_unit: Optional[Unit] = None):
         """Initialize the scalar."""
+
+        if isinstance(dimension, NamedDimension):
+            dimension = dimension.dimension
+
         object.__setattr__(self, "canonical_value", canonical_value)
         object.__setattr__(self, "dimension", dimension)
         object.__setattr__(self, "_display_unit", display_unit)        

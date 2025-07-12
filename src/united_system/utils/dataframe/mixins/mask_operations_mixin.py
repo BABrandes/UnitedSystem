@@ -47,7 +47,7 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
             internal_column_name = self._get_internal_dataframe_column_name(column_key)
-            is_valid_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name].notna()
+            is_valid_mask: pd.Series = self._internal_dataframe[internal_column_name].notna() # type: ignore
             return BoolArray(is_valid_mask)
 
     def mask_get_missing_values(self, column_key: CK) -> BoolArray:
@@ -65,7 +65,7 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
             
             internal_column_name = self._get_internal_dataframe_column_name(column_key)
-            is_missing_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name].isna()
+            is_missing_mask: pd.Series = self._internal_dataframe[internal_column_name].isna() # type: ignore
             return BoolArray(is_missing_mask)
 
     def mask_get_equal_to(self, column_key: CK, value: SCALAR_TYPE) -> BoolArray:
@@ -88,9 +88,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_equal_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] == value.value_in_unit(unit) # type: ignore
+                is_equal_mask: pd.Series = self._internal_dataframe[internal_column_name] == value.value_in_unit(unit) # type: ignore
             else:
-                is_equal_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] == value
+                is_equal_mask: pd.Series = self._internal_dataframe[internal_column_name] == value # type: ignore
             return BoolArray(is_equal_mask) # type: ignore
 
     def mask_get_not_equal_to(self, column_key: CK, value: SCALAR_TYPE) -> BoolArray:
@@ -113,9 +113,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_not_equal_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] != value.value_in_unit(unit) # type: ignore
+                is_not_equal_mask: pd.Series = self._internal_dataframe[internal_column_name] != value.value_in_unit(unit) # type: ignore
             else:
-                is_not_equal_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] != value
+                is_not_equal_mask: pd.Series = self._internal_dataframe[internal_column_name] != value # type: ignore
             return BoolArray(is_not_equal_mask) # type: ignore
 
     def mask_get_greater_than(self, column_key: CK, value: Any) -> BoolArray:
@@ -138,9 +138,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] > value.value_in_unit(unit) # type: ignore
+                is_greater_mask: pd.Series = self._internal_dataframe[internal_column_name] > value.value_in_unit(unit) # type: ignore
             else:
-                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] > value
+                is_greater_mask: pd.Series = self._internal_dataframe[internal_column_name] > value # type: ignore
             return BoolArray(is_greater_mask) # type: ignore
         
     def mask_get_greater_equal(self, column_key: CK, value: Any) -> BoolArray:
@@ -163,9 +163,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] >= value.value_in_unit(unit) # type: ignore
+                is_greater_mask: pd.Series = self._internal_dataframe[internal_column_name] >= value.value_in_unit(unit) # type: ignore
             else:
-                is_greater_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] >= value
+                is_greater_mask: pd.Series = self._internal_dataframe[internal_column_name] >= value # type: ignore
             return BoolArray(is_greater_mask) # type: ignore
 
     def mask_get_less_than(self, column_key: CK, value: Any) -> BoolArray:
@@ -188,9 +188,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] < value.value_in_unit(unit) # type: ignore
+                is_less_mask: pd.Series = self._internal_dataframe[internal_column_name] < value.value_in_unit(unit) # type: ignore
             else:
-                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] < value
+                is_less_mask: pd.Series = self._internal_dataframe[internal_column_name] < value # type: ignore
             return BoolArray(is_less_mask) # type: ignore
         
     def mask_get_less_equal(self, column_key: CK, value: Any) -> BoolArray:
@@ -206,9 +206,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] <= value.value_in_unit(unit) # type: ignore
+                is_less_mask: pd.Series = self._internal_dataframe[internal_column_name] <= value.value_in_unit(unit) # type: ignore
             else:
-                is_less_mask: pd.Series[bool] = self._internal_dataframe[internal_column_name] <= value
+                is_less_mask: pd.Series = self._internal_dataframe[internal_column_name] <= value # type: ignore
             return BoolArray(is_less_mask) # type: ignore
 
     def mask_get_in_range(self, column_key: CK, min_value: Any, max_value: Any) -> BoolArray:
@@ -232,9 +232,9 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
                 if not self._unit_has(column_key):
                     raise ValueError(f"Column {column_key} has no unit, so it cannot be compared to a UnitedScalar.")
                 unit: Unit = self._unit_get(column_key)
-                is_in_range_mask: pd.Series[bool] = (self._internal_dataframe[internal_column_name] >= min_value.value_in_unit(unit)) & (self._internal_dataframe[internal_column_name] <= max_value.value_in_unit(unit)) # type: ignore
+                is_in_range_mask: pd.Series = (self._internal_dataframe[internal_column_name] >= min_value.value_in_unit(unit)) & (self._internal_dataframe[internal_column_name] <= max_value.value_in_unit(unit)) # type: ignore
             else:
-                is_in_range_mask: pd.Series[bool] = (self._internal_dataframe[internal_column_name] >= min_value) & (self._internal_dataframe[internal_column_name] <= max_value)
+                is_in_range_mask: pd.Series = (self._internal_dataframe[internal_column_name] >= min_value) & (self._internal_dataframe[internal_column_name] <= max_value) # type: ignore
             return BoolArray(is_in_range_mask) # type: ignore
 
     def mask_get_complete_rows(self, *column_keys: CK) -> BoolArray:
@@ -282,7 +282,7 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
 
     # ----------- Internal Methods ------------
 
-    def _mask_apply_to_dataframe(self, mask: BoolArray) -> UnitedDataframe[CK]:
+    def _mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe[CK]":
         """
         Internal: Method to apply a boolean mask to filter rows in the dataframe. (No locks, no read-only check)
 
@@ -299,7 +299,7 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
         row_indices: list[int] = np.nonzero(mask.canonical_np_array)[0].tolist()
         return self._crop_dataframe(row_indices=row_indices)
 
-    def mask_apply_to_dataframe(self, mask: BoolArray) -> UnitedDataframe[CK]:
+    def mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe[CK]":
         """
         Apply a boolean mask to the dataframe, returning a new filtered dataframe.
         
@@ -360,10 +360,10 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
             # Create mask for duplicates
             if keep == "all":
                 # Mark all duplicates as True (including first occurrences)
-                mask: pd.Series[bool] = self._internal_dataframe[internal_columns].duplicated(keep=False) # type: ignore
+                mask: pd.Series = self._internal_dataframe[internal_columns].duplicated(keep=False) # type: ignore
             else:
                 # Mark duplicates as True, except for first/last occurrence
-                mask: pd.Series[bool] = self._internal_dataframe[internal_columns].duplicated(keep=keep) # type: ignore
+                mask: pd.Series = self._internal_dataframe[internal_columns].duplicated(keep=keep) # type: ignore
             
             return BoolArray(mask) # type: ignore
 

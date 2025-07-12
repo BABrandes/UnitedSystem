@@ -14,7 +14,7 @@ class SimpleUnitElement:
     exponent: float
 
     @property
-    def unit_dimension(self) -> Dimension:
+    def unit_dimension(self) -> "Dimension":
         return self.unit_symbol.value.named_simple_dimension.dimension
     
     @property

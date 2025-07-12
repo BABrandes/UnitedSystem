@@ -122,22 +122,30 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         else:
             return target_unit.from_canonical_value(canonical_np_array)
     
-    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None, target_unit: UT|None = None) -> pd.Series[Any]:
+    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None, target_unit: UT|None = None) -> pd.Series: # type: ignore
         """
         Get the array as a pandas series.
 
         If target_unit is None, the array is returned in the display unit.
         If target_unit is provided, the array is returned in the target unit.
         If slice is provided, the array is returned as a slice of the original array.
+        
+        Args:
+            dtype: The dtype of the series.
+            slice: The slice of the array to return.
+            target_unit: The unit to convert the array to.
+
+        Returns:
+            A pandas series with the array values in the target unit.
         """
         if slice is None:
             canonical_np_array: np.ndarray = self.canonical_np_array
         else:
             canonical_np_array: np.ndarray = self.canonical_np_array[slice]
         if target_unit is None:
-            return pd.Series(self.display_unit.from_canonical_value(canonical_np_array), dtype=self.value_type)
+            return pd.Series(self.display_unit.from_canonical_value(canonical_np_array), dtype=dtype)
         else:
-            return pd.Series(target_unit.from_canonical_value(canonical_np_array), dtype=self.value_type)
+            return pd.Series(target_unit.from_canonical_value(canonical_np_array), dtype=dtype)
     
     # Iterator protocol methods
     def __iter__(self) -> Iterator[PT]:

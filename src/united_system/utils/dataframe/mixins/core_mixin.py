@@ -7,7 +7,6 @@ Contains basic properties, initialization helpers, and core utility methods.
 from typing import Any, Optional, Sequence, TYPE_CHECKING
 from collections.abc import Sequence
 import pandas as pd
-from pandas._typing import Dtype
 import numpy as np
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
@@ -280,7 +279,7 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
             return self._internal_dataframe.shape
         
     @property
-    def dtypes(self) -> pd.Series[Dtype]:
+    def dtypes(self) -> pd.Series: # type: ignore
         """
         Return the dtypes of the dataframe.
         """
@@ -288,7 +287,7 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
             return self._internal_dataframe.dtypes # type: ignore
         
     @property
-    def index(self) -> pd.Index[Any]:
+    def index(self) -> pd.Index: # type: ignore[reportUnknownReturnType]
         """
         Return the index of the dataframe.
         """
@@ -296,7 +295,7 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
             return self._internal_dataframe.index # type: ignore
         
     @property
-    def columns(self) -> pd.Index[str]:
+    def columns(self) -> pd.Index: # type: ignore[reportUnknownReturnType]
         """
         Return the columns of the dataframe.
         """
@@ -311,14 +310,14 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:
             return self._internal_dataframe.values
         
-    def head(self, n: int = 5) -> UnitedDataframe[CK]:
+    def head(self, n: int = 5) -> "UnitedDataframe[CK]":
         """
         Return the first n rows of the dataframe.
         """
         with self._rlock:
             return self._create_with_replaced_dataframe(self._internal_dataframe.head(n))
         
-    def tail(self, n: int = 5) -> UnitedDataframe[CK]:
+    def tail(self, n: int = 5) -> "UnitedDataframe[CK]":
         """
         Return the last n rows of the dataframe.
         """

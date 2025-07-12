@@ -14,8 +14,8 @@ class UtilityMixin:
     
     # These will be provided by the core class
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
     
     # compatible_to method is provided by core mixin
 
@@ -63,7 +63,7 @@ class UtilityMixin:
         """Check if the scalar is strictly negative."""
         return np.less(self.canonical_value, 0)
 
-    def is_in_range(self, min_val: RealUnitedScalar, max_val: RealUnitedScalar) -> bool:
+    def is_in_range(self, min_val: "RealUnitedScalar", max_val: "RealUnitedScalar") -> bool:
         """Check if this value is within the specified range (inclusive)."""
         if self.dimension != min_val.dimension or self.dimension != max_val.dimension:
             raise ValueError("Cannot check range with incompatible dimensions")
@@ -71,9 +71,9 @@ class UtilityMixin:
             raise ValueError("Cannot check range for non-numeric values")
         return min_val <= self <= max_val
 
-    def clamp(self, min_val: RealUnitedScalar, max_val: RealUnitedScalar) -> RealUnitedScalar:
+    def clamp(self, min_val: "RealUnitedScalar", max_val: "RealUnitedScalar") -> "RealUnitedScalar":
         """Clamp the scalar to a range."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if self.dimension != min_val.dimension or self.dimension != max_val.dimension:
             raise ValueError(f"min_val {min_val} and max_val {max_val} are not compatible with {self}")
         if not self.is_finite():
@@ -82,9 +82,9 @@ class UtilityMixin:
         clamped_value: float = np.clip(self.canonical_value, min_val.canonical_value, max_val.canonical_value)
         return RealUnitedScalar(clamped_value, self.dimension, self._display_unit)
 
-    def min(self, other: RealUnitedScalar) -> RealUnitedScalar:
+    def min(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the minimum of this scalar and another."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
@@ -93,9 +93,9 @@ class UtilityMixin:
         else:
             return RealUnitedScalar(other.canonical_value, other.dimension, other.display_unit)
     
-    def max(self, other: RealUnitedScalar) -> RealUnitedScalar:
+    def max(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the maximum of this scalar and another."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
@@ -105,9 +105,9 @@ class UtilityMixin:
             return RealUnitedScalar(other.canonical_value, other.dimension, other.display_unit)
 
     @classmethod
-    def sum(cls, values: list[RealUnitedScalar]) -> RealUnitedScalar:
+    def sum(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
         """Sum a list of scalars."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if not values:
             raise ValueError("Cannot sum an empty list")
         
@@ -126,7 +126,7 @@ class UtilityMixin:
     @classmethod
     def mean(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
         """Calculate the mean of a list of scalars."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if not values:
             raise ValueError("Cannot calculate mean of an empty list")
         

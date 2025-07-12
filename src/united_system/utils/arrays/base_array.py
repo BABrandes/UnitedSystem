@@ -47,7 +47,7 @@ class BaseArray(ABC, JSONable, HDF5able, Generic[PT, IT, AT]):
         ...
     
     @abstractmethod
-    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None) -> pd.Series[Any]:
+    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None) -> pd.Series: # type: ignore
         """Get the array as a pandas Series."""
         ...
     

@@ -3,38 +3,38 @@
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
     from .....unit import Unit
     from .....dimension import Dimension
+    from .....real_united_scalar import RealUnitedScalar
 
 class ConversionMixin:
     """Unit conversion functionality for RealUnitedScalar."""
     
     # These will be provided by the core class
     canonical_value: float
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
 
-    def with_suggested_unit(self) -> RealUnitedScalar:
+    def with_suggested_unit(self) -> "RealUnitedScalar":
         """Return a new scalar with a suggested display unit."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         suggested_unit, _ = Unit.suggest_units(self.dimension, float(self.canonical_value), n=1)
         return RealUnitedScalar(self.canonical_value, self.dimension, suggested_unit)
 
-    def to_canonical_unit(self) -> RealUnitedScalar:
+    def to_canonical_unit(self) -> "RealUnitedScalar":
         """Return a new scalar with the canonical unit as display unit."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         canonical_unit = self.dimension.canonical_unit
         return RealUnitedScalar(self.canonical_value, self.dimension, canonical_unit)
 
-    def to_unit(self, unit: Unit) -> "RealUnitedScalar":
+    def to_unit(self, unit: "Unit") -> "RealUnitedScalar":
         """Return a new scalar with the specified unit as display unit."""
-        
+        from .....real_united_scalar import RealUnitedScalar
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
         return RealUnitedScalar(self.canonical_value, self.dimension, unit)
 
-    def as_float_in_unit(self, unit: Unit) -> float:
+    def as_float_in_unit(self, unit: "Unit") -> float:
         """Convert to float in specified unit. Only works for numeric values."""
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
