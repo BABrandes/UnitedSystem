@@ -1,8 +1,8 @@
 from typing import Generic, TypeVar, Any, Optional
 from abc import abstractmethod
 
-from .base_classes.base_unit import BaseUnit
-from .base_classes.base_dimension import BaseDimension
+from .unit_group import BaseUnit
+from .dimension_group import BaseDimension
 
 DT = TypeVar("DT", bound=BaseDimension[Any, Any])
 UT = TypeVar("UT", bound=BaseUnit[Any, Any])

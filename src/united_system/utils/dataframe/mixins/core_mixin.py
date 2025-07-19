@@ -14,7 +14,7 @@ from ..column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
 from ...units.united import United
 from ....unit import Unit
 from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
-from ...units.base_classes.base_dimension import BaseDimension
+from ...units.dimension_group import BaseDimension
 
 if TYPE_CHECKING:
     from ...dataframe import UnitedDataframe

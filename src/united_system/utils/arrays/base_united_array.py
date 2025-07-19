@@ -1,15 +1,14 @@
 import numpy as np
 from dataclasses import dataclass
 from typing import overload, Any, TypeVar, Generic, Union, Type, Iterator, Optional
-from ...utils.units.base_classes.base_dimension import BaseDimension
-from ...utils.units.base_classes.base_unit import BaseUnit
+from ..units.dimension_group import BaseDimension
+from ..units.unit_group import BaseUnit
 from ...utils.scalars.united_scalar import UnitedScalar
 from ...utils.units.united import United
 from .base_array import BaseArray, PT_TYPE
 from .protocol_numerical_array import ProtocolNumericalArray
 from abc import ABC, abstractmethod
 import h5py
-from numpy.typing import NDArray
 import pandas as pd
 from pandas._typing import Dtype
 
@@ -41,13 +40,13 @@ class ScalarIterator(Iterator[UST], Generic[UST, PT]):
 class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, UT, DT, PT]):
     
     # Required field from BaseArray inheritance
-    canonical_np_array: NDArray[Any]
+    canonical_np_array: np.ndarray
     
     # Required fields from United inheritance
     dimension: DT
     _display_unit: Optional[UT]
 
-    def __init__(self, canonical_np_array: NDArray[Any], dimension: DT, display_unit: Optional[UT] = None):
+    def __init__(self, canonical_np_array: np.ndarray, dimension: DT, display_unit: Optional[UT] = None):
 
         # Check the dimension and display unit are compatible
         if display_unit is not None and not display_unit.compatible_to(dimension):
@@ -85,10 +84,10 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
 
     def get_as_scalar(self, index: int) -> UST:
         """Get a single element as a united scalar."""
-        return self._get_scalar_from_value(self.canonical_np_array[index])
-
+        return self.get_scalar_from_value(self.canonical_np_array[index])
+    
     @abstractmethod
-    def _get_scalar_from_value(self, value: PT) -> UST:
+    def get_scalar_from_value(self, value: PT) -> UST:
         """Create a scalar from a primitive value with this array's dimension and display unit."""
         raise NotImplementedError("This method must be implemented by the subclass.")
 
@@ -99,7 +98,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def get_scalar(self, index: int) -> UST:
         value: PT = self.canonical_np_array[index]
-        return self._get_scalar_from_value(value)
+        return self.get_scalar_from_value(value)
             
     def get_array(self, slice: slice) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
         canonical_np_array: np.ndarray = self.canonical_np_array[slice]
@@ -264,11 +263,11 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     def __mul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
         if isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array * other.canonical_value
-            dimension: DT = self.dimension + other.dimension
+            dimension: DT = self.dimension * other.dimension
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = self.canonical_np_array * other.canonical_np_array
-            dimension: DT = self.dimension + other.dimension
+            dimension: DT = self.dimension * other.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = self.canonical_np_array.__mul__(other)
@@ -298,11 +297,11 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     def __truediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
         if isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array / other.canonical_value
-            dimension: DT = self.dimension - other.dimension
+            dimension: DT = self.dimension / other.dimension
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = self.canonical_np_array / other.canonical_np_array
-            dimension: DT = self.dimension - other.dimension
+            dimension: DT = self.dimension / other.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = self.canonical_np_array.__truediv__(other)
@@ -324,18 +323,18 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = other.canonical_np_array / self.canonical_np_array
-            dimension: DT = other.dimension - self.dimension
+            dimension: DT = other.dimension / self.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = other / self.canonical_np_array
-            zero_dim: DT = (type(self.dimension)).zero_dimension()
-            dimension = zero_dim - self.dimension
+            zero_dim: DT = (type(self.dimension)).dimensionless_dimension()
+            dimension = zero_dim / self.dimension
             return type(self)(array, dimension, None)
 
     def __pow__(self, exponent: float|int) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
         """Raise the array to a power."""
         array: np.ndarray = self.canonical_np_array.__pow__(exponent)
-        dimension: DT = self.dimension * exponent
+        dimension: DT = self.dimension ** exponent
         return type(self)(array, dimension, None)
 
     def __neg__(self) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
@@ -346,6 +345,22 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         array: np.ndarray = np.abs(self.canonical_np_array)
         return type(self)(array, self.dimension, self._display_unit)
     
+    def __eq__(self, other: object) -> bool:
+        """Compare arrays for equality."""
+        if not isinstance(other, BaseUnitedArray):
+            return False
+        
+        # Check if dimensions are compatible
+        if not self.dimension.compatible_to(other.dimension): # type: ignore
+            return False
+        
+        # Compare canonical values (they should be in the same units)
+        return bool(np.array_equal(self.canonical_np_array, other.canonical_np_array))
+    
+    def __ne__(self, other: object) -> bool:
+        """Compare arrays for inequality."""
+        return not self.__eq__(other)
+    
     def __len__(self) -> int:
         return len(self.canonical_np_array)
     
@@ -355,7 +370,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def sum_as_scalar(self) -> UST:
         sum: PT = np.sum(self.canonical_np_array)
-        return self._get_scalar_from_value(sum)
+        return self.get_scalar_from_value(sum)
 
     def mean(self) -> PT:
         mean: PT = np.mean(self.canonical_np_array) # type: ignore
@@ -363,7 +378,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def mean_as_scalar(self) -> UST:
         mean: PT = np.mean(self.canonical_np_array) # type: ignore
-        return self._get_scalar_from_value(mean)
+        return self.get_scalar_from_value(mean)
     
     def std(self) -> PT:
         std: PT = np.std(self.canonical_np_array) # type: ignore
@@ -371,7 +386,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def std_as_scalar(self) -> UST:
         std: PT = np.std(self.canonical_np_array) # type: ignore
-        return self._get_scalar_from_value(std)
+        return self.get_scalar_from_value(std)
     
     def min(self) -> PT:
         min: PT = np.min(self.canonical_np_array)
@@ -379,7 +394,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def min_as_scalar(self) -> UST:
         min: PT = np.min(self.canonical_np_array)
-        return self._get_scalar_from_value(min)
+        return self.get_scalar_from_value(min)
     
     def max(self) -> PT:
         max: PT = np.max(self.canonical_np_array)
@@ -387,7 +402,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def max_as_scalar(self) -> UST:
         max: PT = np.max(self.canonical_np_array)
-        return self._get_scalar_from_value(max)
+        return self.get_scalar_from_value(max)
     
     def var(self) -> PT:
         var: PT = np.var(self.canonical_np_array) # type: ignore
@@ -395,7 +410,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
     
     def var_as_scalar(self) -> UST:
         var: PT = np.var(self.canonical_np_array) # type: ignore
-        return self._get_scalar_from_value(var)
+        return self.get_scalar_from_value(var)
     
     def to_json(self) -> dict[str, Any]:
         canonical_dimension_as_unit: UT = self.dimension.canonical_unit
@@ -473,10 +488,10 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         """Format the array with optional unit specification."""
         if unit is not None:
             values = self.in_unit(unit)
-            unit_str = unit.format_string(no_fraction=False)
+            unit_str = unit.format_string(as_fraction=True)
         else:
             values = self.canonical_np_array
-            unit_str = self.dimension.canonical_unit.format_string(no_fraction=False)
+            unit_str = self.dimension.canonical_unit.format_string(as_fraction=True)
         
         # Format array values
         if len(values) <= 10:

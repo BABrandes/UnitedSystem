@@ -1,10 +1,9 @@
 from enum import Enum
 from dataclasses import dataclass, field
-from .named_simple_dimensions import NamedSimpleDimension
-from typing import TYPE_CHECKING, Optional
+from ...named_quantity import NamedQuantity
+from typing import Optional
 
-if TYPE_CHECKING:
-    from ...unit import Unit
+from .unit_group import UnitGroup
 
 FORBIDDEN_STRINGS_IN_UNIT_NAME: set[str] = {"|", ":", "__"}
 
@@ -16,21 +15,20 @@ def special_character_to_unicode_replacement(string: str) -> str:
 @dataclass(frozen=True, slots=True)
 class NamedUnitInformation:
     unit_string: str
-    named_simple_unit_dimension: NamedSimpleDimension = field(repr=False, compare=False, hash=False)
-    _unit: Optional["Unit"] = field(default=None, repr=False, compare=False, hash=False)
+    named_quantity: NamedQuantity = field(repr=False, compare=False, hash=False)
+    _unit: Optional[UnitGroup] = field(default=None, repr=False, compare=False, hash=False)
 
     @classmethod
-    def create(cls, unit_string: str, named_simple_unit_dimension: NamedSimpleDimension) -> "NamedUnitInformation":
-        return cls(unit_string, named_simple_unit_dimension)
+    def create(cls, unit_string: str, named_quantity: NamedQuantity) -> "NamedUnitInformation":
+        return cls(unit_string, named_quantity)
 
     @property
-    def unit(self) -> Unit:
+    def unit_group(self) -> UnitGroup:
         if self._unit is None:
-            from ...unit import Unit
-            unit = Unit.parse_string(self.unit_string)
-            if unit.dimension != self.named_simple_unit_dimension.dimension:
-                raise ValueError(f"Unit {self.unit_string} has canonical dimension {unit.dimension} but expected {self.named_simple_unit_dimension.dimension}")
-            object.__setattr__(self, '_unit', unit)
+            unit_group: UnitGroup = UnitGroup.parse_string(self.unit_string)
+            if unit_group.dimension_group != self.named_quantity.dimension_group:
+                raise ValueError(f"Unit {self.unit_string} has canonical dimension {unit_group.dimension_group} but expected {self.named_quantity.dimension_group}")
+            object.__setattr__(self, '_unit', unit_group)
         if self._unit is None:
             raise ValueError(f"Unit {self.unit_string} has no unit")
         return self._unit
@@ -38,117 +36,116 @@ class NamedUnitInformation:
 class NamedUnit(Enum):
     value: NamedUnitInformation # type: ignore
 
-    s = NamedUnitInformation.create(                "s",            NamedSimpleDimension.TIME)
-    ms = NamedUnitInformation.create(               "ms",           NamedSimpleDimension.TIME)
-    µs = NamedUnitInformation.create(               "µs",           NamedSimpleDimension.TIME)
-    ns = NamedUnitInformation.create(               "ns",           NamedSimpleDimension.TIME)
-    ps = NamedUnitInformation.create(               "ps",           NamedSimpleDimension.TIME)
-    fs = NamedUnitInformation.create(               "fs",           NamedSimpleDimension.TIME)
+    s = NamedUnitInformation.create(                "s",            NamedQuantity.TIME)
+    ms = NamedUnitInformation.create(               "ms",           NamedQuantity.TIME)
+    µs = NamedUnitInformation.create(               "µs",           NamedQuantity.TIME)
+    ns = NamedUnitInformation.create(               "ns",           NamedQuantity.TIME)
+    ps = NamedUnitInformation.create(               "ps",           NamedQuantity.TIME)
+    fs = NamedUnitInformation.create(               "fs",           NamedQuantity.TIME)
 
-    min = NamedUnitInformation.create(              "min",          NamedSimpleDimension.TIME)
-    h = NamedUnitInformation.create(                "h",            NamedSimpleDimension.TIME)
-    d = NamedUnitInformation.create(                "days",         NamedSimpleDimension.TIME)
-    w = NamedUnitInformation.create(                "weeks",        NamedSimpleDimension.TIME)
-    mo = NamedUnitInformation.create(               "months",       NamedSimpleDimension.TIME)
-    y = NamedUnitInformation.create(                "years",        NamedSimpleDimension.TIME)
+    min = NamedUnitInformation.create(              "min",          NamedQuantity.TIME)
+    h = NamedUnitInformation.create(                "h",            NamedQuantity.TIME)
+    d = NamedUnitInformation.create(                "days",         NamedQuantity.TIME)
+    w = NamedUnitInformation.create(                "weeks",        NamedQuantity.TIME)
+    mo = NamedUnitInformation.create(               "months",       NamedQuantity.TIME)
+    y = NamedUnitInformation.create(                "years",        NamedQuantity.TIME)
 
-    m = NamedUnitInformation.create(                "m",            NamedSimpleDimension.LENGTH)
-    km = NamedUnitInformation.create(               "km",           NamedSimpleDimension.LENGTH)
-    mm = NamedUnitInformation.create(               "mm",           NamedSimpleDimension.LENGTH)
-    µm = NamedUnitInformation.create(               "µm",           NamedSimpleDimension.LENGTH)
-    nm = NamedUnitInformation.create(               "nm",           NamedSimpleDimension.LENGTH)
-    pm = NamedUnitInformation.create(               "pm",           NamedSimpleDimension.LENGTH)
-    fm = NamedUnitInformation.create(               "fm",           NamedSimpleDimension.LENGTH)
+    m = NamedUnitInformation.create(                "m",            NamedQuantity.LENGTH)
+    km = NamedUnitInformation.create(               "km",           NamedQuantity.LENGTH)
+    mm = NamedUnitInformation.create(               "mm",           NamedQuantity.LENGTH)
+    µm = NamedUnitInformation.create(               "µm",           NamedQuantity.LENGTH)
+    nm = NamedUnitInformation.create(               "nm",           NamedQuantity.LENGTH)
+    pm = NamedUnitInformation.create(               "pm",           NamedQuantity.LENGTH)
 
-    kg = NamedUnitInformation.create(               "kg",           NamedSimpleDimension.MASS)
-    g = NamedUnitInformation.create(                "g",            NamedSimpleDimension.MASS)
-    mg = NamedUnitInformation.create(               "mg",           NamedSimpleDimension.MASS)
-    µg = NamedUnitInformation.create(               "µg",           NamedSimpleDimension.MASS)
-    ng = NamedUnitInformation.create(               "ng",           NamedSimpleDimension.MASS)
-    pg = NamedUnitInformation.create(               "pg",           NamedSimpleDimension.MASS)
-    fg = NamedUnitInformation.create(               "fg",           NamedSimpleDimension.MASS)
+    kg = NamedUnitInformation.create(               "kg",           NamedQuantity.MASS)
+    g = NamedUnitInformation.create(                "g",            NamedQuantity.MASS)
+    mg = NamedUnitInformation.create(               "mg",           NamedQuantity.MASS)
+    µg = NamedUnitInformation.create(               "µg",           NamedQuantity.MASS)
+    ng = NamedUnitInformation.create(               "ng",           NamedQuantity.MASS)
+    pg = NamedUnitInformation.create(               "pg",           NamedQuantity.MASS)
+    fg = NamedUnitInformation.create(               "fg",           NamedQuantity.MASS)
 
-    A = NamedUnitInformation.create(                "A",            NamedSimpleDimension.CURRENT)
-    mA = NamedUnitInformation.create(               "mA",           NamedSimpleDimension.CURRENT)
-    µA = NamedUnitInformation.create(               "µA",           NamedSimpleDimension.CURRENT)
-    nA = NamedUnitInformation.create(               "nA",           NamedSimpleDimension.CURRENT)
-    pA = NamedUnitInformation.create(               "pA",           NamedSimpleDimension.CURRENT)
-    fA = NamedUnitInformation.create(               "fA",           NamedSimpleDimension.CURRENT)
+    A = NamedUnitInformation.create(                "A",            NamedQuantity.CURRENT)
+    mA = NamedUnitInformation.create(               "mA",           NamedQuantity.CURRENT)
+    µA = NamedUnitInformation.create(               "µA",           NamedQuantity.CURRENT)
+    nA = NamedUnitInformation.create(               "nA",           NamedQuantity.CURRENT)
+    pA = NamedUnitInformation.create(               "pA",           NamedQuantity.CURRENT)
+    fA = NamedUnitInformation.create(               "fA",           NamedQuantity.CURRENT)
 
-    K = NamedUnitInformation.create(                "K",            NamedSimpleDimension.TEMPERATURE)
-    mK = NamedUnitInformation.create(               "mK",           NamedSimpleDimension.TEMPERATURE)
-    µK = NamedUnitInformation.create(               "µK",           NamedSimpleDimension.TEMPERATURE)
-    nK = NamedUnitInformation.create(               "nK",           NamedSimpleDimension.TEMPERATURE)
-    pK = NamedUnitInformation.create(               "pK",           NamedSimpleDimension.TEMPERATURE)
-    fK = NamedUnitInformation.create(               "fK",           NamedSimpleDimension.TEMPERATURE)
+    K = NamedUnitInformation.create(                "K",            NamedQuantity.TEMPERATURE)
+    mK = NamedUnitInformation.create(               "mK",           NamedQuantity.TEMPERATURE)
+    µK = NamedUnitInformation.create(               "µK",           NamedQuantity.TEMPERATURE)
+    nK = NamedUnitInformation.create(               "nK",           NamedQuantity.TEMPERATURE)
+    pK = NamedUnitInformation.create(               "pK",           NamedQuantity.TEMPERATURE)
+    fK = NamedUnitInformation.create(               "fK",           NamedQuantity.TEMPERATURE)
 
-    mol = NamedUnitInformation.create(              "mol",          NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
-    mmol = NamedUnitInformation.create(             "mmol",         NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
-    µmol = NamedUnitInformation.create(             "µmol",         NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
-    nmol = NamedUnitInformation.create(             "nmol",         NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
-    pmol = NamedUnitInformation.create(             "pmol",         NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
-    fmol = NamedUnitInformation.create(             "fmol",         NamedSimpleDimension.AMOUNT_OF_SUBSTANCE)
+    mol = NamedUnitInformation.create(              "mol",          NamedQuantity.AMOUNT_OF_SUBSTANCE)
+    mmol = NamedUnitInformation.create(             "mmol",         NamedQuantity.AMOUNT_OF_SUBSTANCE)
+    µmol = NamedUnitInformation.create(             "µmol",         NamedQuantity.AMOUNT_OF_SUBSTANCE)
+    nmol = NamedUnitInformation.create(             "nmol",         NamedQuantity.AMOUNT_OF_SUBSTANCE)
+    pmol = NamedUnitInformation.create(             "pmol",         NamedQuantity.AMOUNT_OF_SUBSTANCE)
+    fmol = NamedUnitInformation.create(             "fmol",         NamedQuantity.AMOUNT_OF_SUBSTANCE)
 
-    cd = NamedUnitInformation.create(               "cd",           NamedSimpleDimension.LUMINOUS_INTENSITY)
-    mcd = NamedUnitInformation.create(              "mcd",          NamedSimpleDimension.LUMINOUS_INTENSITY)
-    µcd = NamedUnitInformation.create(              "µcd",          NamedSimpleDimension.LUMINOUS_INTENSITY)
-    ncd = NamedUnitInformation.create(              "ncd",          NamedSimpleDimension.LUMINOUS_INTENSITY)
-    pcd = NamedUnitInformation.create(              "pcd",          NamedSimpleDimension.LUMINOUS_INTENSITY)
-    fcd = NamedUnitInformation.create(              "fcd",          NamedSimpleDimension.LUMINOUS_INTENSITY)
+    cd = NamedUnitInformation.create(               "cd",           NamedQuantity.LUMINOUS_INTENSITY)
+    mcd = NamedUnitInformation.create(              "mcd",          NamedQuantity.LUMINOUS_INTENSITY)
+    µcd = NamedUnitInformation.create(              "µcd",          NamedQuantity.LUMINOUS_INTENSITY)
+    ncd = NamedUnitInformation.create(              "ncd",          NamedQuantity.LUMINOUS_INTENSITY)
+    pcd = NamedUnitInformation.create(              "pcd",          NamedQuantity.LUMINOUS_INTENSITY)
+    fcd = NamedUnitInformation.create(              "fcd",          NamedQuantity.LUMINOUS_INTENSITY)
 
-    N = NamedUnitInformation.create(                "N",            NamedSimpleDimension.FORCE)
-    mN = NamedUnitInformation.create(               "mN",           NamedSimpleDimension.FORCE)
-    µN = NamedUnitInformation.create(               "µN",           NamedSimpleDimension.FORCE)
-    nN = NamedUnitInformation.create(               "nN",           NamedSimpleDimension.FORCE)
-    pN = NamedUnitInformation.create(               "pN",           NamedSimpleDimension.FORCE)
-    fN = NamedUnitInformation.create(               "fN",           NamedSimpleDimension.FORCE)
+    N = NamedUnitInformation.create(                "N",            NamedQuantity.FORCE)
+    mN = NamedUnitInformation.create(               "mN",           NamedQuantity.FORCE)
+    µN = NamedUnitInformation.create(               "µN",           NamedQuantity.FORCE)
+    nN = NamedUnitInformation.create(               "nN",           NamedQuantity.FORCE)
+    pN = NamedUnitInformation.create(               "pN",           NamedQuantity.FORCE)
+    fN = NamedUnitInformation.create(               "fN",           NamedQuantity.FORCE)
 
-    J = NamedUnitInformation.create(                "J",            NamedSimpleDimension.ENERGY)
-    mJ = NamedUnitInformation.create(               "mJ",           NamedSimpleDimension.ENERGY)
-    µJ = NamedUnitInformation.create(               "µJ",           NamedSimpleDimension.ENERGY)
-    nJ = NamedUnitInformation.create(               "nJ",           NamedSimpleDimension.ENERGY)
-    pJ = NamedUnitInformation.create(               "pJ",           NamedSimpleDimension.ENERGY)
-    fJ = NamedUnitInformation.create(               "fJ",           NamedSimpleDimension.ENERGY)
+    J = NamedUnitInformation.create(                "J",            NamedQuantity.ENERGY)
+    mJ = NamedUnitInformation.create(               "mJ",           NamedQuantity.ENERGY)
+    µJ = NamedUnitInformation.create(               "µJ",           NamedQuantity.ENERGY)
+    nJ = NamedUnitInformation.create(               "nJ",           NamedQuantity.ENERGY)
+    pJ = NamedUnitInformation.create(               "pJ",           NamedQuantity.ENERGY)
+    fJ = NamedUnitInformation.create(               "fJ",           NamedQuantity.ENERGY)
 
-    W = NamedUnitInformation.create(                "W",            NamedSimpleDimension.POWER)
-    mW = NamedUnitInformation.create(               "mW",           NamedSimpleDimension.POWER)
-    µW = NamedUnitInformation.create(               "µW",           NamedSimpleDimension.POWER)
-    nW = NamedUnitInformation.create(               "nW",           NamedSimpleDimension.POWER)
-    pW = NamedUnitInformation.create(               "pW",           NamedSimpleDimension.POWER)
-    fW = NamedUnitInformation.create(               "fW",           NamedSimpleDimension.POWER)
+    W = NamedUnitInformation.create(                "W",            NamedQuantity.POWER)
+    mW = NamedUnitInformation.create(               "mW",           NamedQuantity.POWER)
+    µW = NamedUnitInformation.create(               "µW",           NamedQuantity.POWER)
+    nW = NamedUnitInformation.create(               "nW",           NamedQuantity.POWER)
+    pW = NamedUnitInformation.create(               "pW",           NamedQuantity.POWER)
+    fW = NamedUnitInformation.create(               "fW",           NamedQuantity.POWER)
 
-    Pa = NamedUnitInformation.create(               "Pa",           NamedSimpleDimension.PRESSURE)
-    mPa = NamedUnitInformation.create(              "mPa",          NamedSimpleDimension.PRESSURE)
-    µPa = NamedUnitInformation.create(              "µPa",          NamedSimpleDimension.PRESSURE)
-    nPa = NamedUnitInformation.create(              "nPa",          NamedSimpleDimension.PRESSURE)
-    pPa = NamedUnitInformation.create(              "pPa",          NamedSimpleDimension.PRESSURE)
-    fPa = NamedUnitInformation.create(              "fPa",          NamedSimpleDimension.PRESSURE)
+    Pa = NamedUnitInformation.create(               "Pa",           NamedQuantity.PRESSURE)
+    mPa = NamedUnitInformation.create(              "mPa",          NamedQuantity.PRESSURE)
+    µPa = NamedUnitInformation.create(              "µPa",          NamedQuantity.PRESSURE)
+    nPa = NamedUnitInformation.create(              "nPa",          NamedQuantity.PRESSURE)
+    pPa = NamedUnitInformation.create(              "pPa",          NamedQuantity.PRESSURE)
+    fPa = NamedUnitInformation.create(              "fPa",          NamedQuantity.PRESSURE)
 
-    V = NamedUnitInformation.create(                "V",            NamedSimpleDimension.VOLTAGE)
-    mV = NamedUnitInformation.create(               "mV",           NamedSimpleDimension.VOLTAGE)
-    µV = NamedUnitInformation.create(               "µV",           NamedSimpleDimension.VOLTAGE)
-    nV = NamedUnitInformation.create(               "nV",           NamedSimpleDimension.VOLTAGE)
-    pV = NamedUnitInformation.create(               "pV",           NamedSimpleDimension.VOLTAGE)
-    fV = NamedUnitInformation.create(               "fV",           NamedSimpleDimension.VOLTAGE)
+    V = NamedUnitInformation.create(                "V",            NamedQuantity.VOLTAGE)
+    mV = NamedUnitInformation.create(               "mV",           NamedQuantity.VOLTAGE)
+    µV = NamedUnitInformation.create(               "µV",           NamedQuantity.VOLTAGE)
+    nV = NamedUnitInformation.create(               "nV",           NamedQuantity.VOLTAGE)
+    pV = NamedUnitInformation.create(               "pV",           NamedQuantity.VOLTAGE)
+    fV = NamedUnitInformation.create(               "fV",           NamedQuantity.VOLTAGE)
 
-    Hz = NamedUnitInformation.create(               "Hz",           NamedSimpleDimension.FREQUENCY)
-    mHz = NamedUnitInformation.create(              "mHz",          NamedSimpleDimension.FREQUENCY)
-    µHz = NamedUnitInformation.create(              "µHz",          NamedSimpleDimension.FREQUENCY)
-    nHz = NamedUnitInformation.create(              "nHz",          NamedSimpleDimension.FREQUENCY)
-    pHz = NamedUnitInformation.create(              "pHz",          NamedSimpleDimension.FREQUENCY)
-    fHz = NamedUnitInformation.create(              "fHz",          NamedSimpleDimension.FREQUENCY)
+    Hz = NamedUnitInformation.create(               "Hz",           NamedQuantity.FREQUENCY)
+    mHz = NamedUnitInformation.create(              "mHz",          NamedQuantity.FREQUENCY)
+    µHz = NamedUnitInformation.create(              "µHz",          NamedQuantity.FREQUENCY)
+    nHz = NamedUnitInformation.create(              "nHz",          NamedQuantity.FREQUENCY)
+    pHz = NamedUnitInformation.create(              "pHz",          NamedQuantity.FREQUENCY)
+    fHz = NamedUnitInformation.create(              "fHz",          NamedQuantity.FREQUENCY)
 
     @property
     def unit_string(self) -> str:
         return self.value.unit_string
 
     @property
-    def named_simple_unit_dimension(self) -> NamedSimpleDimension:
-        return self.value.named_simple_unit_dimension
+    def named_quantity(self) -> NamedQuantity:
+        return self.value.named_quantity
 
     @property
-    def unit(self) -> Unit:
-        return self.value.unit
+    def unit_group(self) -> UnitGroup:
+        return self.value.unit_group
 
     @classmethod
     def find_named_unit(cls, unit_string: str) -> "NamedUnit":

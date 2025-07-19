@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from ...utils.general import JSONable, HDF5able
 from ..units.united import United
 from abc import ABC, abstractmethod
-from ..units.base_classes.base_unit import BaseDimension
-from ..units.base_classes.base_unit import BaseUnit
+from ..units.unit_group import BaseDimension
+from ..units.unit_group import BaseUnit
 from typing import TypeVar, Generic, TYPE_CHECKING, Any
 from ..scalars.base_scalar import BaseScalar
 from ...unit import Unit
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     pass
 
 PT = TypeVar("PT", bound=float|complex)
-UST = TypeVar("UST", bound="UnitedScalar")
+UST = TypeVar("UST", bound="UnitedScalar[Any, Any, Any, Any]")
 UT = TypeVar("UT", bound=BaseUnit[Any, Any])
 UD = TypeVar("UD", bound=BaseDimension[Any, Any])
 
@@ -51,6 +51,18 @@ class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United[UD, UT], Generic[
     
     @abstractmethod
     def __rtruediv__(self, other: UST) -> UST:
+        ...
+
+    @abstractmethod
+    def __abs__(self) -> UST:
+        ...
+
+    @abstractmethod
+    def __pow__(self, exponent: float) -> UST:
+        ...
+
+    @abstractmethod
+    def __neg__(self) -> UST:
         ...
     
     @abstractmethod
@@ -102,7 +114,14 @@ class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United[UD, UT], Generic[
         ...
 
     def value_in_unit(self, unit: Unit) -> PT:
-        """
-        Convert the scalar to a different unit.
-        """
+        if not unit.compatible_to(self.dimension): # type: ignore
+            raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return unit.from_canonical_value(self.canonical_value) # type: ignore
+    
+    def value_in_canonical_unit(self) -> PT:
+        return self.value_in_unit(self.dimension.canonical_unit)
+    
+    def value_in_display_unit(self) -> PT:
+        if self._display_unit is None:
+            raise ValueError("This scalar has no display unit")
+        return self.value_in_unit(self._display_unit) # type: ignore

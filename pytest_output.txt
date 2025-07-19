@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/benedikt/Documents/8 Programmierung/Python/UnitedSystem
+configfile: pyproject.toml
+collected 0 items / 3 errors
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting tests/test_dimension.py ___________________
+ImportError while importing test module '/Users/benedikt/Documents/8 Programmierung/Python/UnitedSystem/tests/test_dimension.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_dimension.py:20: in <module>
+    from united_system.dimension import Dimension
+E   ModuleNotFoundError: No module named 'united_system'
+______________ ERROR collecting tests/test_real_united_scalar.py _______________
+ImportError while importing test module '/Users/benedikt/Documents/8 Programmierung/Python/UnitedSystem/tests/test_real_united_scalar.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_real_united_scalar.py:22: in <module>
+    from united_system.real_united_scalar import RealUnitedScalar
+E   ModuleNotFoundError: No module named 'united_system'
+_____________________ ERROR collecting tests/test_unit.py ______________________
+ImportError while importing test module '/Users/benedikt/Documents/8 Programmierung/Python/UnitedSystem/tests/test_unit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_unit.py:20: in <module>
+    from united_system.unit import Unit
+E   ModuleNotFoundError: No module named 'united_system'
+=========================== short test summary info ============================
+ERROR tests/test_dimension.py
+ERROR tests/test_real_united_scalar.py
+ERROR tests/test_unit.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 3 errors in 0.20s ===============================

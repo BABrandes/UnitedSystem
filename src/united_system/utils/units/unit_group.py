@@ -1,34 +1,81 @@
-from typing import Final, Tuple, overload, Union, TYPE_CHECKING, Literal, Optional, Dict
-from collections import defaultdict
-from frozendict import frozendict
+from typing import Final, Tuple, overload, Union, Literal, Optional
 from collections.abc import Sequence
 import re
 import numpy as np
 
-from .utils.units.unit_symbol import UnitSymbol
-from .utils.units.unit_element import UnitElement
-from .dimension import Dimension
-from .utils.units.dimension_group import DimensionGroup
-from .utils.units.unit_group import UnitGroup
-
-if TYPE_CHECKING:
-    from .real_united_scalar import RealUnitedScalar
-    from .real_united_array import RealUnitedArray
-    from .complex_united_scalar import ComplexUnitedScalar
-    from .complex_united_array import ComplexUnitedArray
+from .unit_symbol import UnitSymbol
+from .unit_element import UnitElement
+from .dimension_group import DimensionGroup
+from ...named_quantity import NamedQuantity
 
 # Cache for parsed units (outside the dataclass to avoid slots conflict)
-_SIMPLE_UNIT_CACHE__STRING_KEY: dict[str, "Unit"] = {}
+_SIMPLE_UNIT_CACHE__STRING_KEY: dict[str, "UnitGroup"] = {}
+_SIMPLE_UNIT_CACHE__DIMENSION_KEY: dict[DimensionGroup, "UnitGroup"] = {}
+
 EPSILON: float = 1e-10
 
 def clear_unit_cache():
     """Clear the unit cache to force re-parsing of unit strings."""
-    global _SIMPLE_UNIT_CACHE__STRING_KEY
+    global _SIMPLE_UNIT_CACHE__STRING_KEY, _SIMPLE_UNIT_CACHE__DIMENSION_KEY
     _SIMPLE_UNIT_CACHE__STRING_KEY.clear()
+    _SIMPLE_UNIT_CACHE__DIMENSION_KEY.clear()
+    # Also clear the SimpleUnitElement cache
+    from .unit_element import clear_simple_unit_element_cache
+    clear_simple_unit_element_cache()
 
-class Unit:
+class UnitGroup:
     """
+    A unit group is a collection of unit elements.
 
+    Creation:
+
+    - Unit groups can be created from a string.
+
+    - Unit groups can be created from a list of unit elements.
+
+    - Unit groups can be created from a dimension, giving the canonical unit of that dimension.
+
+    Fields:
+
+    - unit_elements: A tuple of unit elements.
+
+    - dimension_group: The dimension group of the unit group.
+
+    - factor: The factor of the unit group.
+
+    Each unit element has a prefix, a unit symbol, and an exponent.
+
+    Their may not be two unit elements with the same unit symbol.
+
+    The prefix, the unit symbol and the exponent together give a factor to the canonical unit.
+
+    The product of the factor of each unit element gives the factor of the unit.
+
+    One unit element may have an offset.
+
+    This offset gives the offset of the unit.
+
+    Each unit has a dimension, computed from the unit elements.
+
+    Unit groups are immutable.
+
+    Operations:
+
+    - Unit groups cannot be added or subtracted.
+
+    - Unit groups can be multiplied and divided by other unit groups or by floats or by ints.
+
+    - Unit groups can be raised to a power of a float or an int.
+
+    A new UnitGroup is created when an operation is performed on a unit group.
+
+    It must be made sure that the unit elements with the same unit symbol are combined.
+
+    Methods:
+
+    - reduce: The unit is reduced by combining unit elements to minimize the number of unit elements. (Not implemented yet)
+
+    - combine_same_unit_symbols: Combine unit elements with the same unit symbol.
 
     """
 
@@ -38,205 +85,115 @@ class Unit:
 
     def __new__(
             cls,
-            value: Union[
-                Optional[UnitGroup],
-                Optional[DimensionGroup],
-                Optional[Dict[str, UnitGroup]],
-                Optional[Dict[str, DimensionGroup]],
-                Optional[Dict[str, UnitGroup|DimensionGroup]],
-                Optional[str]]=None) -> "Unit":
+            value: Optional[Union[Sequence[UnitElement], str, DimensionGroup]],
+            log_unit_group: Optional["UnitGroup"] = None,
+            angle_unit_group: Optional["UnitGroup"] = None,
+            log_exponent: float = 0.0,
+            angle_exponent: float = 0.0) -> "UnitGroup":
         
-        if isinstance(value, str):
-            return cls._get_unit_via_cache(value)
+        if isinstance(value, str) or isinstance(value, DimensionGroup):
+            return cls._get_unit_group_via_cache(value)
         else:
             return super().__new__(cls)
 
     @overload
-    def __init__(self, value: Optional[UnitGroup]=None) -> None:
+    def __init__(
+        self,
+        value: Sequence[UnitElement],
+        log_unit_group: Optional["UnitGroup"] = None,
+        angle_unit_group: Optional["UnitGroup"] = None,
+        log_exponent: float = 0.0,
+        angle_exponent: float = 0.0) -> None:
         ...
     @overload
-    def __init__(self, value: Optional[DimensionGroup]=None) -> None:
+    def __init__(self, value: str) -> None:
+        """
+        Parse a unit string into a Unit.
+        
+        Examples:
+        - "m" -> Simple_Unit(("", {"meter"}, 1))
+        - "km" -> Simple_Unit(("k", {"meter"}, 1))
+        - "m/s" -> Simple_Unit(("", {"meter"}, 1), ("s", {"second"}, -1))
+        - "V*m/ns^2" -> Simple_Unit(("", {"volt"}, 1), ("meter", {"meter"}, 1), ("n", {"second"}, -2))
+        """
         ...
     @overload
-    def __init__(self, value: Optional[Dict[str, UnitGroup]]=None) -> None:
+    def __init__(self, value: DimensionGroup) -> None:
         ...
     @overload
-    def __init__(self, value: Optional[Dict[str, DimensionGroup]]=None) -> None:
-        ...
-    @overload
-    def __init__(self, value: Optional[str]=None) -> None:
+    def __init__(self, value: None) -> None:
         ...
     def __init__(
             self,
-            value: Union[
-                Optional[UnitGroup],
-                Optional[DimensionGroup],
-                Optional[Dict[str, UnitGroup]],
-                Optional[Dict[str, DimensionGroup]],
-                Optional[Dict[str, UnitGroup|DimensionGroup]],
-                Optional[str]]=None) -> None:
+            value: Optional[Union[Sequence[UnitElement], str, DimensionGroup]],
+            log_unit_group: Optional["UnitGroup"] = None,
+            angle_unit_group: Optional["UnitGroup"] = None,
+            log_exponent: float = 0.0,
+            angle_exponent: float = 0.0):
 
-        if isinstance(value, str):
+        if isinstance(value, str) or isinstance(value, DimensionGroup) or value is None:
             return  # Prevents accidental init of cached objects
-        
-        def set_empty() -> tuple[frozendict[str, float], frozendict[str, float], frozendict[str, DimensionGroup], frozendict[str, UnitGroup]]:
-            factors: frozendict[str, float] = frozendict({"": 1.0})
-            offsets: frozendict[str, float] = frozendict({"": 0.0})
-            dimension_groups: frozendict[str, DimensionGroup] = frozendict({"": DimensionGroup.dimensionless_dimension_group()})
-            unit_groups: frozendict[str, UnitGroup] = frozendict({"": UnitGroup.dimensionless_unit_group()})
-            return factors, offsets, dimension_groups, unit_groups
-        
-        if value is None:
-            self._factors, self._offsets, self._dimension_groups, self._unit_groups = set_empty()
-            return
-        elif isinstance(value, UnitGroup):
-            unit_groups = {"": value}
-            dimension_groups = {"": value.dimension_group}
-            factors = {"": value.factor}
-            offsets = {"": value.offset}
-        elif isinstance(value, DimensionGroup):
-            unit_groups = {"": UnitGroup(value)}
-            dimension_groups = {"": value}
-            factors = {"": 1.0}
-            offsets = {"": 0.0}
-        elif isinstance(value, dict): # type: ignore
-            if len(value) == 0:
-                self._factors, self._offsets, self._dimension_groups, self._unit_groups = set_empty()
-                return
-            else:
-                unit_groups: dict[str, UnitGroup] = {}
-                dimension_groups: dict[str, DimensionGroup] = {}
-                factors: dict[str, float] = {}
-                offsets: dict[str, float] = {}
-                for subscript, group in value.items():
-                    if isinstance(group, UnitGroup):
-                        unit_groups[subscript] = group
-                        dimension_groups[subscript] = group.dimension_group
-                        factors[subscript] = group.factor
-                        offsets[subscript] = group.offset
-                    elif isinstance(group, DimensionGroup): # type: ignore
-                        unit_groups[subscript] = UnitGroup(group)
-                        dimension_groups[subscript] = group
-                        factors[subscript] = unit_groups[subscript].factor
-                        offsets[subscript] = unit_groups[subscript].offset
-                    else:
-                        raise ValueError("Unit dictionary must contain only UnitGroup and DimensionGroup objects")
-        else:
-            raise ValueError("Unit dictionary must contain only UnitGroup and DimensionGroup objects")
+            
+        self._unit_elements = tuple(value)
+        self._log_unit_group = log_unit_group
+        self._angle_unit_group = angle_unit_group
+        self._log_exponent = log_exponent
+        self._angle_exponent = angle_exponent
 
-        self._factors: frozendict[str, float] = frozendict(factors)
-        self._offsets: frozendict[str, float] = frozendict(offsets)
-        self._dimension_groups: frozendict[str, DimensionGroup] = frozendict(dimension_groups)
-        self._unit_groups: frozendict[str, UnitGroup] = frozendict(unit_groups)
+        proper_exponents: list[float] = [0.0] * 7
+        factor: float = 1
+        offset: float = 0
+        for unit_element in self._unit_elements:
 
-        factor: float = 1.0
-        offset: float = 0.0
-        for subscript, _factor in self._factors.items():
-            factor *= _factor
-        for subscript, _offset in self._offsets.items():
-            if offset != 0.0:
-                raise ValueError("Only one offset is allowed per unit")
-            offset = _offset
+            # Set factor and offset
+            factor *= unit_element.canonical_factor
+            new_offset: float = unit_element.canonical_offset
+            if offset != 0 and new_offset != 0:
+                raise ValueError("Cannot have two non-zero offsets in the same unit")
+            offset = new_offset
+            
+            # Add quantity exponents (regardless of prefix)
+            unit_symbol: UnitSymbol = unit_element.unit_symbol
+            exponent: float = unit_element.exponent
+            for exponent_index, proper_exp in enumerate(unit_symbol.named_quantity.dimension_group.proper_exponents):
+                proper_exponents[exponent_index] += float(proper_exp * exponent)
+
+        self._dimension_group = DimensionGroup(
+            proper_exponents=proper_exponents,
+            log_dimension=log_unit_group.dimension_group if log_unit_group is not None else None,
+            angle_dimension=angle_unit_group.dimension_group if angle_unit_group is not None else None,
+            log_exponent=log_exponent,
+            angle_exponent=angle_exponent
+        )
+
         self._factor = factor
         self._offset = offset
 
 ########################################################
 # Helper methods
 ########################################################
-
+    
     @classmethod
-    def _get_unit_via_cache(cls, value: str) -> "Unit":
-
-        if value in _SIMPLE_UNIT_CACHE__STRING_KEY:
-            return _SIMPLE_UNIT_CACHE__STRING_KEY[value]
+    def _get_unit_group_via_cache(cls, value: Union[str, DimensionGroup, None]) -> "UnitGroup":
+        if isinstance(value, str):
+            if value in _SIMPLE_UNIT_CACHE__STRING_KEY:
+                return _SIMPLE_UNIT_CACHE__STRING_KEY[value]
+            else:
+                unit_group: UnitGroup = cls._create_from_string(value)
+                _SIMPLE_UNIT_CACHE__STRING_KEY[value] = unit_group
+                return unit_group
+        elif isinstance(value, DimensionGroup):
+            if value in _SIMPLE_UNIT_CACHE__DIMENSION_KEY:
+                return _SIMPLE_UNIT_CACHE__DIMENSION_KEY[value]
+            else:
+                unit_group: UnitGroup = cls._create_from_dimension_group(value)
+                _SIMPLE_UNIT_CACHE__DIMENSION_KEY[value] = unit_group
+                return unit_group
         else:
-            return Unit.parse_string(value)
-
-    @classmethod
-    def dimensionless_unit(cls) -> "Unit":
-        return DIMENSIONLESS_UNIT
-
-    ########################################################
-    # Properties
-    ########################################################
-
-    @property
-    def dimension_groups(self) -> dict[str, DimensionGroup]:
-        return dict(self._dimension_groups)
-
-    @property
-    def unit_groups(self) -> dict[str, UnitGroup]:
-        return dict(self._unit_groups)
-
-    @property
-    def factors(self) -> dict[str, float]:
-        return dict(self._factors)
-    
-    @property
-    def offsets(self) -> dict[str, float]:
-        return dict(self._offsets)
-    
-    @property
-    def factor(self) -> float:
-        return self._factor
-    
-    @property
-    def offset(self) -> float:
-        return self._offset
-
-    @property
-    def is_dimensionless(self) -> bool:
-        if len(self._unit_groups) == 0:
-            return True
-        for unit_group in self._unit_groups.values():
-            if not unit_group.is_dimensionless:
-                return False
-        return True
-    
-    @property
-    def includes_log_level(self) -> bool:
-        if len(self._unit_groups) == 0:
-            return False
-        for unit_group in self._unit_groups.values():
-            if unit_group.includes_log_level:
-                return True
-        return False
-    
-    @property
-    def includes_angle(self) -> bool:
-        if len(self._unit_groups) == 0:
-            return False
-        for unit_group in self._unit_groups.values():
-            if unit_group.includes_angle:
-                return True
-        return False
-    ########################################################
-    # Other accessors
-    ########################################################
-
-    def dimension(self, subscript: str) -> Dimension:
-        if subscript in self._dimension_groups:
-            return Dimension(self._dimension_groups[subscript])
-        else:
-            return Dimension.dimensionless_dimension()
+            return DIMENSIONLESS_UNIT_GROUP
         
-    def unit(self, subscript: str) -> "Unit":
-        if subscript in self._unit_groups:
-            return Unit(self._unit_groups[subscript])
-        else:
-            return Unit.dimensionless_unit()
-
-    
-    ########################################################
-    # Parsing operations
-    ########################################################
-
     @classmethod
-    def parse_string(cls, unit_string: str) -> "Unit":
-        return cls._get_unit_via_cache(unit_string)
-
-    @classmethod
-    def _parse_string_to_unit_groups(cls, unit_string: str) -> dict[str, UnitGroup]:
+    def _create_from_string(cls, unit_string: str) -> "UnitGroup":
         """
         Parse a unit string into a tuple of SimpleUnitElements.
         
@@ -250,120 +207,94 @@ class Unit:
 
         # Handle special case: if string is empty, return empty tuple
         if not unit_string.strip():
-            return {}
+            return cls(())
         
-        ########################################################
-        
-        def seperate_string(unit_string: str) -> list[tuple[str, str]]:
-            """
-            Seperate the string using "*" and "/" into a list of tuples, where the first element is the seperator and the second element is the part
-            """
-            parts_and_separators = re.split(r'([*/])', unit_string)
-            seperators_and_parts: list[tuple[str, str]] = [('', parts_and_separators[0])]
-            if seperators_and_parts[0][1] == "1":
-                seperators_and_parts.pop(0)
-            else:
-                seperators_and_parts[0] = ('*', seperators_and_parts[0][1])
-            seperators_and_parts.extend(list(zip(parts_and_separators[1::2], parts_and_separators[2::2])))
-            return seperators_and_parts
-        
-        ########################################################
-        
-        def combine_unit_groups(unit_groups_1: dict[str, UnitGroup], unit_groups_2: dict[str, UnitGroup]) -> dict[str, UnitGroup]:
-            """
-            Combine two dictionaries of unit groups.
-            If the subscript is the same, multiply the unit groups.
-            If the subscript is different, add the unit groups.
-            """
-            combined_unit_groups: dict[str, UnitGroup] = {}
-            for subscript_2, unit_group_2 in unit_groups_2.items():
-                if subscript_2 in unit_groups_1:
-                    combined_unit_groups[subscript_2] = unit_groups_1[subscript_2] * unit_group_2
-                else:
-                    combined_unit_groups[subscript_2] = unit_group_2
-            for subscript_1, unit_group_1 in unit_groups_1.items():
-                if subscript_1 not in combined_unit_groups:
-                    combined_unit_groups[subscript_1] = unit_group_1
-            return combined_unit_groups
-        
-        ########################################################
-        
-        def parse_unit_groups(string: str, position: Literal["nominator", "denominator"]) -> dict[str, UnitGroup]:
-            """
-            Parse a unit string into a dictionary of unit groups.
-            The unit groups are combined based on the position of the unit element.
-            The unit elements are combined based on the subscript.
-            The unit elements are parsed from the unit string.
-            The unit groups are returned.
-            """
-            unit_groups: dict[str, UnitGroup] = {}
-            unit_elements: defaultdict[str, list[UnitElement]] = defaultdict(list)
-            for seperator, part in seperate_string(string):
-                if (part.count("(") != part.count(")")):
-                    raise ValueError(f"Invalid unit string: {unit_string}")
-                
-                # Determine the position of the unit element (denominator or nominator)
-                if seperator == "*":
-                    if position == "nominator":
-                        position_: Literal["nominator", "denominator"] = "nominator"
-                    else:
-                        position_: Literal["nominator", "denominator"] = "denominator"
-                else:
-                    if position == "nominator":
-                        position_: Literal["nominator", "denominator"] = "denominator"
-                    else:
-                        position_: Literal["nominator", "denominator"] = "nominator"
+        if unit_string.count("dec(") or unit_string.count("rad(") or unit_string.count("dec") or unit_string.count("rad") or unit_string.count("°") or unit_string.count("°("):
+            raise ValueError(f"Not implemented yet: {unit_string}")
 
-                # Deal with parentheses
-                if part.count("(") > 0:
-                    if part.startswith("(") and part.endswith(")"):
-                        # Simple parentheses
-                        unit_groups_inside_parentheses = parse_unit_groups(part[1:-1], position_)
-                        unit_groups = combine_unit_groups(unit_groups, unit_groups_inside_parentheses)
-                    elif part.endswith(")"):
-                        # Log or Angle unit
-                        raise NotImplementedError("Not implemented")
-                    else:
-                        raise ValueError(f"Invalid unit string: {unit_string}")
-                elif seperator == "*" or seperator == "/":
-                    # No parentheses, so we can parse the unit element
-                    # Figure out if there is a subscript
-                    if part.count("_") == 0:
-                        # No subscript
-                        unit_element_string: str = part
-                        subscript: str = ""
-                    elif part.count("_") == 1:
-                        # Subscript
-                        unit_element_string, subscript = part.split("_")
-                    else:
-                        raise ValueError(f"Invalid unit string: {unit_string}")
-                    # Parse the unit element
-                    unit_element: UnitElement = UnitElement.parse_string(unit_element_string, position_)
-                    # Add the unit element to the dictionary of unit elements based on the subscript
-                    unit_elements[subscript].append(unit_element)
-                else:
-                    raise ValueError(f"Invalid unit string: {unit_string}")
-                
-            # Combine the unit elements into unit groups
-            unit_groups_: dict[str, UnitGroup] = {}
-            for subscript, unit_elements_ in unit_elements.items():
-                unit_group: UnitGroup = UnitGroup(unit_elements_)
-                unit_groups_[subscript] = unit_group
-
-            # Combine the unit groups
-            unit_groups = combine_unit_groups(unit_groups, unit_groups_)
-
-            # Return the unit groups
-            return unit_groups
+        # Handle parentheses properly by parsing the structure
+        unit_elements: list[UnitElement] = []
         
-        ########################################################
+        # Find the main division operator (outside parentheses)
+        # This regex finds / that are not inside parentheses
+        main_division_match = re.search(r'/(?![^(]*\))', unit_string)
         
-        # Entry point for parsing the unit string
-        unit_groups: dict[str, UnitGroup] = parse_unit_groups(unit_string, "nominator")
+        if main_division_match:
+            # Split at the main division
+            numerator_str = unit_string[:main_division_match.start()].strip()
+            denominator_str = unit_string[main_division_match.end():].strip()
+            
+            # Remove outer parentheses from denominator if present
+            if denominator_str.startswith("(") and denominator_str.endswith(")"):
+                denominator_str = denominator_str[1:-1].strip()
+            
+            # Parse numerator
+            if numerator_str:
+                unit_elements.extend(cls._parse_multiplication_expression(numerator_str, "nominator"))
+            
+            # Parse denominator
+            if denominator_str:
+                unit_elements.extend(cls._parse_multiplication_expression(denominator_str, "denominator"))
+        else:
+            # No main division, treat as all numerator
+            unit_elements.extend(cls._parse_multiplication_expression(unit_string, "nominator"))
 
-        # Return the unit groups
-        return unit_groups
+        return cls(tuple(unit_elements))
     
+    @classmethod
+    def _create_from_dimension_group(cls, dimension_group: DimensionGroup) -> "UnitGroup":
+        unit_elements: list[UnitElement] = []
+        # Handle main dimensions
+        for i, named_quantity in zip([0, 1, 2, 3, 4, 5, 6], [NamedQuantity.MASS, NamedQuantity.TIME, NamedQuantity.LENGTH, NamedQuantity.CURRENT, NamedQuantity.TEMPERATURE, NamedQuantity.AMOUNT_OF_SUBSTANCE, NamedQuantity.LUMINOUS_INTENSITY]):
+            if dimension_group.proper_exponents[i] != 0:
+                unit_element: UnitElement = named_quantity.unit_group._unit_elements[0]
+                unit_elements.append(UnitElement(unit_element.prefix, unit_element.unit_symbol, dimension_group.proper_exponents[i]))
+        log_unit_group: Optional[UnitGroup] = None
+        angle_unit_group: Optional[UnitGroup] = None
+        log_exponent: float = 0.0
+        angle_exponent: float = 0.0
+        if dimension_group.log_dimension is not None:
+            log_unit_group = cls._create_from_dimension_group(dimension_group.log_dimension)
+            log_exponent = dimension_group.log_exponent
+        if dimension_group.angle_dimension is not None:
+            angle_unit_group = cls._create_from_dimension_group(dimension_group.angle_dimension)
+            angle_exponent = dimension_group.angle_exponent
+
+        return cls(
+            value=unit_elements,
+            log_unit_group=log_unit_group,
+            angle_unit_group=angle_unit_group,
+            log_exponent=log_exponent,
+            angle_exponent=angle_exponent)
+    
+    @classmethod
+    def dimensionless_unit_group(cls) -> "UnitGroup":
+        return DIMENSIONLESS_UNIT_GROUP
+
+########################################################
+# Properties
+########################################################
+
+    @property
+    def dimension_group(self) -> DimensionGroup:
+        return self._dimension_group
+
+    @property
+    def factor(self) -> float:
+        return self._factor
+
+    @property
+    def offset(self) -> float:
+        return self._offset 
+    
+########################################################
+# Parsing operations
+########################################################
+
+    @classmethod
+    def parse_string(cls, unit_string: str) -> "UnitGroup":
+        return cls._get_unit_group_via_cache(unit_string)
+
     @classmethod
     def _parse_multiplication_expression(cls, expression: str, position: Literal["nominator", "denominator"]) -> list[UnitElement]:
         """Parse a multiplication expression (e.g., "kg*m*s^2") into unit elements."""
@@ -386,172 +317,162 @@ class Unit:
 # Arithmetic operations
 ########################################################
 
-# ----------- Simple operations -----------#
+    # ----------- Simple operations -----------#
 
-    def __mul__(self, other: "Unit") -> "Unit":
+    def __mul__(self, other: "UnitGroup") -> "UnitGroup":
         """Multiply two units. E.g. m * s -> m*s"""
-
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            if subscript in other._unit_groups:
-                new_unit_groups[subscript] = unit_group * other._unit_groups[subscript]
-            else:
-                new_unit_groups[subscript] = unit_group
-        for subscript, unit_group in other._unit_groups.items():
-            if subscript not in new_unit_groups:
-                new_unit_groups[subscript] = unit_group
-        return Unit(new_unit_groups)
+        unit_elements: list[UnitElement] = []
+        for element in self._unit_elements:
+            unit_elements.append(element)
+        for element in other._unit_elements:
+            unit_elements.append(element)
+        combined_unit_elements: Sequence[UnitElement] = self._combine_same_unit_symbols_and_prefixes(unit_elements)
+        return UnitGroup(combined_unit_elements)
     
-    def __truediv__(self, other: "Unit") -> "Unit":
+    def __truediv__(self, other: "UnitGroup") -> "UnitGroup":
         """Divide two units. E.g. m/s -> m/s"""
+        unit_elements: list[UnitElement] = []
+        for element in self._unit_elements:
+            unit_elements.append(element)
+        for element in other._unit_elements:
+            unit_elements.append(element.invert())
+        combined_unit_elements: Sequence[UnitElement] = self._combine_same_unit_symbols_and_prefixes(unit_elements)
+        return UnitGroup(combined_unit_elements)
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            if subscript in other._unit_groups:
-                new_unit_groups[subscript] = unit_group / other._unit_groups[subscript]
-            else:
-                new_unit_groups[subscript] = unit_group
-        for subscript, unit_group in other._unit_groups.items():
-            if subscript not in new_unit_groups:
-                new_unit_groups[subscript] = unit_group.invert()
-        return Unit(new_unit_groups)
-
-    def pow(self, exponent: float|int) -> "Unit":
+    def pow(self, exponent: float|int) -> "UnitGroup":
         """Raise a unit to a power. E.g. m^2 -> m^2"""
-
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.pow(exponent)
-        return Unit(new_unit_groups)
+        unit_elements: list[UnitElement] = []
+        for element in self._unit_elements:
+            # Multiply the exponent, preserving its sign
+            unit_elements.append(UnitElement(element.prefix, element.unit_symbol, element.exponent * exponent))
+        combined_unit_elements: Sequence[UnitElement] = self._combine_same_unit_symbols_and_prefixes(unit_elements)
+        return UnitGroup(combined_unit_elements)
     
-    def __invert__(self) -> "Unit":
+    def __invert__(self) -> "UnitGroup":
         """Invert a unit. E.g. ~m -> 1/m"""
-
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.invert()
-        return Unit(new_unit_groups)
+        unit_elements: list[UnitElement] = []
+        for element in self._unit_elements:
+            unit_elements.append(element.invert())
+        combined_unit_elements: Sequence[UnitElement] = self._combine_same_unit_symbols_and_prefixes(unit_elements)
+        return UnitGroup(combined_unit_elements)
     
-    def invert(self) -> "Unit":
+    def invert(self) -> "UnitGroup":
         """Invert a unit. E.g. ~m -> 1/m"""
         return ~self
     
-# ----------- Advanced operations -----------#
+    # ----------- Advanced operations -----------#
 
-    def log(self) -> "Unit":
+    def log(self) -> "UnitGroup":
+        """Take the log of a unit. E.g. log(m) -> log(m)"""
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.log()
-        return Unit(new_unit_groups)
+        return UnitGroup(
+            value=(),
+            log_unit_group=self,
+            angle_unit_group=None,
+            log_exponent=1.0,
+            angle_exponent=0.0
+        )
     
-    def exp(self) -> "Unit":
+    def exp(self) -> "UnitGroup":
         """Exponentiate a unit. E.g. exp(m) -> e^m"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.exp()
-        return Unit(new_unit_groups)
-    
-    def arc(self) -> "Unit":
-        """Take the arcsin of a unit. E.g. arcsin(m) -> sin^-1(m)"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.arc()
-        return Unit(new_unit_groups)
-    
-    def trig(self) -> "Unit":
-        """Take the sin of a unit. E.g. sin(m) -> sin(m)"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.trig()
-        return Unit(new_unit_groups)
-
-#----------- Creating a scalar/array from a float, int, complex, np.ndarray -----------#
-
-    @overload
-    def __rmul__(self, other: float|int) -> "RealUnitedScalar": # type: ignore
-        ...
-    @overload
-    def __rmul__(self, other: complex) -> "ComplexUnitedScalar":
-        ...
-    @overload
-    def __rmul__(self, other: np.ndarray) -> "RealUnitedArray|ComplexUnitedArray":
-        ...
-    def __rmul__(self, other: float|int|complex|np.ndarray) -> "RealUnitedScalar|RealUnitedArray|ComplexUnitedScalar|ComplexUnitedArray":
-        """Multiply a scalar/array by a unit. E.g. 2.5 * m -> 2.5*m"""
-
-        if isinstance(other, float|int):
-            from .real_united_scalar import RealUnitedScalar
-            return RealUnitedScalar(other, self)
-        elif isinstance(other, complex):
-            from .complex_united_scalar import ComplexUnitedScalar
-            return ComplexUnitedScalar(other, self) # type: ignore
-        else:
-            # Find out if there is a complex number in the array
-            if np.iscomplexobj(other):
-                from .complex_united_array import ComplexUnitedArray
-                return ComplexUnitedArray(other, self) # type: ignore
+        if self.is_dimensionless:
+            return self
+        elif len(self._unit_elements) == 0 and self._angle_unit_group is None and self._log_unit_group is not None:
+            log_exponent: float = self._log_exponent - 1
+            if abs(log_exponent) < EPSILON:
+                log_exponent = 0.0
             else:
-                from .real_united_array import RealUnitedArray
-                return RealUnitedArray(other, self)
-            
-    def __rtruediv__(self, other: float|int|complex|np.ndarray) -> "RealUnitedScalar|RealUnitedArray|ComplexUnitedScalar|ComplexUnitedArray":
-        """Divide a scalar/array by a unit. E.g. 2.5 / m -> 2.5/m"""
-        return (~self).__rmul__(other)
+                raise ValueError("Cannot exponentiate a unit with a log exponent not equal to 1")
+            return self._log_unit_group
+        else:
+            raise ValueError("Cannot exponentiate a non-dimensionless unit if it has no log unit group")
     
-#----------- Comparison operations -----------#
+    def arc(self) -> "UnitGroup":
+        """Take the arcsin of a unit. E.g. arcsin(m) -> sin^-1(m)"""
+        return UnitGroup(
+            value=(),
+            log_unit_group=self,
+            angle_unit_group=None,
+            log_exponent=0.0,
+            angle_exponent=1.0
+        )
+    
+    def trig(self) -> "UnitGroup":
+        """Take the trigonometric functions of a unit. E.g. sin(m) -> sin(m)"""
+        if self.is_dimensionless:
+            return self
+        elif len(self._unit_elements) == 0 and self._log_unit_group is None and self._angle_unit_group is not None:
+            angle_exponent: float = self._angle_exponent - 1
+            if abs(angle_exponent) < EPSILON:
+                angle_exponent = 0.0
+            else:
+                raise ValueError("Cannot take the trigonometric functions of a unit with an angle exponent not equal to 1")
+            return self._angle_unit_group
+        else:
+            raise ValueError("Cannot take the trigonometric functions of a non-dimensionless unit if it has no angle unit group")
+    
 
-    def equal_exact(self, other: "Unit") -> bool:
+########################################################
+# Compatibility operations
+########################################################
+
+    @overload
+    def compatible_to(self, other: DimensionGroup) -> bool:
+        """Check if two unit groups are compatible. E.g. meter and mile are compatible, but meter and kilogram are not."""
+        ...
+    @overload
+    def compatible_to(self, other: "UnitGroup") -> bool:
+        """Check if two unit groups are compatible. E.g. meter and mile are compatible, but meter and kilogram are not."""
+        ...
+
+    def compatible_to(self, other: Union[DimensionGroup, "UnitGroup"]) -> bool:
+        """Check if two unit groups are compatible. E.g. meter and mile are compatible, but meter and kilogram are not."""
+        if isinstance(other, DimensionGroup):   
+            return self._dimension_group.compatible_to(other)
+        else:
+            return self._dimension_group.compatible_to(other._dimension_group)
+
+########################################################
+# Comparison operations
+########################################################
+
+    def equal_exact(self, other: "UnitGroup") -> bool:
         """
-        Check if two units are equal. This is a strong comparison, not a weak one.
-        This is used to check if two units are exactly the same, including the order of the unit elements.
+        Check if two unit groups are equal. This is a strong comparison, not a weak one.
+        This is used to check if two unit groups are exactly the same, including the order of the unit elements.
 
         - Have the same Dimension
         - Have the same factor and offset
         - Have the same order of unit symbols
         - Have the same prefixes and exponents for each symbol
         """
-        return self._unit_groups == other._unit_groups
+        return self._unit_elements == other._unit_elements
     
-    def equal_effectively(self, other: "Unit") -> bool:
+    def equal_effectively(self, other: "UnitGroup") -> bool:
         """
-        Check if two units are equal. This is a weak comparison, not a strong one.
-        This is used to check if two units are effectively the same.
+        Check if two unit groups are equal. This is a weak comparison, not a strong one.
+        This is used to check if two unit groups are effectively the same.
 
         - Have the same dimension
         - Have the same factor and offset        
         """
-
-        if len(self._unit_groups) != len(other._unit_groups):
-            return False
-
-        for subscript, dimension_group in self._dimension_groups.items():
-            if subscript not in other._dimension_groups:
-                return False
-            if dimension_group != other._dimension_groups[subscript]:
-                return False
-            if self._factors[subscript] != other._factors[subscript]:
-                return False
-            if self._offsets[subscript] != other._offsets[subscript]:
-                return False
-
-        return True
+        return self._dimension_group == other._dimension_group and abs(self._factor / other._factor - 1) < EPSILON and abs(self._offset - other._offset) < EPSILON
 
     def __eq__(self, other: object) -> bool:
         """Check if two units are equal. This is a strong comparison, not a weak one."""
-        if not isinstance(other, Unit):
+        if not isinstance(other, UnitGroup):
             return False
         return self.equal_exact(other)
     
     def __ne__(self, other: object) -> bool:
         """Check if two units are not equal."""
-        if not isinstance(other, Unit):
+        if not isinstance(other, UnitGroup):
             return True
         return not self.equal_exact(other)
     
     def __hash__(self) -> int:
         """Hash based on unit elements, factor, and offset."""
-        return hash(self._unit_groups)
+        return hash(self._unit_elements)
 
 ########################################################
 # Conversions
@@ -715,7 +636,7 @@ class Unit:
 # Reducing and combining unit elements
 ########################################################
 
-    def reduced_unit(self) -> "Unit":
+    def reduced_unit_group(self) -> "UnitGroup":
         return self
     
     @staticmethod
@@ -791,7 +712,7 @@ class Unit:
 ########################################################
 
     @staticmethod
-    def suggest_units(dimension: Dimension, canonical_value: float|None, must_include: set[UnitElement]|list[UnitElement]=set(), n: int = 1000) -> Tuple["Unit", list["Unit"]]:
+    def suggest_units(dimension_group: DimensionGroup, canonical_value: float|None, must_include: set[UnitElement]|list[UnitElement]=set(), n: int = 1000) -> Tuple["UnitGroup", list["UnitGroup"]]:
         """
         Suggest units for a given dimension and canonical value, optimized for readability.
         
@@ -810,17 +731,17 @@ class Unit:
         Returns:
             Tuple of (best_unit, list_of_alternative_units)
         """
-        from .utils.units.unit_symbol import UnitSymbol
-        from .utils.units.utils import PREFIX_PAIRS
-        from .utils.units.unit_element import UnitElement
+        from .unit_symbol import UnitSymbol
+        from .utils import PREFIX_PAIRS
+        from .unit_element import UnitElement
         
         if canonical_value is None:
             # If no value given, just return a basic canonical unit
-            canonical_unit = dimension.canonical_unit
+            canonical_unit = dimension_group.canonical_unit
             return canonical_unit, [canonical_unit]
         
         # Generate all possible unit combinations
-        compatible_units: list[Unit] = []
+        compatible_units: list[UnitGroup] = []
         seen_units: set[str] = set()  # To avoid duplicates
         
         # Get all unit symbols
@@ -830,11 +751,11 @@ class Unit:
         for symbol in all_symbols:
             # Try without prefix
             try:
-                unit = Unit((UnitElement("", symbol, 1.0),))
-                if unit.compatible_to(dimension):
-                    unit_str = unit.format_string(as_fraction=False)
+                unit_group = UnitGroup((UnitElement("", symbol, 1.0),))
+                if unit_group.compatible_to(dimension_group):
+                    unit_str = unit_group.format_string(as_fraction=False)
                     if unit_str not in seen_units:
-                        compatible_units.append(unit)
+                        compatible_units.append(unit_group)
                         seen_units.add(unit_str)
             except:
                 pass
@@ -844,11 +765,11 @@ class Unit:
                 if prefix == "":  # Skip empty prefix as we already tried it
                     continue
                 try:
-                    unit = Unit((UnitElement(prefix, symbol, 1.0),))
-                    if unit.compatible_to(dimension):
-                        unit_str = unit.format_string(as_fraction=False)
+                    unit_group = UnitGroup((UnitElement(prefix, symbol, 1.0),))
+                    if unit_group.compatible_to(dimension_group):
+                        unit_str = unit_group.format_string(as_fraction=False)
                         if unit_str not in seen_units:
-                            compatible_units.append(unit)
+                            compatible_units.append(unit_group)
                             seen_units.add(unit_str)
                 except:
                     pass
@@ -865,14 +786,14 @@ class Unit:
                     for exp1 in [1, -1, 2, -2]:
                         for exp2 in [1, -1, 2, -2]:
                             try:
-                                unit = Unit((
+                                unit_group = UnitGroup((
                                     UnitElement("", symbol1, exp1),
                                     UnitElement("", symbol2, exp2)
                                 ))
-                                if unit.compatible_to(dimension):
-                                    unit_str = unit.format_string(as_fraction=False)
+                                if unit_group.compatible_to(dimension_group):
+                                    unit_str = unit_group.format_string(as_fraction=False)
                                     if unit_str not in seen_units:
-                                        compatible_units.append(unit)
+                                        compatible_units.append(unit_group)
                                         seen_units.add(unit_str)
                                         if len(compatible_units) >= 50:  # Limit to prevent explosion
                                             break
@@ -890,33 +811,33 @@ class Unit:
             required_elements = list(must_include) if isinstance(must_include, set) else must_include
             for element in required_elements:
                 try:
-                    unit = Unit((element,))
-                    if unit.compatible_to(dimension):
-                        unit_str = unit.format_string(as_fraction=False)
+                    unit_group = UnitGroup((element,))
+                    if unit_group.compatible_to(dimension_group):
+                        unit_str = unit_group.format_string(as_fraction=False)
                         if unit_str not in seen_units:
-                            compatible_units.append(unit)
+                            compatible_units.append(unit_group)
                             seen_units.add(unit_str)
                 except:
                     pass
         
         if not compatible_units:
             # Fallback to canonical unit
-            canonical_unit = dimension.canonical_unit
+            canonical_unit = dimension_group.canonical_unit
             return canonical_unit, [canonical_unit]
         
         # Score each unit based on how "nice" the resulting value would be
-        scored_units: list[Tuple[float, Unit, str]] = []
+        scored_units: list[Tuple[float, UnitGroup, str]] = []
         
-        for unit in compatible_units:
+        for unit_group in compatible_units:
             try:
                 # Convert canonical value to this unit
-                value_in_unit = unit.from_canonical_value(canonical_value)
+                value_in_unit = unit_group.from_canonical_value(canonical_value)
                 value_str = f"{value_in_unit:g}"  # Format without unnecessary trailing zeros
-                unit_str = unit.format_string(as_fraction=False)
+                unit_str = unit_group.format_string(as_fraction=False)
                 
                 # Calculate score (lower is better)
-                score = Unit._calculate_value_score(value_str, unit_str)
-                scored_units.append((score, unit, value_str))
+                score = UnitGroup._calculate_value_score(value_str, unit_str)
+                scored_units.append((score, unit_group, value_str))
                 
             except (ValueError, ZeroDivisionError, OverflowError):
                 # Skip units that cause conversion errors
@@ -932,7 +853,7 @@ class Unit:
             return suggestions[0], suggestions
         else:
             # Fallback
-            canonical_unit = dimension.canonical_unit
+            canonical_unit = dimension_group.canonical_unit
             return canonical_unit, [canonical_unit]
     
     @staticmethod
@@ -1040,7 +961,7 @@ class Unit:
             score += (len(unit_symbols) - 3) * 2.0  # Penalty for too many different symbols
         
         # 10. Use UnitSymbolTag to prefer SI units over non-SI units
-        from .utils.units.unit_symbol import UnitSymbol, UNIT_SYMBOL_TAG
+        from .unit_symbol import UnitSymbol, UNIT_SYMBOL_TAG
         
         for symbol in unit_symbols:
             # Remove common prefixes to get the base symbol
@@ -1076,23 +997,27 @@ class Unit:
         return score
     
 ########################################################
+# Other
+########################################################
+    
+    @property
+    def is_dimensionless(self) -> bool:
+        return len(self._unit_elements) == 0
+    
+    @property
+    def includes_log_level(self) -> bool:
+        return self.dimension_group.includes_log_level
+    
+    @property
+    def includes_angle(self) -> bool:
+        return self.dimension_group.includes_angle
+    
+    @property
+    def unit_elements(self) -> Sequence[UnitElement]:
+        return self._unit_elements
+
+########################################################
 # Preset units
 ########################################################
  
-DIMENSIONLESS_UNIT: Final["Unit"] = Unit()
-DECADE: Final["Unit"] = Unit(
-    UnitGroup(
-        value=(),
-        log_unit_group=UnitGroup.dimensionless_unit_group(),
-        angle_unit_group=None,
-        log_exponent=1.0,
-        angle_exponent=0.0
-        ))
-DEGREE: Final["Unit"] = Unit(
-    UnitGroup(
-        value=(),
-        log_unit_group=None,
-        angle_unit_group=UnitGroup.dimensionless_unit_group(),
-        log_exponent=0.0,
-        angle_exponent=1.0
-        ))
+DIMENSIONLESS_UNIT_GROUP: Final["UnitGroup"] = UnitGroup(())

@@ -71,16 +71,30 @@ class UtilityMixin:
             raise ValueError("Cannot check range for non-numeric values")
         return min_val <= self <= max_val
 
-    def clamp(self, min_val: "RealUnitedScalar", max_val: "RealUnitedScalar") -> "RealUnitedScalar":
+    def clamp(self, min_val: "RealUnitedScalar|float", max_val: "RealUnitedScalar|float") -> "RealUnitedScalar":
         """Clamp the scalar to a range."""
         from .....real_united_scalar import RealUnitedScalar
-        if self.dimension != min_val.dimension or self.dimension != max_val.dimension:
-            raise ValueError(f"min_val {min_val} and max_val {max_val} are not compatible with {self}")
+        
+        # Handle float inputs by converting to canonical values
+        if hasattr(min_val, 'canonical_value') and hasattr(min_val, 'dimension'):
+            min_canonical: float = min_val.canonical_value # type: ignore
+            if self.dimension != min_val.dimension: # type: ignore
+                raise ValueError(f"min_val {min_val} is not compatible with {self}")
+        else:
+            min_canonical: float = min_val # type: ignore
+            
+        if hasattr(max_val, 'canonical_value') and hasattr(max_val, 'dimension'):
+            max_canonical: float = max_val.canonical_value # type: ignore
+            if self.dimension != max_val.dimension: # type: ignore
+                raise ValueError(f"max_val {max_val} is not compatible with {self}")
+        else:
+            max_canonical: float = max_val # type: ignore
+            
         if not self.is_finite():
-            raise ValueError(f"max_val {max_val} is not compatible with {self}")
+            raise ValueError(f"Cannot clamp non-finite value {self}")
 
-        clamped_value: float = np.clip(self.canonical_value, min_val.canonical_value, max_val.canonical_value)
-        return RealUnitedScalar(clamped_value, self.dimension, self._display_unit)
+        clamped_value: float = np.clip(self.canonical_value, min_canonical, max_canonical) # type: ignore
+        return RealUnitedScalar.create_from_canonical_value(clamped_value, self.dimension, self._display_unit)
 
     def min(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the minimum of this scalar and another."""
@@ -89,9 +103,9 @@ class UtilityMixin:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
         if self.canonical_value <= other.canonical_value:
-            return RealUnitedScalar(self.canonical_value, self.dimension, self._display_unit)
+            return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, self._display_unit)
         else:
-            return RealUnitedScalar(other.canonical_value, other.dimension, other.display_unit)
+            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.display_unit)
     
     def max(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the maximum of this scalar and another."""
@@ -100,9 +114,9 @@ class UtilityMixin:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
         if self.canonical_value >= other.canonical_value:
-            return RealUnitedScalar(self.canonical_value, self.dimension, self._display_unit)
+            return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, self._display_unit)
         else:
-            return RealUnitedScalar(other.canonical_value, other.dimension, other.display_unit)
+            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.display_unit)
 
     @classmethod
     def sum(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
@@ -121,7 +135,7 @@ class UtilityMixin:
         total_canonical = sum(v.canonical_value for v in values)
         
         # Return with first value's dimension and display unit
-        return RealUnitedScalar(total_canonical, values[0].dimension, values[0].display_unit)
+        return RealUnitedScalar.create_from_canonical_value(total_canonical, values[0].dimension, values[0].display_unit)
     
     @classmethod
     def mean(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
@@ -140,4 +154,4 @@ class UtilityMixin:
         total_canonical = sum(v.canonical_value for v in values)
         
         # Return with first value's dimension and display unit
-        return RealUnitedScalar(total_canonical / len(values), values[0].dimension, values[0].display_unit) 
+        return RealUnitedScalar.create_from_canonical_value(total_canonical / len(values), values[0].dimension, values[0].display_unit) 

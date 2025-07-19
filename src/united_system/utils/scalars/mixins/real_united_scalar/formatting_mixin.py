@@ -1,20 +1,10 @@
 """String formatting and representation for RealUnitedScalar."""
 
 from typing import Union, Optional, TYPE_CHECKING
-import math
 
 if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
-
-def _to_std_str(value: float) -> str:
-    """Convert float to standard string representation."""
-    if math.isinf(value):
-        return "\u221e" if value > 0 else "-\u221e"
-    elif math.isnan(value):
-        return "NaN"
-    else:
-        return str(value)
 
 class FormattingMixin:
     """String formatting and representation for RealUnitedScalar."""
@@ -25,24 +15,46 @@ class FormattingMixin:
     _display_unit: Optional["Unit"]
 
     def __str__(self) -> str:
-        """Return string representation using format method."""
-        return self.format(None, 3)
+        """
+        Return string representation using format method.
+        
+        Returns:
+            String representation with 3 decimal places and trailing zeros.
+            
+        Example:
+            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> str(scalar)
+            '1.000 kg'
+        """
+        return self.format(None, 3, trailing_zeros=True)
 
     def __repr__(self) -> str:
         """Return detailed string representation for debugging."""
         return f"RealUnitedScalar(canonical_value={self.canonical_value}, dimension={self.dimension}, display_unit={self._display_unit})"
 
-    def format(self, unit: Union[str, "Unit", None] = None, decimals: int = 0, do_not_print_unit: bool = False) -> str:
+    def format(self, unit: Union[str, "Unit", None] = None, max_decimals: int = 0, trailing_zeros: bool = False) -> str:
         """
         Format the scalar as a string with optional unit specification.
         
         Args:
             unit: Unit to display the value in. If None, uses auto-suggestion.
-            decimals: Number of decimal places to show.
-            do_not_print_unit: If True, only show the numerical value.
+            max_decimals: Maximum number of decimal places to show.
+            trailing_zeros: If True, show trailing zeros up to max_decimals.
             
         Returns:
             Formatted string representation.
+            
+        Raises:
+            ValueError: If the unit is not compatible with the scalar's dimension.
+            
+        Example:
+            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> scalar.format("g", max_decimals=2, trailing_zeros=True)
+            '1000.00 g'
+            >>> scalar.format(max_decimals=1)
+            '1.0 kg'
+            >>> scalar.format("g", max_decimals=0)
+            '1000 g'
         """
         from .....unit import Unit
         if unit is None:
@@ -51,28 +63,27 @@ class FormattingMixin:
             _unit: "Unit" = Unit.parse_string(unit)
         else:
             _unit: "Unit" = unit
-        
         if _unit.dimension != self.dimension:
             raise ValueError(f"The requested display unit {_unit} is not compatible with the scalar's dimension {self.dimension}")
-        
-        # Convert canonical value to the desired unit
         display_value = _unit.from_canonical_value(self.canonical_value)
-        
-        # Format the value and remove trailing zeros
-        if display_value == 0:
-            value_str = "0"
-        else:
-            value_str = f"{display_value:.{decimals}f}".rstrip('0').rstrip('.')
-        
-        if do_not_print_unit:
-            return value_str
-        else:
-            return f"{value_str} {_unit}"
+        # Always show the requested number of decimal places
+        value_str = f"{display_value:.{max_decimals}f}" if trailing_zeros else f"{display_value}"
+        unit_str = _unit.format_string(as_fraction=False)
+        return f"{value_str} {unit_str}"
 
     def simple_str(self) -> str:
-        """Simple string representation using display unit if available."""
-        if self._display_unit is None:
-            return _to_std_str(self.canonical_value)
-        else:
-            display_value = self._display_unit.from_canonical_value(self.canonical_value)
-            return f"{_to_std_str(display_value)} {self._display_unit}" 
+        """
+        Return a simple string representation without trailing zeros.
+        
+        Returns:
+            Simple string representation with natural formatting.
+            
+        Example:
+            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> scalar.simple_str()
+            '1 kg'
+            >>> scalar = RealUnitedScalar(1.5, Unit.parse_string("kg"))
+            >>> scalar.simple_str()
+            '1.5 kg'
+        """
+        return self.format(None, 0, trailing_zeros=False) 

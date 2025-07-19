@@ -1,21 +1,40 @@
-from dataclasses import dataclass
-from typing import Literal, Tuple, TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Literal, Tuple, Optional
 from .utils import PREFIX_PAIRS
 import re
 
-if TYPE_CHECKING:
-    from .unit_symbol import UnitSymbol
-    from ..dimension import Dimension
+from .dimension_group import DimensionGroup
+from .unit_symbol import UnitSymbol
+
+_CACHE__SIMPLE_UNIT_ELEMENT: dict[str, "UnitElement"] = {}
+
+def clear_simple_unit_element_cache():
+    """Clear the simple unit element cache."""
+    global _CACHE__SIMPLE_UNIT_ELEMENT
+    _CACHE__SIMPLE_UNIT_ELEMENT.clear()
 
 @dataclass(frozen=True, slots=True)
-class SimpleUnitElement:
+class UnitElement:
+    """
+    A simple unit element is a unit symbol with a prefix and an exponent.
+
+    It serves as a building block for units.
+
+    Examples:
+    - "m" -> SimpleUnitElement("", UnitSymbol.METER, 1)
+    - "km" -> SimpleUnitElement("k", UnitSymbol.METER, 1)
+    - "s" -> SimpleUnitElement("", UnitSymbol.SECOND, -1)
+    - "nV^4" -> SimpleUnitElement("n", UnitSymbol.VOLT, 4)
+    """
+
     prefix: str
-    unit_symbol: "UnitSymbol"
+    unit_symbol: UnitSymbol
     exponent: float
+    _dimension_group: Optional[DimensionGroup] = field(default=None, init=False)
 
     @property
-    def unit_dimension(self) -> "Dimension":
-        return self.unit_symbol.value.named_simple_dimension.simple_dimension
+    def dimension_group(self) -> DimensionGroup:
+        return self.unit_symbol.named_quantity.dimension_group
     
     @property
     def canonical_factor(self) -> float:
@@ -27,11 +46,37 @@ class SimpleUnitElement:
             raise ValueError(f"Invalid prefix: {self.prefix}")
         return (self.unit_symbol.value.factor * prefix_factor) ** self.exponent
     
+########################################################
+# Properties
+########################################################
+    
     @property
     def canonical_offset(self) -> float:
         return self.unit_symbol.value.offset
+    
+    @property
+    def dimension(self) -> DimensionGroup:
+        if self._dimension_group is None:
+            object.__setattr__(self, "_dimension_group", self.unit_symbol.named_quantity.dimension_group ** self.exponent)
+        if self._dimension_group is None:
+            raise AssertionError("Dimension group is not set")
+        return self._dimension_group
+    
+########################################################
+# Arithmetic
+########################################################
 
-    def format_string(self, no_fraction: bool) -> Tuple[str, Literal["nominator", "denominator"]]:
+    def invert(self) -> "UnitElement":
+        return UnitElement(self.prefix, self.unit_symbol, -self.exponent)
+    
+    def pow(self, exponent: float|int) -> "UnitElement":
+        return UnitElement(self.prefix, self.unit_symbol, self.exponent * exponent)
+
+########################################################
+# String representation
+########################################################
+
+    def format_string(self, as_fraction: bool) -> Tuple[str, Literal["nominator", "denominator"]]:
         """
         Examples:
         - SimpleUnitElement("", UnitSymbol.METER, 1), no_fraction=False -> ("m", "nominator")
@@ -51,7 +96,7 @@ class SimpleUnitElement:
             return ("", "nominator")
         elif abs(self.exponent) == 1:
             # For negative exponents with no_fraction=True, we still need to show the exponent
-            if self.exponent < 0 and no_fraction:
+            if self.exponent < 0 and not as_fraction:
                 exponent_str = "^-1"
             else:
                 exponent_str = ""
@@ -71,23 +116,27 @@ class SimpleUnitElement:
                 return ("", "nominator")
             
             if exponent_str == "1":
-                if self.exponent < 0 and no_fraction:
+                if self.exponent < 0 and not as_fraction:
                     exponent_str = "^-1"
                 else:
                     exponent_str = ""
             else:
-                if self.exponent < 0 and no_fraction:
+                if self.exponent < 0 and not as_fraction:
                     exponent_str = f"^-{exponent_str}"
                 else:
                     exponent_str = "^" + exponent_str
                 
-        if self.exponent < 0 and not no_fraction:
+        if self.exponent < 0 and as_fraction:
             return f"{self.prefix}{symbol_str}{exponent_str}", "denominator"
         else:
             return f"{self.prefix}{symbol_str}{exponent_str}", "nominator"
-    
+
+########################################################
+# Parsing
+########################################################
+
     @classmethod
-    def parse_string(cls, unit_string: str, nominator_or_denominator: Literal["nominator", "denominator"]) -> "SimpleUnitElement":
+    def parse_string(cls, unit_string: str, nominator_or_denominator: Literal["nominator", "denominator"]) -> "UnitElement":
         """
         Examples:
         - "m", nominator -> SimpleUnitElement("", UnitSymbol.METER, 1)
@@ -99,6 +148,11 @@ class SimpleUnitElement:
         - "cm2", nominator -> SimpleUnitElement("c", UnitSymbol.METER, 2)
         - "nV-1", nominator -> SimpleUnitElement("n", UnitSymbol.VOLT, -1)
         """
+
+        # Create a cache key that includes both unit_string and nominator_or_denominator
+        cache_key = f"{unit_string}:{nominator_or_denominator}"
+        if cache_key in _CACHE__SIMPLE_UNIT_ELEMENT:
+            return _CACHE__SIMPLE_UNIT_ELEMENT[cache_key]
         
         # Parse exponent from unit string
         if "^" in unit_string:
@@ -134,7 +188,9 @@ class SimpleUnitElement:
         try:
             from .unit_symbol import UnitSymbol
             unit_symbol = UnitSymbol.from_symbol(unit_part)
-            return cls("", unit_symbol, exponent)
+            simple_unit_element: UnitElement = UnitElement("", unit_symbol, exponent)
+            _CACHE__SIMPLE_UNIT_ELEMENT[cache_key] = simple_unit_element
+            return simple_unit_element
         except ValueError:
             pass
         
@@ -144,7 +200,9 @@ class SimpleUnitElement:
                 try:
                     from .unit_symbol import UnitSymbol
                     unit_symbol = UnitSymbol.from_symbol(unit_part[len(prefix):])
-                    return cls(prefix, unit_symbol, exponent)
+                    simple_unit_element: UnitElement = UnitElement(prefix, unit_symbol, exponent)
+                    _CACHE__SIMPLE_UNIT_ELEMENT[cache_key] = simple_unit_element
+                    return simple_unit_element
                 except ValueError:
                     continue
         

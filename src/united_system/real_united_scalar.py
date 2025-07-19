@@ -1,11 +1,12 @@
 """RealUnitedScalar using mixins for better modularity."""
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, overload
 from .utils.scalars.united_scalar import UnitedScalar
 from .dimension import Dimension
 from .named_dimensions import NamedDimension
 from .unit import Unit
+from .utils.general import str_to_float
 
 # Import all mixins
 from .utils.scalars.mixins.real_united_scalar.core_mixin import RealUnitedScalarCore
@@ -72,12 +73,92 @@ class RealUnitedScalar(
     canonical_value: float
     dimension: Dimension
     _display_unit: Optional[Unit] = field(default=None, repr=False, compare=False, hash=False)
-    
-    def __init__(self, canonical_value: float, dimension: Dimension|NamedDimension, display_unit: Optional[Unit] = None):
+
+    @overload
+    def __init__(self, value: str) -> None:
+        """
+        Initialize the scalar from a string which must contain a value and may contain a unit.
+        "1 cm" -> {0.01, L, cm}
+        "4" -> {4.0, L}
+        "1 km/s" -> {1000, L/T, km/s}
+        "1 mV/s" -> {0.001, V/T, mV/s}
+        "1 m/s^2" -> {1.0, L/T^2, m/s^2}
+        """
+        ...
+    @overload
+    def __init__(self, value: float|int) -> None:
+        """
+        Initialize the scalar from a float.
+        -3.0 -> {-3.0, , ""}
+        4.0 -> {4.0, , ""}
+        """
+        ...
+    @overload
+    def __init__(self, value: float|int, unit_or_dimension: Unit|str) -> None:
+        """
+        Initialize the scalar from a float and a unit.
+        -3.0, m -> {-3.0, L, m}
+        4.0, m/s -> {4.0, L/T, m/s}
+        """
+        ...    
+    @overload
+    def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedDimension) -> None:
+        """
+        Initialize the scalar from a float (as canonical value) and a dimension.
+        -3.0, L -> {-3.0, m}
+        4.0, L/T -> {4.0, m/s}
+        """
+        ...
+    @overload
+    def __init__(self, value: float|int, unit_or_dimension: Dimension, display_unit: Unit) -> None:
+        """
+        Initialize the scalar from a float (as canonical value) and a dimension.
+        -3.0, L, km -> {-0.003, L, km}
+        4.0, L/T, km/h -> {4.0, m/s}
+        """
+        ...
+    def __init__(self, value: str|float|int, unit_or_dimension: Unit|str|Dimension|NamedDimension|None = None, display_unit: Unit|None = None) -> None:
         """Initialize the scalar."""
 
-        if isinstance(dimension, NamedDimension):
-            dimension = dimension.dimension
+        if display_unit is not None:
+            # Usually for internal use.
+            if isinstance(value, float|int) and isinstance(unit_or_dimension, Dimension):
+                canonical_value = value
+                dimension = unit_or_dimension
+                display_unit = display_unit
+            else:
+                raise ValueError("The constructor is not designed to be used with a display unit in such a way.")
+
+        else:
+            if unit_or_dimension is None:
+                if isinstance(value, str):
+                    canonical_value, display_unit = self._parse_string(value)
+                    dimension: Dimension = display_unit.dimension
+                else:
+                    canonical_value = float(value)
+                    display_unit = None
+                    dimension = Dimension.dimensionless_dimension()
+            else:
+                if isinstance(value, str):
+                    _value: float = str_to_float(value)
+                else:
+                    _value: float = float(value)
+                if isinstance(unit_or_dimension, str):
+                    display_unit = Unit.parse_string(unit_or_dimension)
+                    canonical_value = display_unit.to_canonical_value(_value)
+                    dimension = display_unit.dimension
+                elif isinstance(unit_or_dimension, Unit):
+                    display_unit = unit_or_dimension
+                    canonical_value = display_unit.to_canonical_value(_value)
+                    dimension = unit_or_dimension.dimension
+                elif isinstance(unit_or_dimension, Dimension):
+                    dimension = unit_or_dimension
+                    canonical_value = _value
+                    display_unit = None
+                else:
+                    dimension = unit_or_dimension.dimension
+                    canonical_value = _value
+                    display_unit = None
 
         object.__setattr__(self, "canonical_value", canonical_value)
         object.__setattr__(self, "dimension", dimension)

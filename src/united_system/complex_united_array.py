@@ -25,7 +25,7 @@ class ComplexUnitedArray(BaseUnitedArray["ComplexUnitedArray", ComplexUnitedScal
         canonical_value = self.canonical_np_array[index]
         return ComplexUnitedScalar(canonical_value=complex(canonical_value), dimension=self.dimension, display_unit=self._display_unit)
     
-    def _get_scalar_from_value(self, value: complex) -> ComplexUnitedScalar:
+    def get_scalar_from_value(self, value: complex) -> ComplexUnitedScalar:
         """Create a ComplexUnitedScalar from a primitive value with this array's dimension and display unit."""
         return ComplexUnitedScalar(canonical_value=complex(value), dimension=self.dimension, display_unit=self._display_unit)
     

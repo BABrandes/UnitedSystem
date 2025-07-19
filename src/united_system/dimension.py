@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Final, Tuple, List, cast, TYPE_CHECKING, Any
-from .utils.units.base_classes.base_dimension import BaseDimension
+from typing import Tuple, List, TYPE_CHECKING, Any, overload, Union
+from .utils.units.dimension_group import DimensionGroup
 import h5py
+from enum import Enum
 
 if TYPE_CHECKING:
     from .unit import Unit
@@ -9,63 +10,147 @@ if TYPE_CHECKING:
 # Cache for canonical units to avoid repeated expensive calculations
 _CANONICAL_UNIT_CACHE: dict["Dimension", "Unit"] = {}
 
-@dataclass(frozen=True, slots=True)
-class Dimension(BaseDimension["Dimension", "Unit"]):
-    dimension_exponents: Final[Tuple[float, float, float, float, float, float, float]]
-    pseudo_dimension_exponents: Final[Tuple[int, int]]
+class BASE_DIMENSION_SYMBOLS(Enum):
+    MASS = ("M", 0)
+    TIME = ("T", 1)
+    LENGTH = ("L", 2)
+    CURRENT = ("I", 3)
+    TEMPERATURE = ("Θ", 4)
+    AMOUNT = ("N", 5)
+    LUMINOUS = ("J", 6)
 
-    @classmethod
-    def create(cls, dimension_exponents: Tuple[float, float, float, float, float, float, float]|list[float], pseudo_dimension_exponents: Tuple[int, int]|list[int]) -> "Dimension":
-        if isinstance(dimension_exponents, list):
-            dimension_exponents = cast(Tuple[float, float, float, float, float, float, float], tuple(dimension_exponents))
-        if isinstance(pseudo_dimension_exponents, list):
-            pseudo_dimension_exponents = cast(Tuple[int, int], tuple(pseudo_dimension_exponents))
-        return cls(dimension_exponents, pseudo_dimension_exponents)
+@dataclass(frozen=True, slots=True, init=False)
+class Dimension():
+    dimension_groups: dict[str,DimensionGroup]
 
-    def __add__(self, other: "Dimension") -> "Dimension":
-        return Dimension((self.dimension_exponents[0] + other.dimension_exponents[0], self.dimension_exponents[1] + other.dimension_exponents[1], self.dimension_exponents[2] + other.dimension_exponents[2], self.dimension_exponents[3] + other.dimension_exponents[3], self.dimension_exponents[4] + other.dimension_exponents[4], self.dimension_exponents[5] + other.dimension_exponents[5], self.dimension_exponents[6] + other.dimension_exponents[6]),
-                                  (self.pseudo_dimension_exponents[0] + other.pseudo_dimension_exponents[0], self.pseudo_dimension_exponents[1] + other.pseudo_dimension_exponents[1]))
+    def __new__(cls, value: Union[dict[str,DimensionGroup], str]):
+        if isinstance(value, str):
+            return super().__new__(cls)
+        else:
+            return super().__new__(cls)
 
-    def __radd__(self, other: "Dimension") -> "Dimension":
-        return self.__add__(other)
+    @overload
+    def __init__(self, value: dict[str,DimensionGroup]):
+        ...
+    @overload
+    def __init__(self, value: str):
+        ...
+    def __init__(self, value: Union[dict[str,DimensionGroup], str]):
+        if isinstance(value, str):
+            pass
 
-    def __sub__(self, other: "Dimension") -> "Dimension":
-        return Dimension((self.dimension_exponents[0] - other.dimension_exponents[0], self.dimension_exponents[1] - other.dimension_exponents[1], self.dimension_exponents[2] - other.dimension_exponents[2], self.dimension_exponents[3] - other.dimension_exponents[3], self.dimension_exponents[4] - other.dimension_exponents[4], self.dimension_exponents[5] - other.dimension_exponents[5], self.dimension_exponents[6] - other.dimension_exponents[6]),
-                                  (self.pseudo_dimension_exponents[0] - other.pseudo_dimension_exponents[0], self.pseudo_dimension_exponents[1] - other.pseudo_dimension_exponents[1]))
+################################################################################
+# Arithmetic operations
+################################################################################
 
-    def __rsub__(self, other: "Dimension") -> "Dimension":
-        return Dimension((other.dimension_exponents[0] - self.dimension_exponents[0], other.dimension_exponents[1] - self.dimension_exponents[1], other.dimension_exponents[2] - self.dimension_exponents[2], other.dimension_exponents[3] - self.dimension_exponents[3], other.dimension_exponents[4] - self.dimension_exponents[4], other.dimension_exponents[5] - self.dimension_exponents[5], other.dimension_exponents[6] - self.dimension_exponents[6]),
-                                  (other.pseudo_dimension_exponents[0] - self.pseudo_dimension_exponents[0], other.pseudo_dimension_exponents[1] - self.pseudo_dimension_exponents[1]))
+    def __mul__(self, other: "Dimension") -> "Dimension":
+        """
+        Multiplies two dimensions.
+        
+        {T*L^2/M} * {M/L^3} = {T/L}
+        {T*L^2/M} * {M/L^3*dec(M)} = {T/L*dec(M)}
+        {T*L^2/M*dec(L)} * {M/L^3*dec(M)} = X
+        """
+        new_dimension_groups: dict[str,DimensionGroup] = {}
+        for subscript, dimension_group in self.dimension_groups.items():
+            if subscript in other.dimension_groups:
+                new_dimension_groups[subscript] = dimension_group * other.dimension_groups[subscript]
+            else:
+                new_dimension_groups[subscript] = dimension_group
+        for subscript, dimension_group in other.dimension_groups.items():
+            if not subscript in new_dimension_groups:
+                new_dimension_groups[subscript] = dimension_group
+        return Dimension(new_dimension_groups)
 
-    def __mul__(self, other: float) -> "Dimension":
-        return Dimension((self.dimension_exponents[0] * other, self.dimension_exponents[1] * other, self.dimension_exponents[2] * other, self.dimension_exponents[3] * other, self.dimension_exponents[4] * other, self.dimension_exponents[5] * other, self.dimension_exponents[6] * other),
-                                  (int(self.pseudo_dimension_exponents[0] * other), int(self.pseudo_dimension_exponents[1] * other)))
-
-    def __truediv__(self, other: float) -> "Dimension":
-        return Dimension((self.dimension_exponents[0] / other, self.dimension_exponents[1] / other, self.dimension_exponents[2] / other, self.dimension_exponents[3] / other, self.dimension_exponents[4] / other, self.dimension_exponents[5] / other, self.dimension_exponents[6] / other),
-                                  (int(self.pseudo_dimension_exponents[0] / other), int(self.pseudo_dimension_exponents[1] / other)))
+    def __truediv__(self, other: "Dimension") -> "Dimension":
+        """
+        Divides two dimensions.
+        
+        {T/L} / {M/L^3} = {T*L^2/M}
+        {T/L} / {M/L^3*dec(M)} = {T*L^2/M^2/dec(M)}
+        {T/L*dec(L)} / {M/L^3*dec(M)} = X
+        """
+        return self * other.invert()
+    
+    def __pow__(self, exponent: float|int) -> "Dimension":
+        new_dimension_groups: dict[str,DimensionGroup] = {}
+        for subscript, dimension_group in self.dimension_groups.items():
+            new_dimension_groups[subscript] = dimension_group ** exponent
+        return Dimension(new_dimension_groups)
+    
+    def __invert__(self) -> "Dimension":
+        new_dimension_groups: dict[str,DimensionGroup] = {}
+        for subscript, dimension_group in self.dimension_groups.items():
+            new_dimension_groups[subscript] = dimension_group.invert()
+        return Dimension(new_dimension_groups)
 
     def invert(self) -> "Dimension":
-        return Dimension((-self.dimension_exponents[0], -self.dimension_exponents[1], -self.dimension_exponents[2], -self.dimension_exponents[3], -self.dimension_exponents[4], -self.dimension_exponents[5], -self.dimension_exponents[6]),
-                                  (-self.pseudo_dimension_exponents[0], -self.pseudo_dimension_exponents[1]))
+        return ~self
+    
+    def __log__(self) -> "Dimension":
+        new_dimension_groups: dict[str,DimensionGroup] = {}
+        for subscript, dimension_group in self.dimension_groups.items():
+            new_dimension_groups[subscript] = dimension_group.log()
+        return Dimension(new_dimension_groups)
+    
+################################################################################
+# Comparison operations
+################################################################################
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Dimension):
             return False
-        return self.dimension_exponents == other.dimension_exponents and self.pseudo_dimension_exponents == other.pseudo_dimension_exponents
+        return self.dimension_groups == other.dimension_groups
 
     def __ne__(self, other: object) -> bool:
         if not isinstance(other, Dimension):
             return True
         return not self.__eq__(other)
+    
+    def compatible_to(self, other: "Dimension") -> bool:
+        if self.dimension_groups.keys() != other.dimension_groups.keys():
+            return False
+        for subscript, dimension_group in self.dimension_groups.items():
+            if not dimension_group.compatible_to(other.dimension_groups[subscript]):
+        return True
+
+################################################################################
+# Hash operations
+################################################################################
 
     def __hash__(self) -> int:
-        return hash((self.dimension_exponents, self.pseudo_dimension_exponents))
+        return hash(tuple(self.dimension_groups.values()))
 
-    def is_zero(self) -> bool:
-        return all(exp == 0 for exp in self.dimension_exponents) and all(exp == 0 for exp in self.pseudo_dimension_exponents)
+################################################################################
+# Properties
+################################################################################
+
+    @property
+    def is_dimensionless(self) -> bool:
+        return all(dimension_group.is_dimensionless for dimension_group in self.dimension_groups.values())
+
+    @property
+    def includes_angle(self) -> bool:
+        for dimension_group in self.dimension_groups.values():
+            if dimension_group.includes_angle:
+                return True
+        return False
+
+    @property
+    def includes_log_level(self) -> bool:
+        for dimension_group in self.dimension_groups.values():
+            if dimension_group.includes_log_level:
+                return True
+        return False
+    
+################################################################################
+# String representation
+################################################################################
 
     def __str__(self) -> str:
+        return self.format_string()
+
+    def format_string(self) -> str:
         """String representation with named dimension lookup and fallback to exponent notation."""
         # Import here to avoid circular imports
         from .utils.units.named_simple_dimensions import NamedSimpleDimension
@@ -76,12 +161,22 @@ class Dimension(BaseDimension["Dimension", "Unit"]):
                 return named_dim.name
         
         # Fallback to exponent representation
-        if self.is_zero():
+        if self.is_dimensionless:
             return "dimensionless"
         
         # Build string like "M^1 T^-2 L^1" for kg*m/s^2
         parts: list[str] = []
-        labels = ["M", "T", "L", "I", "Θ", "N", "J"]  # Mass, Time, Length, Current, Temperature, Amount, Luminous
+        labels = [
+            BASE_DIMENSION_SYMBOLS.MASS.value[0],
+            BASE_DIMENSION_SYMBOLS.TIME.value[0],
+            BASE_DIMENSION_SYMBOLS.LENGTH.value[0],
+            BASE_DIMENSION_SYMBOLS.CURRENT.value[0],
+            BASE_DIMENSION_SYMBOLS.TEMPERATURE.value[0],
+            BASE_DIMENSION_SYMBOLS.AMOUNT.value[0],
+            BASE_DIMENSION_SYMBOLS.LUMINOUS.value[0],
+            PSEUDO_DIMENSION_SYMBOLS.ANGLE.value[0],
+            PSEUDO_DIMENSION_SYMBOLS.LOG_LEVEL.value[0]
+        ]
         
         for i, exp in enumerate(self.dimension_exponents):
             if exp != 0:
@@ -107,6 +202,29 @@ class Dimension(BaseDimension["Dimension", "Unit"]):
         
         return " ".join(parts) if parts else "dimensionless"
     
+    def __repr__(self) -> str:
+        return self.format_string()
+    
+################################################################################
+# Parsing
+################################################################################
+
+    @classmethod
+    def parse_string(cls, string: str) -> "Dimension":
+        """
+        Parses a string into a named simple dimension.
+        Examples:
+        - "L" -> LENGTH
+        - "L^2" -> AREA
+        - "L^2/T" -> AREAL_FLOW_RATE
+        - "M/L^3" -> DENSITY
+        """
+        raise NotImplementedError("Parsing of dimensions is not implemented")
+    
+################################################################################
+# Canonical unit
+################################################################################
+
     @property
     def canonical_unit(self) -> "Unit":
         """Convert this dimension to a canonical unit representation.
@@ -163,8 +281,8 @@ class Dimension(BaseDimension["Dimension", "Unit"]):
         from .utils.units.named_simple_dimensions import NamedSimpleDimension, DimenensionTag
         
         # If this is a dimensionless quantity, return empty unit
-        if self.is_zero():
-            result = Unit.create_empty()
+        if self.is_dimensionless:
+            result = Unit.dimensionless_unit()
             _CANONICAL_UNIT_CACHE[self] = result
             return result
         
@@ -249,7 +367,7 @@ class Dimension(BaseDimension["Dimension", "Unit"]):
         
         # Create unit string and parse it
         if not unit_string_parts:
-            result = Unit.create_empty()
+            result = Unit.dimensionless_unit()
             _CANONICAL_UNIT_CACHE[self] = result
             return result
         
@@ -257,29 +375,40 @@ class Dimension(BaseDimension["Dimension", "Unit"]):
         result = Unit.parse_string(unit_string)
         _CANONICAL_UNIT_CACHE[self] = result
         return result
-    
-    @classmethod
-    def zero_dimension(cls) -> "Dimension":
-        return cls.create([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0, 0])
+
+################################################################################
+# JSON serialization
+################################################################################
 
     def to_json(self) -> dict[str, Any]:
         return self.canonical_unit.to_json()
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> "Dimension":
+        from .unit import Unit
         unit = Unit.from_json(data)
         return cls(unit.dimension.dimension_exponents, unit.dimension.pseudo_dimension_exponents)
-
-    def compatible_to(self, other: "Dimension") -> bool:
-        return self.__eq__(other)
     
+################################################################################
+# HDF5 serialization
+################################################################################
+
     def to_hdf5(self, hdf5_group: h5py.Group) -> None:
         self.canonical_unit.to_hdf5(hdf5_group)
 
     @classmethod
     def from_hdf5(cls, hdf5_group: h5py.Group) -> "Dimension":
+        from .unit import Unit
         unit = Unit.from_hdf5(hdf5_group)
         return cls(unit.dimension.dimension_exponents, unit.dimension.pseudo_dimension_exponents)
+    
+    @classmethod
+    def dimensionless_dimension(cls) -> "Dimension":
+        return DIMENSIONLESS_DIMENSION
+
+DIMENSIONLESS_DIMENSION: "Dimension" = Dimension.create([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0, 0])
+LOG_LEVEL_DIMENSION: "Dimension" = Dimension.create([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0, 1])
+ANGLE_DIMENSION: "Dimension" = Dimension.create([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [1, 0])
 
 @dataclass(frozen=True, slots=True)
 class Subscripted_Canonical_Dimension(BaseDimension[Any, Any]):
