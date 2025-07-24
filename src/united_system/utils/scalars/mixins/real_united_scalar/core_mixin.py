@@ -33,7 +33,8 @@ class RealUnitedScalarCore:
     def abs(self) -> "RealUnitedScalar":
         """Return the absolute value of this scalar."""
         from .....real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar(abs(self.canonical_value), self.dimension, self._display_unit)
+        display_unit: Optional["Unit"] = self._display_unit
+        return RealUnitedScalar(abs(self.canonical_value), self.dimension, display_unit)
 
     def __reduce__(self):
         """Custom serialization for multiprocessing."""

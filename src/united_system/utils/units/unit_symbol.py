@@ -1,8 +1,11 @@
-from dataclasses import dataclass
-from typing import Union
+from dataclasses import dataclass, field
+from typing import Union, TYPE_CHECKING
 from ...named_quantity import NamedQuantity
 from enum import Enum
 import math
+
+if TYPE_CHECKING:
+    from ...dimension import Dimension
 
 class UNIT_SYMBOL_TAG(Enum):
     SI_BASE_UNIT = "SI_BASE_UNIT"
@@ -44,7 +47,6 @@ class UnitSymbol(Enum):
     CANDLELA = UnitSymbolInformation.create(              "candela",               "cd",                NamedQuantity.LUMINOUS_INTENSITY,      symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
     COULOMB = UnitSymbolInformation.create(               "coulomb",               "C",                 NamedQuantity.CHARGE,                  symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
     DAY = UnitSymbolInformation.create(                   "day",                   "days",              NamedQuantity.TIME,                    symbol_tags={UNIT_SYMBOL_TAG.NON_SI_SYSTEM}, factor=86400)
-    DECADE = UnitSymbolInformation.create(                "decade",                "dec",               NamedQuantity.LOGLEVEL,                symbol_tags={UNIT_SYMBOL_TAG.NON_SI_SYSTEM}, factor=math.log10(10))
     DEGREE = UnitSymbolInformation.create(                "degree",                "°",                 NamedQuantity.ANGLE,                   symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT}, factor=1/180*math.pi)
     DEGREE_CELSIUS = UnitSymbolInformation.create(        "degree celsius",        "°C",                NamedQuantity.TEMPERATURE,             symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT}, offset=273.15)
     TESLA = UnitSymbolInformation.create(                 "tesla",                 "T",                 NamedQuantity.MAGNETIC_FLUX_DENSITY,   symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
@@ -106,3 +108,58 @@ class UnitSymbol(Enum):
     @property
     def named_quantity(self) -> NamedQuantity:
         return self.value.named_quantity
+    
+    @property
+    def default_unit_symbol_string(self) -> str:
+        return self.value.symbols[0]
+    
+    @property
+    def dimension(self) -> "Dimension":
+        if not hasattr(self, '_dimension'):
+            from ...dimension import Dimension
+            self._dimension: Dimension = self.named_quantity.dimension
+        return self._dimension
+    
+    @property
+    def proper_exponents(self) -> tuple[float, float, float, float, float, float, float, float]:
+        if not hasattr(self, '_proper_exponents'):
+            from ...named_quantity import ProperExponents
+            proper_exponents: ProperExponents = self.named_quantity.value[1]
+            self._proper_exponents: tuple[float, float, float, float, float, float, float, float] = proper_exponents.proper_exponents
+        return self._proper_exponents
+
+ANGLE_UNIT_SYMBOLS: set[UnitSymbol] = set()
+
+for unit_symbol in UnitSymbol:
+    if unit_symbol.value.named_quantity == NamedQuantity.ANGLE:
+        ANGLE_UNIT_SYMBOLS.add(unit_symbol)
+
+def is_angle_unit_symbol(unit_symbol: UnitSymbol) -> bool:
+    return unit_symbol in ANGLE_UNIT_SYMBOLS
+
+@dataclass(frozen=True, slots=True)
+class LogDimensionSymbolInformation:
+    name: str
+    symbols: list[str]
+    factor: float = field(default=1.0)
+    offset: float = field(default=0.0)
+
+    @classmethod
+    def create(cls, name: str, symbol: Union[str, list[str]], factor: float=1) -> "LogDimensionSymbolInformation":
+        return cls(name, [symbol] if isinstance(symbol, str) else symbol, factor)
+
+class LogDimensionSymbol(Enum):
+    value: LogDimensionSymbolInformation # type: ignore
+
+    BASE_10 = LogDimensionSymbolInformation.create(name="base 10", symbol=["dec", "decade", "mag", "magnitude"], factor=math.log(10))
+    BASE_2 = LogDimensionSymbolInformation.create(name="base 2", symbol="bin", factor=math.log(2))
+    BASE_E = LogDimensionSymbolInformation.create(name="base e", symbol="nat", factor=1.0)
+
+    @property
+    def default_unit_symbol_string(self) -> str:
+        return self.value.symbols[0]
+
+# Export log unit symbols for convenience
+LOG_UNIT_SYMBOLS = LogDimensionSymbol
+
+BASE_10_LOG_UNIT_SYMBOL: LogDimensionSymbol = LogDimensionSymbol.BASE_10

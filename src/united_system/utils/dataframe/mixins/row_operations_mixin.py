@@ -51,7 +51,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
         empty_rows = pd.DataFrame(index=range(row_index, row_index + number_of_rows), columns=self._internal_canonical_dataframe.columns)
         self._internal_canonical_dataframe = pd.concat([self._internal_canonical_dataframe.iloc[:row_index], empty_rows, self._internal_canonical_dataframe.iloc[row_index:]], ignore_index=True)      
 
-    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any, Any, Any]|PT_TYPE]]) -> None:
+    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any]|PT_TYPE]]) -> None:
         """
         Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
 

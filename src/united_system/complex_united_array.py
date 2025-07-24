@@ -7,7 +7,7 @@ import numpy as np
 from typing import Optional
 
 @dataclass(frozen=True, slots=True, init=False)
-class ComplexUnitedArray(BaseUnitedArray["ComplexUnitedArray", ComplexUnitedScalar, Unit, Dimension, complex]):
+class ComplexUnitedArray(BaseUnitedArray["ComplexUnitedArray", ComplexUnitedScalar, complex]):
     """Array of complex numbers with units."""
     
     # Required fields from United inheritance

@@ -9,7 +9,6 @@ from .real_united_scalar import RealUnitedScalar
 from .real_united_array import RealUnitedArray
 from .dimension import Dimension
 from .unit import Unit
-from .named_dimensions import NamedDimension, DimensionExponents
 from .united_dataframe import UnitedDataframe
 from .int_array import IntArray
 from .string_array import StringArray
@@ -23,8 +22,6 @@ __all__ = [
     'RealUnitedArray',
     'Dimension',
     'Unit',
-    'NamedDimension',
-    'DimensionExponents',
     'UnitedDataframe',
     'IntArray',
     'StringArray',

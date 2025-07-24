@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, overload
 from .utils.scalars.united_scalar import UnitedScalar
+from .named_quantity import NamedQuantity
 from .dimension import Dimension
-from .named_dimensions import NamedDimension
 from .unit import Unit
 from .utils.general import str_to_float
 
@@ -28,7 +28,7 @@ class RealUnitedScalar(
     UtilityMixin,
     SerializationMixin,
     RealUnitedScalarCore,
-    UnitedScalar["RealUnitedScalar", Unit, Dimension, float]
+    UnitedScalar["RealUnitedScalar", float]
 ):
     """
     A real-valued scalar with units using a mixin-based architecture.
@@ -70,7 +70,6 @@ class RealUnitedScalar(
     """
     
     # Explicit dataclass fields
-    canonical_value: float
     dimension: Dimension
     _display_unit: Optional[Unit] = field(default=None, repr=False, compare=False, hash=False)
 
@@ -102,7 +101,7 @@ class RealUnitedScalar(
         """
         ...    
     @overload
-    def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedDimension) -> None:
+    def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedQuantity) -> None:
         """
         Initialize the scalar from a float (as canonical value) and a dimension.
         -3.0, L -> {-3.0, m}
@@ -110,14 +109,14 @@ class RealUnitedScalar(
         """
         ...
     @overload
-    def __init__(self, value: float|int, unit_or_dimension: Dimension, display_unit: Unit) -> None:
+    def __init__(self, value: float|int, unit_or_dimension: Dimension, display_unit: Unit|None = None) -> None:
         """
         Initialize the scalar from a float (as canonical value) and a dimension.
         -3.0, L, km -> {-0.003, L, km}
         4.0, L/T, km/h -> {4.0, m/s}
         """
         ...
-    def __init__(self, value: str|float|int, unit_or_dimension: Unit|str|Dimension|NamedDimension|None = None, display_unit: Unit|None = None) -> None:
+    def __init__(self, value: str|float|int, unit_or_dimension: Unit|str|Dimension|NamedQuantity|None = None, display_unit: Unit|None = None) -> None:
         """Initialize the scalar."""
 
         if display_unit is not None:
@@ -144,7 +143,7 @@ class RealUnitedScalar(
                 else:
                     _value: float = float(value)
                 if isinstance(unit_or_dimension, str):
-                    display_unit = Unit.parse_string(unit_or_dimension)
+                    display_unit = Unit(unit_or_dimension)
                     canonical_value = display_unit.to_canonical_value(_value)
                     dimension = display_unit.dimension
                 elif isinstance(unit_or_dimension, Unit):
@@ -155,10 +154,12 @@ class RealUnitedScalar(
                     dimension = unit_or_dimension
                     canonical_value = _value
                     display_unit = None
-                else:
-                    dimension = unit_or_dimension.dimension
+                elif isinstance(unit_or_dimension, NamedQuantity): # type: ignore
+                    dimension = Dimension(unit_or_dimension)
                     canonical_value = _value
                     display_unit = None
+                else:
+                    raise ValueError(f"Invalid unit or dimension: {unit_or_dimension}")
 
         object.__setattr__(self, "canonical_value", canonical_value)
         object.__setattr__(self, "dimension", dimension)

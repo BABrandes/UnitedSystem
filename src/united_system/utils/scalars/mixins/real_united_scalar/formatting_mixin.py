@@ -5,8 +5,10 @@ from typing import Union, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
+    from .....utils.scalars.united_scalar import UnitedScalar
+    from .....real_united_scalar import RealUnitedScalar
 
-class FormattingMixin:
+class FormattingMixin(UnitedScalar["RealUnitedScalar", float]):
     """String formatting and representation for RealUnitedScalar."""
     
     # These will be provided by the core class
@@ -58,9 +60,9 @@ class FormattingMixin:
         """
         from .....unit import Unit
         if unit is None:
-            _unit, _ = Unit.suggest_units(self.dimension, float(self.canonical_value))
+            _unit: "Unit" = self.active_unit.reduced
         elif isinstance(unit, str):
-            _unit: "Unit" = Unit.parse_string(unit)
+            _unit: "Unit" = Unit(unit)
         else:
             _unit: "Unit" = unit
         if _unit.dimension != self.dimension:

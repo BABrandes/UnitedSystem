@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from ...utils.general import JSONable, HDF5able
 from ..units.united import United
 from abc import ABC, abstractmethod
-from ..units.unit_group import BaseDimension
-from ..units.unit_group import BaseUnit
+from ...unit import Unit
 from typing import TypeVar, Generic, TYPE_CHECKING, Any
 from ..scalars.base_scalar import BaseScalar
 from ...unit import Unit
@@ -12,12 +11,10 @@ if TYPE_CHECKING:
     pass
 
 PT = TypeVar("PT", bound=float|complex)
-UST = TypeVar("UST", bound="UnitedScalar[Any, Any, Any, Any]")
-UT = TypeVar("UT", bound=BaseUnit[Any, Any])
-UD = TypeVar("UD", bound=BaseDimension[Any, Any])
+UST = TypeVar("UST", bound="UnitedScalar[Any, Any]")
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United[UD, UT], Generic[UST, UT, UD, PT]):
+class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United, Generic[UST, PT]):
 
     canonical_value: PT
     
@@ -58,7 +55,7 @@ class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United[UD, UT], Generic[
         ...
 
     @abstractmethod
-    def __pow__(self, exponent: float) -> UST:
+    def __pow__(self, exponent: PT) -> UST:
         ...
 
     @abstractmethod

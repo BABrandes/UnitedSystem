@@ -6,8 +6,9 @@ if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
     from .....real_united_scalar import RealUnitedScalar
+    from .....utils.scalars.united_scalar import UnitedScalar
 
-class ConversionMixin:
+class ConversionMixin(UnitedScalar["RealUnitedScalar", float]):
     """Unit conversion functionality for RealUnitedScalar."""
     
     # These will be provided by the core class
@@ -106,8 +107,7 @@ class ConversionMixin:
             Unit("g")  # Suggested unit for small mass values
         """
         from .....real_united_scalar import RealUnitedScalar
-        from .....unit import Unit
-        suggested_unit, _ = Unit.suggest_units(self.dimension, float(self.canonical_value), n=1)
+        suggested_unit = self.active_unit.reduced
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, suggested_unit)
 
     def to_unit(self, unit: "Unit") -> "RealUnitedScalar":

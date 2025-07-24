@@ -1,10 +1,9 @@
-from dataclasses import dataclass, field
-from typing import Literal, Tuple, Optional
+from dataclasses import dataclass
+from typing import Literal, Tuple
 from .utils import PREFIX_PAIRS
 import re
 
-from .dimension_group import DimensionGroup
-from .unit_symbol import UnitSymbol
+from .unit_symbol import UnitSymbol, LogDimensionSymbol
 
 _CACHE__SIMPLE_UNIT_ELEMENT: dict[str, "UnitElement"] = {}
 
@@ -28,14 +27,9 @@ class UnitElement:
     """
 
     prefix: str
-    unit_symbol: UnitSymbol
+    unit_symbol: UnitSymbol|LogDimensionSymbol
     exponent: float
-    _dimension_group: Optional[DimensionGroup] = field(default=None, init=False)
 
-    @property
-    def dimension_group(self) -> DimensionGroup:
-        return self.unit_symbol.named_quantity.dimension_group
-    
     @property
     def canonical_factor(self) -> float:
         if self.prefix == "":
@@ -55,12 +49,16 @@ class UnitElement:
         return self.unit_symbol.value.offset
     
     @property
-    def dimension(self) -> DimensionGroup:
-        if self._dimension_group is None:
-            object.__setattr__(self, "_dimension_group", self.unit_symbol.named_quantity.dimension_group ** self.exponent)
-        if self._dimension_group is None:
-            raise AssertionError("Dimension group is not set")
-        return self._dimension_group
+    def dimension(self):
+        """Get the dimension for this unit element."""
+        # Create a dimension from the named quantity and apply the exponent
+        if isinstance(self.unit_symbol, LogDimensionSymbol):
+            raise ValueError("LogDimensionSymbol does not have a dimension")
+        base_dimension = self.unit_symbol.named_quantity.dimension
+        if self.exponent == 1.0:
+            return base_dimension
+        else:
+            return base_dimension ** self.exponent
     
 ########################################################
 # Arithmetic

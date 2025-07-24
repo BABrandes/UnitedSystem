@@ -2,7 +2,8 @@
 
 from typing import TYPE_CHECKING, Optional
 import math
-from .....unit import DECADE, Unit, UnitSymbol
+from .....unit import Unit
+from ....units.unit_symbol import UnitSymbol
 
 if TYPE_CHECKING:
     from .....real_united_scalar import RealUnitedScalar
@@ -145,10 +146,10 @@ class ArithmeticMixin:
                     return RealUnitedScalar(0, new_dimension, None) # type: ignore
             case False, True: # (inf / x)
                 # Self is infinite
-                if other == 0:
+                if other == 0: # inf/0 = NaN
                     from .....real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
-                else:
+                else: # inf/x = inf
                     sign = 1 if value > 0 else -1
                     inf_sign = 1 if self.canonical_value > 0 else -1
                 from .....real_united_scalar import RealUnitedScalar
@@ -216,9 +217,8 @@ class ArithmeticMixin:
         
         if exponent == 0:
             # Any number to the power of 0 is 1 (dimensionless)
-            from ....units.named_simple_dimensions import NamedSimpleDimension
             from .....real_united_scalar import RealUnitedScalar
-            return RealUnitedScalar.create_from_canonical_value(1.0, NamedSimpleDimension.NUMBER.dimension, None)
+            return RealUnitedScalar.create_from_canonical_value(1.0, Dimension.dimensionless_dimension(), None)
         
         if exponent == 1:
             # Return a copy of self
@@ -268,15 +268,12 @@ class ArithmeticMixin:
             RealUnitedScalar: The result of the power operation.
         """
 
-        if self.dimension.includes_log_level:
-            dimension: "Dimension" = self.dimension.remove_log_level()
+        if self.dimension.is_dimensionless:
+            dimension: "Dimension" = self.dimension.exp()
             if self._display_unit is not None:
-                display_unit: Optional["Unit"] = self._display_unit.remove_log_level()
+                display_unit: Optional["Unit"] = self._display_unit.exp()
             else:
                 display_unit: Optional["Unit"] = None
-        elif self.dimension.is_dimensionless:
-            dimension: "Dimension" = self.dimension
-            display_unit: Optional["Unit"] = self._display_unit
         else:
             #E.g. 5 ^(3 m/s) is not allowed
             raise ValueError(f"Cannot raise {self} to the power of {other} because it has dimension {self.dimension}")
@@ -350,7 +347,7 @@ class ArithmeticMixin:
 
     # Logarithm # -----------------------------------------
 
-    def log(self, base: float=math.e, log_level_unit_if_needed: str|Unit|UnitSymbol=DECADE) -> "RealUnitedScalar":
+    def log(self, base: float=math.e, log_level_unit_if_needed: str|Unit|UnitSymbol=UnitSymbol.NEPER) -> "RealUnitedScalar":
         """
         Return the logarithm of the scalar. The dimension of the result is LOG_LEVEL_DIMENSION and the value corresponds to the logarithm of the canonical value.
 
@@ -364,12 +361,9 @@ class ArithmeticMixin:
             ValueError: If the scalar has dimension LOG_LEVEL_DIMENSION.
         """
 
-        from .....dimension import LOG_LEVEL_DIMENSION
-        if self.dimension.includes_log_level:
-            raise ValueError(f"Cannot take the logarithm of a scalar with dimension {self.dimension}: {self}")
-        
-        if self._display_unit:
-            display_unit: Optional["Unit"] = self._display_unit.add_log_level(log_level_unit_if_needed)
+        dimension: "Dimension" = self.dimension.log()
+        if self._display_unit is not None:
+            display_unit: Optional["Unit"] = self._display_unit.log()
         else:
             display_unit: Optional["Unit"] = None
 
@@ -384,7 +378,7 @@ class ArithmeticMixin:
                 canonical_value = math.log(self.canonical_value, base)
 
         from .....real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(canonical_value, LOG_LEVEL_DIMENSION, display_unit) # type: ignore
+        return RealUnitedScalar.create_from_canonical_value(canonical_value, dimension, display_unit) # type: ignore
     
     def ln(self) -> "RealUnitedScalar":
         """

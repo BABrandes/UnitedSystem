@@ -12,9 +12,8 @@ import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
 from ...units.united import United
-from ....unit import Unit
 from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
-from ...units.dimension_group import BaseDimension
+from ....unit import Unit
 
 if TYPE_CHECKING:
     from ...dataframe import UnitedDataframe

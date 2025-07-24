@@ -6,7 +6,7 @@ import h5py
 from .dimension import Dimension
 
 @dataclass(frozen=True, slots=True, init=False)
-class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", Unit, Dimension, complex]):
+class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
     
     def __init__(self, canonical_value: complex, dimension: Dimension, display_unit: Optional[Unit] = None):
         object.__setattr__(self, "canonical_value", canonical_value)
@@ -71,8 +71,14 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", Unit, Dimension, c
     def __rtruediv__(self, other: "ComplexUnitedScalar") -> "ComplexUnitedScalar":
         raise NotImplementedError("ComplexUnitedScalar.__rtruediv__ is not implemented")
     
-    def __pow__(self, other: "ComplexUnitedScalar") -> "ComplexUnitedScalar":
+    def __pow__(self, exponent: complex) -> "ComplexUnitedScalar":
         raise NotImplementedError("ComplexUnitedScalar.__pow__ is not implemented")
+    
+    def __abs__(self) -> "ComplexUnitedScalar":
+        raise NotImplementedError("ComplexUnitedScalar.__abs__ is not implemented")
+    
+    def __neg__(self) -> "ComplexUnitedScalar":
+        raise NotImplementedError("ComplexUnitedScalar.__neg__ is not implemented")
     
     def __eq__(self, other: object) -> bool:
         raise NotImplementedError("ComplexUnitedScalar.__eq__ is not implemented")

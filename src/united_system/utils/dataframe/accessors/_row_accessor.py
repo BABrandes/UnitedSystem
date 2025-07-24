@@ -32,7 +32,7 @@ class RowAccessor(Generic[CK]):
         else:
             return self._parent.cell_get_value(self._row_index, column_key)
     
-    def __setitem__(self, column_key: CK, value: UnitedScalar[Any, Any, Any, Any]):
+    def __setitem__(self, column_key: CK, value: UnitedScalar[Any, Any]):
         self._parent.cell_set_value(self._row_index, column_key, value)
     
     def __len__(self) -> int:

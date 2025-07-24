@@ -2,13 +2,13 @@ from .unit import Unit
 from .utils.arrays.base_united_array import BaseUnitedArray
 from .real_united_scalar import RealUnitedScalar
 from .dimension import Dimension
-from .named_dimensions import NamedDimension
+from .named_quantity import NamedQuantity
 from dataclasses import dataclass
 from typing import Optional, overload
 import numpy as np
 
 @dataclass(frozen=True, slots=True, init=False)
-class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, Unit, Dimension, float]):
+class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float]):
     """Array of real numbers with units."""
 
     @overload
@@ -24,20 +24,20 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, Unit,
     def __init__(self, np_array: np.ndarray, unit_or_dimension: Dimension) -> None:
         ...
     @overload
-    def __init__(self, np_array: np.ndarray, unit_or_dimension: NamedDimension) -> None:
+    def __init__(self, np_array: np.ndarray, unit_or_dimension: NamedQuantity) -> None:
         ...
     @overload
     def __init__(self, np_array: np.ndarray, unit_or_dimension: Dimension, display_unit: Unit) -> None:
         ...
     @overload
-    def __init__(self, np_array: np.ndarray, unit_or_dimension: NamedDimension, display_unit: Unit) -> None:
+    def __init__(self, np_array: np.ndarray, unit_or_dimension: NamedQuantity, display_unit: Unit) -> None:
         ...
-    def __init__(self, np_array: np.ndarray, unit_or_dimension: Optional[Unit|str|Dimension|NamedDimension] = None, display_unit: Optional[Unit] = None) -> None:
+    def __init__(self, np_array: np.ndarray, unit_or_dimension: Optional[Unit|str|Dimension|NamedQuantity] = None, display_unit: Optional[Unit] = None) -> None:
 
         if display_unit is None:
             if isinstance(unit_or_dimension, Unit|str):
                 if isinstance(unit_or_dimension, str):
-                    _display_unit: Optional[Unit] = Unit.parse_string(unit_or_dimension)
+                    _display_unit: Optional[Unit] = Unit(unit_or_dimension)
                 else:
                     _display_unit: Optional[Unit] = unit_or_dimension
                 _dimension: Dimension = _display_unit.dimension
@@ -46,9 +46,9 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, Unit,
                 _dimension: Dimension = unit_or_dimension
                 _display_unit: Optional[Unit] = None
                 _canonical_np_array: np.ndarray = np_array
-            elif isinstance(unit_or_dimension, NamedDimension):
-                _dimension: Dimension = unit_or_dimension.dimension
-                _display_unit: Optional[Unit] = None
+            elif isinstance(unit_or_dimension, NamedQuantity):
+                _dimension: Dimension = Dimension(unit_or_dimension)
+                _display_unit: Optional[Unit] = Unit(unit_or_dimension)
                 _canonical_np_array: np.ndarray = np_array
             else:
                 _dimension: Dimension = Dimension.dimensionless_dimension()

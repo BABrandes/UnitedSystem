@@ -30,7 +30,7 @@ class FactoryMixin:
             >>> scalar._display_unit
             Unit("kg")
         """
-        canonical_value = unit.to_canonical_value(value)
+        canonical_value: float = unit.to_canonical_value(value)
         return cls.create_from_canonical_value(canonical_value, unit.dimension, unit)
 
     @classmethod
@@ -83,7 +83,7 @@ class FactoryMixin:
         elif len(split_string) == 2:
             # Value and unit specified
             value_str, unit_str = split_string
-            parsed_unit = Unit.parse_string(unit_str)
+            parsed_unit: "Unit" = Unit(unit_str)
             canonical_value = parsed_unit.to_canonical_value(str_to_float(value_str))
             return canonical_value, parsed_unit
         else:
@@ -121,8 +121,7 @@ class FactoryMixin:
     def create_dimensionless(cls, value: float) -> "RealUnitedScalar":
         """Create a dimensionless scalar."""
         from .....real_united_scalar import RealUnitedScalar
-        from ....units.named_simple_dimensions import NamedSimpleDimension
-        return RealUnitedScalar.create_from_canonical_value(value, NamedSimpleDimension.NUMBER.dimension, NamedSimpleDimension.NUMBER.canonical_unit)
+        return RealUnitedScalar.create_from_canonical_value(value, Dimension.dimensionless_dimension(), None)
 
     @classmethod
     def zero(cls, dimension: "Dimension") -> "RealUnitedScalar":

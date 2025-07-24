@@ -1,7 +1,6 @@
-from typing import Iterator, Generic, TypeVar, Any, Type, overload, TypeAlias
+from typing import Iterator, Generic, TypeVar, Any, overload, TypeAlias
 import numpy as np
 from dataclasses import dataclass
-from ...utils.general import JSONable, HDF5able
 from pandas import Timestamp
 from abc import ABC, abstractmethod
 import h5py
@@ -16,7 +15,7 @@ IT = TypeVar("IT")
 AT = TypeVar("AT", bound="BaseArray[PT_TYPE, Any]")
 
 @dataclass(frozen=True, slots=True)
-class BaseArray(ABC, JSONable, HDF5able, Generic[PT, IT, AT]):
+class BaseArray(ABC, Generic[PT, IT, AT]):
 
     canonical_np_array: NDArray[Any]
 
@@ -83,12 +82,12 @@ class BaseArray(ABC, JSONable, HDF5able, Generic[PT, IT, AT]):
         return {"canonical_np_array": self.canonical_np_array}
     
     @classmethod
-    def from_json(cls, data: dict[str, Any], **type_parameters: Type[AT]) -> AT:
+    def from_json(cls, data: dict[str, Any]) -> AT:
         return cls(canonical_np_array=data["canonical_np_array"]) # type: ignore
     
     def to_hdf5(self, hdf5_group: h5py.Group) -> None:
         hdf5_group.create_dataset("canonical_np_array", data=self.canonical_np_array) # type: ignore
 
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, **type_parameters: Type[AT]) -> AT:
+    def from_hdf5(cls, hdf5_group: h5py.Group) -> AT:
         return cls(canonical_np_array=hdf5_group["canonical_np_array"][()]) # type: ignore

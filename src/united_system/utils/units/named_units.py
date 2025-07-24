@@ -1,9 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass, field
 from ...named_quantity import NamedQuantity
-from typing import Optional
-
-from .unit_group import UnitGroup
 
 FORBIDDEN_STRINGS_IN_UNIT_NAME: set[str] = {"|", ":", "__"}
 
@@ -16,22 +13,10 @@ def special_character_to_unicode_replacement(string: str) -> str:
 class NamedUnitInformation:
     unit_string: str
     named_quantity: NamedQuantity = field(repr=False, compare=False, hash=False)
-    _unit: Optional[UnitGroup] = field(default=None, repr=False, compare=False, hash=False)
 
     @classmethod
     def create(cls, unit_string: str, named_quantity: NamedQuantity) -> "NamedUnitInformation":
         return cls(unit_string, named_quantity)
-
-    @property
-    def unit_group(self) -> UnitGroup:
-        if self._unit is None:
-            unit_group: UnitGroup = UnitGroup.parse_string(self.unit_string)
-            if unit_group.dimension_group != self.named_quantity.dimension_group:
-                raise ValueError(f"Unit {self.unit_string} has canonical dimension {unit_group.dimension_group} but expected {self.named_quantity.dimension_group}")
-            object.__setattr__(self, '_unit', unit_group)
-        if self._unit is None:
-            raise ValueError(f"Unit {self.unit_string} has no unit")
-        return self._unit
 
 class NamedUnit(Enum):
     value: NamedUnitInformation # type: ignore
@@ -142,10 +127,6 @@ class NamedUnit(Enum):
     @property
     def named_quantity(self) -> NamedQuantity:
         return self.value.named_quantity
-
-    @property
-    def unit_group(self) -> UnitGroup:
-        return self.value.unit_group
 
     @classmethod
     def find_named_unit(cls, unit_string: str) -> "NamedUnit":

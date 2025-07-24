@@ -1,8 +1,8 @@
 import numpy as np
 from dataclasses import dataclass
-from typing import overload, Any, TypeVar, Generic, Union, Type, Iterator, Optional
-from ..units.dimension_group import BaseDimension
-from ..units.unit_group import BaseUnit
+from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional
+from ...dimension import Dimension
+from ...unit import Unit
 from ...utils.scalars.united_scalar import UnitedScalar
 from ...utils.units.united import United
 from .base_array import BaseArray, PT_TYPE
@@ -12,14 +12,12 @@ import h5py
 import pandas as pd
 from pandas._typing import Dtype
 
-UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any, Any, Any]")
-UST = TypeVar("UST", bound=UnitedScalar[Any, Any, Any, Any])
-UT = TypeVar("UT", bound=BaseUnit[Any, Any])
-DT = TypeVar("DT", bound=BaseDimension[Any, Any])
+UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any]")
+UST = TypeVar("UST", bound=UnitedScalar[Any, Any])
 PT = TypeVar("PT", bound=PT_TYPE)
 
 class ScalarIterator(Iterator[UST], Generic[UST, PT]):
-    def __init__(self, array: "BaseUnitedArray[UAT, UST, UT, DT, PT]"):
+    def __init__(self, array: "BaseUnitedArray[UAT, UST, PT]"):
         self.array = array
         self.index: int = 0
     
@@ -37,16 +35,16 @@ class ScalarIterator(Iterator[UST], Generic[UST, PT]):
         return len(self.array)
 
 @dataclass(frozen=True, slots=True, init=False)
-class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, UT, DT, PT]):
+class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, PT]):
     
     # Required field from BaseArray inheritance
     canonical_np_array: np.ndarray
     
     # Required fields from United inheritance
-    dimension: DT
-    _display_unit: Optional[UT]
+    dimension: Dimension
+    _display_unit: Optional[Unit]
 
-    def __init__(self, canonical_np_array: np.ndarray, dimension: DT, display_unit: Optional[UT] = None):
+    def __init__(self, canonical_np_array: np.ndarray, dimension: Dimension, display_unit: Optional[Unit] = None):
 
         # Check the dimension and display unit are compatible
         if display_unit is not None and not display_unit.compatible_to(dimension):
@@ -58,26 +56,33 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         object.__setattr__(self, "_display_unit", display_unit)
 
     @classmethod
-    def create(cls, canonical_np_array: np.ndarray, dimension_or_display_unit: Union[DT, UT]) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def create(cls, canonical_np_array: np.ndarray, dimension_or_display_unit: Union[Dimension, Unit]) -> "BaseUnitedArray[UAT, UST, PT]":
         match dimension_or_display_unit:
-            case BaseDimension():
-                dimension: DT = dimension_or_display_unit
-                display_unit: UT = dimension_or_display_unit.canonical_unit
-            case BaseUnit():
-                dimension: DT = dimension_or_display_unit.dimension
-                display_unit: UT = dimension_or_display_unit
+            case Dimension():
+                dimension: Dimension = dimension_or_display_unit
+                display_unit: Unit = dimension_or_display_unit.canonical_unit
+            case Unit():
+                dimension: Dimension = dimension_or_display_unit.dimension
+                display_unit: Unit = dimension_or_display_unit
         
         return cls(canonical_np_array, dimension, display_unit)
     
     @property
-    def display_unit(self) -> UT:
+    def display_unit(self) -> Unit:
         if self._display_unit is None:
             object.__setattr__(self, "_display_unit", self.dimension.canonical_unit)
         if self._display_unit is None:
             raise AssertionError("Display unit is None")
         return self._display_unit
+    
+    @property
+    def active_unit(self) -> Unit:
+        if self._display_unit is None:
+            return self.dimension.canonical_unit
+        else:
+            return self._display_unit
 
-    def set_display_unit(self, display_unit: UT) -> None:
+    def set_display_unit(self, display_unit: Unit) -> None:
         if display_unit.compatible_to(self.dimension):
             raise ValueError(f"The display unit {display_unit} is not compatible with the canonical dimension {self.dimension}.")
         self.__setattr__("_display_unit", display_unit)
@@ -100,11 +105,11 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         value: PT = self.canonical_np_array[index]
         return self.get_scalar_from_value(value)
             
-    def get_array(self, slice: slice) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def get_array(self, slice: slice) -> "BaseUnitedArray[UAT, UST, PT]":
         canonical_np_array: np.ndarray = self.canonical_np_array[slice]
         return type(self)(canonical_np_array, self.dimension, self._display_unit)
     
-    def get_as_numpy_array(self, target_unit: UT|None, slice: slice|None = None) -> np.ndarray:
+    def get_as_numpy_array(self, target_unit: Unit|None, slice: slice|None = None) -> np.ndarray:
         """
         Get the array as a numpy array.
 
@@ -121,7 +126,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         else:
             return target_unit.from_canonical_value(canonical_np_array)
     
-    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None, target_unit: UT|None = None) -> pd.Series: # type: ignore
+    def get_pandas_series(self, dtype: Dtype, slice: slice|None = None, target_unit: Unit|None = None) -> pd.Series: # type: ignore
         """
         Get the array as a pandas series.
 
@@ -186,162 +191,162 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
                 return self.get_array(index_key) # type: ignore
 
     @overload
-    def __add__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __add__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __add__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __add__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __add__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]"|UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __add__(self, other: "BaseUnitedArray[UAT, UST, PT]"|UST) -> "BaseUnitedArray[UAT, UST, PT]":
         match other:
             case UnitedScalar():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = self.canonical_np_array + other.canonical_value
                 return type(self)(array, self.dimension, self._display_unit)
             case BaseUnitedArray():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = self.canonical_np_array + other.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit)
 
     @overload    
-    def __radd__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __radd__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __radd__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __radd__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __radd__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]"|UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __radd__(self, other: "BaseUnitedArray[UAT, UST, PT]"|UST) -> "BaseUnitedArray[UAT, UST, PT]":
         return self.__add__(other)
     
     @overload    
-    def __sub__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __sub__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __sub__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __sub__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __sub__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]"|UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __sub__(self, other: "BaseUnitedArray[UAT, UST, PT]"|UST) -> "BaseUnitedArray[UAT, UST, PT]":
         match other:
             case UnitedScalar():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = self.canonical_np_array - other.canonical_value
                 return type(self)(array, self.dimension, self._display_unit)
             case BaseUnitedArray():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = self.canonical_np_array - other.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit)
 
     @overload    
-    def __rsub__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rsub__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __rsub__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rsub__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __rsub__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]"|UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rsub__(self, other: "BaseUnitedArray[UAT, UST, PT]"|UST) -> "BaseUnitedArray[UAT, UST, PT]":
         match other:
             case UnitedScalar():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = other.canonical_value - self.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit)
             case BaseUnitedArray():
-                if not self.dimension.compatible_to(other.dimension):
+                if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
                 array: np.ndarray = other.canonical_np_array - self.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit)
     
     @overload    
-    def __mul__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __mul__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __mul__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __mul__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __mul__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __mul__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __mul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __mul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         if isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array * other.canonical_value
-            dimension: DT = self.dimension * other.dimension
+            dimension: Dimension = self.dimension * other.dimension
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = self.canonical_np_array * other.canonical_np_array
-            dimension: DT = self.dimension * other.dimension
+            dimension: Dimension = self.dimension * other.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = self.canonical_np_array.__mul__(other)
             return type(self)(array, self.dimension, self._display_unit)
 
     @overload    
-    def __rmul__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rmul__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __rmul__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rmul__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __rmul__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rmul__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __rmul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rmul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         return self.__mul__(other)
     
     @overload
-    def __truediv__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __truediv__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __truediv__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __truediv__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __truediv__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __truediv__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __truediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __truediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         if isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array / other.canonical_value
-            dimension: DT = self.dimension / other.dimension
+            dimension: Dimension = self.dimension / other.dimension
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = self.canonical_np_array / other.canonical_np_array
-            dimension: DT = self.dimension / other.dimension
+            dimension: Dimension = self.dimension / other.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = self.canonical_np_array.__truediv__(other)
             return type(self)(array, self.dimension, self._display_unit)
     
     @overload    
-    def __rtruediv__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rtruediv__(self, other: int|float|complex) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __rtruediv__(self, other: UST) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rtruediv__(self, other: UST) -> "BaseUnitedArray[UAT, UST, PT]":
         ...
     @overload
-    def __rtruediv__(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rtruediv__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         ...
-    def __rtruediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, UT, DT, PT]") -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __rtruediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> "BaseUnitedArray[UAT, UST, PT]":
         if isinstance(other, UnitedScalar):
             array: np.ndarray = other.canonical_value / self.canonical_np_array
-            dimension: DT = other.dimension - self.dimension
+            dimension: Dimension = other.dimension / self.dimension
             return type(self)(array, dimension, None)
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = other.canonical_np_array / self.canonical_np_array
-            dimension: DT = other.dimension / self.dimension
+            dimension: Dimension = other.dimension / self.dimension
             return type(self)(array, dimension, None)
         else:
             array: np.ndarray = other / self.canonical_np_array
-            zero_dim: DT = (type(self.dimension)).dimensionless_dimension()
+            zero_dim: Dimension = (type(self.dimension)).dimensionless_dimension()
             dimension = zero_dim / self.dimension
             return type(self)(array, dimension, None)
 
-    def __pow__(self, exponent: float|int) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __pow__(self, exponent: float|int) -> "BaseUnitedArray[UAT, UST, PT]":
         """Raise the array to a power."""
         array: np.ndarray = self.canonical_np_array.__pow__(exponent)
-        dimension: DT = self.dimension ** exponent
+        dimension: Dimension = self.dimension ** exponent
         return type(self)(array, dimension, None)
 
-    def __neg__(self) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __neg__(self) -> "BaseUnitedArray[UAT, UST, PT]":
         array: np.ndarray = -1 * self.canonical_np_array
         return type(self)(array, self.dimension, self._display_unit)
     
-    def __abs__(self) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def __abs__(self) -> "BaseUnitedArray[UAT, UST, PT]":
         array: np.ndarray = np.abs(self.canonical_np_array)
         return type(self)(array, self.dimension, self._display_unit)
     
@@ -413,7 +418,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         return self.get_scalar_from_value(var)
     
     def to_json(self) -> dict[str, Any]:
-        canonical_dimension_as_unit: UT = self.dimension.canonical_unit
+        canonical_dimension_as_unit: Unit = self.dimension.canonical_unit
         return {
             "canonical_np_array": self.canonical_np_array.tolist(),
             "canonical_dimension_as_unit": canonical_dimension_as_unit.to_json(),
@@ -421,20 +426,11 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
         }
     
     @classmethod
-    def from_json(cls, data: dict[str, Any], **type_parameters: Type[UT]) -> UAT:
-        """
-        type_parameters is a dictionary of type parameters for the class.
-
-        It must contain the unit_type parameter.
-        """
-        if "unit_type" in type_parameters:
-            unit_type: Type[UT] = type_parameters["unit_type"]
-        else:
-            raise ValueError("unit_type is not provided")        
+    def from_json(cls, data: dict[str, Any]) -> UAT:
         canonical_np_array: np.ndarray = np.array(data["canonical_np_array"])
-        canonical_dimension_as_unit: UT = unit_type.from_json(data["canonical_dimension_as_unit"])
-        dimension: DT = canonical_dimension_as_unit.dimension
-        display_unit: UT|None = unit_type.from_json(data["display_unit"]) if data["display_unit"] else None
+        canonical_dimension_as_unit: Unit = Unit.from_json(data["canonical_dimension_as_unit"])
+        dimension: Dimension = canonical_dimension_as_unit.dimension
+        display_unit: Unit|None = Unit.from_json(data["display_unit"]) if data["display_unit"] else None
 
         return type(cls)(
             canonical_np_array=canonical_np_array,
@@ -442,49 +438,40 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United[DT, UT], ProtocolNumerical
             display_unit=display_unit)
     
     def to_hdf5(self, hdf5_group: h5py.Group) -> None:
-        canonical_dimension_as_unit: UT = self.dimension.canonical_unit
+        canonical_dimension_as_unit: Unit = self.dimension.canonical_unit
         hdf5_group.attrs["canonical_np_array"] = self.canonical_np_array.tolist()
         hdf5_group.attrs["canonical_dimension_as_unit"] = canonical_dimension_as_unit.to_json()
         hdf5_group.attrs["display_unit"] = self._display_unit.to_json() if self._display_unit else None
     
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, **type_parameters: Type[UT]) -> UAT:
-        """
-        type_parameters is a dictionary of type parameters for the class.
-        
-        It must contain the unit_type parameter.
-        """
-        if "unit_type" in type_parameters:
-            unit_type: Type[UT] = type_parameters["unit_type"]
-        else:
-            raise ValueError("unit_type is not provided")       
+    def from_hdf5(cls, hdf5_group: h5py.Group) -> UAT:
         canonical_np_array: np.ndarray = np.array(hdf5_group.attrs["canonical_np_array"])
-        canonical_dimension_as_unit: UT = unit_type.from_json(hdf5_group.attrs["canonical_dimension_as_unit"]) # type: ignore
-        dimension: DT = canonical_dimension_as_unit.dimension
-        display_unit: UT|None = unit_type.from_json(hdf5_group.attrs["display_unit"]) if hdf5_group.attrs["display_unit"] else None # type: ignore
+        canonical_dimension_as_unit: Unit = Unit.from_json(hdf5_group.attrs["canonical_dimension_as_unit"]) # type: ignore
+        dimension: Dimension = canonical_dimension_as_unit.dimension
+        display_unit: Unit|None = Unit.from_json(hdf5_group.attrs["display_unit"]) if hdf5_group.attrs["display_unit"] else None # type: ignore
 
         return type(cls)(
             canonical_np_array=canonical_np_array,
             dimension=dimension,
             display_unit=display_unit)
 
-    def in_unit(self, unit: UT) -> np.ndarray:
+    def in_unit(self, unit: Unit) -> np.ndarray:
         """Convert the array to a specific unit and return numpy array."""
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return unit.from_canonical_value(self.canonical_np_array)
     
-    def with_display_unit(self, unit: UT) -> "BaseUnitedArray[UAT, UST, UT, DT, PT]":
+    def with_display_unit(self, unit: Unit) -> "BaseUnitedArray[UAT, UST, PT]":
         """Return a new array with the specified display unit."""
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return type(self)(self.canonical_np_array, self.dimension, unit)
     
-    def compatible_to(self, other: "BaseUnitedArray[UAT, UST, UT, DT, PT]") -> bool:
+    def compatible_to(self, other: "BaseUnitedArray[UAT, UST, PT]") -> bool:
         """Check if this array is compatible (same dimension) with another."""
-        return self.dimension.compatible_to(other.dimension)
+        return self.dimension == other.dimension
 
-    def format(self, unit: Optional[UT] = None, decimals: int = 3) -> str:
+    def format(self, unit: Optional[Unit] = None, decimals: int = 3) -> str:
         """Format the array with optional unit specification."""
         if unit is not None:
             values = self.in_unit(unit)

@@ -1,15 +1,65 @@
-from typing import Final, Tuple, overload, Union, TYPE_CHECKING, Literal, Optional, Dict
-from collections import defaultdict
-from frozendict import frozendict
-from collections.abc import Sequence
-import re
+"""
+Unit Module for United System
+
+This module provides the Unit class for handling physical units in scientific calculations.
+Units represent the specific measurement systems (meters, seconds, kilograms, etc.) and their relationships.
+
+Key Features:
+- Support for SI base units, derived units, and non-SI units
+- Subscript support for distinguishing different contexts (e.g., m_elec vs m_geo)
+- Logarithmic units using DEC() notation and angle units using ANG() notation
+- Arithmetic operations (multiplication, division, powers, logarithms)
+- Serialization to JSON and HDF5 formats
+- Immutable design for thread safety
+- Unit conversion and canonical value handling
+
+Examples:
+    # Create simple units
+    meter = Unit("m")           # Meter unit
+    second = Unit("s")          # Second unit
+    kilogram = Unit("kg")       # Kilogram unit
+    
+    # Create complex units
+    velocity = Unit("m/s")      # Meters per second
+    force = Unit("kg*m/s^2")    # Kilogram * meter / second^2 (newton)
+    energy = Unit("kg*m^2/s^2") # Kilogram * meter^2 / second^2 (joule)
+    
+    # Use subscripts to distinguish contexts
+    elec_length = Unit("m_elec")  # Electrical length in meters
+    geo_length = Unit("m_geo")    # Geometric length in meters
+    
+    # Logarithmic units
+    log_force = Unit("DEC(N)")    # Logarithm of force in newtons
+    
+    # Arithmetic operations
+    area = meter * meter        # m * m = m^2
+    density = kilogram / (meter**3)  # kg / m^3
+    log_area = area.log()       # DEC(m^2)
+    
+    # Unit conversion
+    canonical_value = 5.0 * meter.to_canonical_value(2.5)  # Convert 2.5 m to canonical
+    display_value = meter.from_canonical_value(5.0)        # Convert canonical to 2.5 m
+    
+    # Serialization
+    json_str = force.to_json()  # "kg*m/s^2"
+    reparsed = Unit.from_json(json_str)
+    
+    # Check if dimensionless
+    dimensionless = Unit("")    # Empty string creates dimensionless unit
+    assert dimensionless.is_dimensionless
+"""
+
+from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from h5py import Group
 import numpy as np
 
-from .utils.units.unit_symbol import UnitSymbol
+from .named_quantity import NamedQuantity
 from .utils.units.unit_element import UnitElement
 from .dimension import Dimension
-from .utils.units.dimension_group import DimensionGroup
-from .utils.units.unit_group import UnitGroup
+from .utils.units.unit_symbol import UnitSymbol
+from .utils.units.utils import seperate_string
 
 if TYPE_CHECKING:
     from .real_united_scalar import RealUnitedScalar
@@ -17,1082 +67,1205 @@ if TYPE_CHECKING:
     from .complex_united_scalar import ComplexUnitedScalar
     from .complex_united_array import ComplexUnitedArray
 
-# Cache for parsed units (outside the dataclass to avoid slots conflict)
-_SIMPLE_UNIT_CACHE__STRING_KEY: dict[str, "Unit"] = {}
-EPSILON: float = 1e-10
+EPSILON: float = 1e-12
+
+# Cache for parsed units (outside the class to avoid slots conflict)
+_UNIT_CACHE: dict[str, "Unit"] = {}
 
 def clear_unit_cache():
     """Clear the unit cache to force re-parsing of unit strings."""
-    global _SIMPLE_UNIT_CACHE__STRING_KEY
-    _SIMPLE_UNIT_CACHE__STRING_KEY.clear()
+    global _UNIT_CACHE
+    _UNIT_CACHE.clear()
 
+@dataclass(frozen=True, slots=True)
 class Unit:
     """
-
-
+    A class representing physical units for scientific calculations.
+    
+    The Unit class handles the mathematical representation of physical units,
+    supporting SI units, subscripts, logarithmic units, and arithmetic operations.
+    
+    Attributes:
+        _unit_elements: Dictionary mapping subscripts to tuples of unit elements
+        _log_units: Dictionary mapping log units to their exponents
+    
+    Examples:
+        # Basic usage
+        meter = Unit("m")
+        second = Unit("s")
+        kilogram = Unit("kg")
+        
+        # Complex units
+        velocity = Unit("m/s")
+        acceleration = Unit("m/s^2")
+        force = Unit("kg*m/s^2")
+        
+        # With subscripts
+        elec_length = Unit("m_elec")
+        geo_length = Unit("m_geo")
+        
+        # Logarithmic units
+        log_force = Unit("DEC(N)")
+        
+        # Arithmetic operations
+        area = meter * meter
+        volume = area * meter
+        density = kilogram / volume
+        
+        # Powers and roots
+        area_squared = area ** 2
+        length_cubed = meter ** 3
+        
+        # Logarithms (applied to canonical values)
+        log_area = area.log()  # dec(L^2) - decades of area
+        log_current = Unit("mA").log()  # dec(A) - decades of current (not decades of milliampere)
+        
+        # Unit conversion
+        canonical = meter.to_canonical_value(2.5)  # 2.5 m in canonical units
+        display = meter.from_canonical_value(2.5)  # 2.5 canonical units in m
+        
+        # Serialization
+        json_str = force.to_json()
+        reparsed = Unit.from_json(json_str)
+        
+        # Validation
+        assert not force.is_dimensionless
+        assert Unit("").is_dimensionless
     """
+
+    _unit_elements: MappingProxyType[str, Tuple[UnitElement, ...]] = field(default_factory=lambda: MappingProxyType({}))
+    _log_units: List[Tuple[UnitElement, Dimension]] = field(default_factory=lambda: [])
+    _dimension: Dimension = field(init=False)
 
 ########################################################
 # Initialization
 ########################################################
 
-    def __new__(
-            cls,
-            value: Union[
-                Optional[UnitGroup],
-                Optional[DimensionGroup],
-                Optional[Dict[str, UnitGroup]],
-                Optional[Dict[str, DimensionGroup]],
-                Optional[Dict[str, UnitGroup|DimensionGroup]],
-                Optional[str]]=None) -> "Unit":
-        
-        if isinstance(value, str):
-            return cls._get_unit_via_cache(value)
-        else:
-            return super().__new__(cls)
+    @overload
+    def __init__(self) -> None:
+        ...
 
-    @overload
-    def __init__(self, value: Optional[UnitGroup]=None) -> None:
-        ...
-    @overload
-    def __init__(self, value: Optional[DimensionGroup]=None) -> None:
-        ...
-    @overload
-    def __init__(self, value: Optional[Dict[str, UnitGroup]]=None) -> None:
-        ...
-    @overload
-    def __init__(self, value: Optional[Dict[str, DimensionGroup]]=None) -> None:
-        ...
     @overload
     def __init__(self, value: Optional[str]=None) -> None:
         ...
+
+    @overload
+    def __init__(self, value: Optional[NamedQuantity]=None, subscript: Optional[str]=None) -> None:
+        ...
+
     def __init__(
             self,
-            value: Union[
-                Optional[UnitGroup],
-                Optional[DimensionGroup],
-                Optional[Dict[str, UnitGroup]],
-                Optional[Dict[str, DimensionGroup]],
-                Optional[Dict[str, UnitGroup|DimensionGroup]],
-                Optional[str]]=None) -> None:
-
+            value: Optional[Union[str, NamedQuantity]]=None, 
+            subscript: Optional[str]=None
+    ) -> None:
+        """
+        Initialize a Unit object.
+        
+        Args:
+            value: The unit specification. Can be:
+                - A string representing a unit (e.g., "m", "kg*m/s^2", "DEC(N)")
+                - A dictionary mapping subscripts to tuples of UnitElement objects
+                - None for dimensionless unit
+            subscript: Optional subscript (currently unused)
+        
+        Examples:
+            Unit("m")                    # Simple unit
+            Unit("kg*m/s^2")             # Complex unit
+            Unit("DEC(N)")               # Logarithmic unit
+            Unit("m_elec")               # Unit with subscript
+        """
         if isinstance(value, str):
-            return  # Prevents accidental init of cached objects
-        
-        def set_empty() -> tuple[frozendict[str, float], frozendict[str, float], frozendict[str, DimensionGroup], frozendict[str, UnitGroup]]:
-            factors: frozendict[str, float] = frozendict({"": 1.0})
-            offsets: frozendict[str, float] = frozendict({"": 0.0})
-            dimension_groups: frozendict[str, DimensionGroup] = frozendict({"": DimensionGroup.dimensionless_dimension_group()})
-            unit_groups: frozendict[str, UnitGroup] = frozendict({"": UnitGroup.dimensionless_unit_group()})
-            return factors, offsets, dimension_groups, unit_groups
-        
-        if value is None:
-            self._factors, self._offsets, self._dimension_groups, self._unit_groups = set_empty()
             return
-        elif isinstance(value, UnitGroup):
-            unit_groups = {"": value}
-            dimension_groups = {"": value.dimension_group}
-            factors = {"": value.factor}
-            offsets = {"": value.offset}
-        elif isinstance(value, DimensionGroup):
-            unit_groups = {"": UnitGroup(value)}
-            dimension_groups = {"": value}
-            factors = {"": 1.0}
-            offsets = {"": 0.0}
-        elif isinstance(value, dict): # type: ignore
-            if len(value) == 0:
-                self._factors, self._offsets, self._dimension_groups, self._unit_groups = set_empty()
-                return
-            else:
-                unit_groups: dict[str, UnitGroup] = {}
-                dimension_groups: dict[str, DimensionGroup] = {}
-                factors: dict[str, float] = {}
-                offsets: dict[str, float] = {}
-                for subscript, group in value.items():
-                    if isinstance(group, UnitGroup):
-                        unit_groups[subscript] = group
-                        dimension_groups[subscript] = group.dimension_group
-                        factors[subscript] = group.factor
-                        offsets[subscript] = group.offset
-                    elif isinstance(group, DimensionGroup): # type: ignore
-                        unit_groups[subscript] = UnitGroup(group)
-                        dimension_groups[subscript] = group
-                        factors[subscript] = unit_groups[subscript].factor
-                        offsets[subscript] = unit_groups[subscript].offset
-                    else:
-                        raise ValueError("Unit dictionary must contain only UnitGroup and DimensionGroup objects")
+        elif isinstance(value, NamedQuantity):
+            return
+        elif value is None:
+            # Create dimensionless unit
+            object.__setattr__(self, "_unit_elements", MappingProxyType({})) # type: ignore
+            object.__setattr__(self, "_log_units", [])
         else:
-            raise ValueError("Unit dictionary must contain only UnitGroup and DimensionGroup objects")
+            raise ValueError(f"Invalid unit value: {value}")
 
-        self._factors: frozendict[str, float] = frozendict(factors)
-        self._offsets: frozendict[str, float] = frozendict(offsets)
-        self._dimension_groups: frozendict[str, DimensionGroup] = frozendict(dimension_groups)
-        self._unit_groups: frozendict[str, UnitGroup] = frozendict(unit_groups)
+    def __new__(
+        cls,
+        value: Optional[Union[str, NamedQuantity]]=None,
+        subscript: Optional[str]=None,
+    ) -> "Unit":
+        """
+        Create a new Unit instance with caching for string inputs.
+        
+        Args:
+            value: The unit specification
+            subscript: Optional subscript when creating from NamedQuantity
+        
+        Returns:
+            A new Unit instance
+        """
+        if value is None:
+            # Create empty unit
+            instance: Unit = object.__new__(cls)
+            empty_unit_elements: dict[str, Tuple[UnitElement, ...]] = {}
+            object.__setattr__(instance, "_unit_elements", MappingProxyType(empty_unit_elements))
+            object.__setattr__(instance, "_log_units", [])
+            return instance
+        elif isinstance(value, str):
+            # Check cache first
+            if value in _UNIT_CACHE:
+                return _UNIT_CACHE[value]
+            
+            # Create new instance
+            instance: Unit = object.__new__(cls)
 
-        factor: float = 1.0
-        offset: float = 0.0
-        for subscript, _factor in self._factors.items():
-            factor *= _factor
-        for subscript, _offset in self._offsets.items():
-            if offset != 0.0:
-                raise ValueError("Only one offset is allowed per unit")
-            offset = _offset
-        self._factor = factor
-        self._offset = offset
+            # Parse string representation
+            unit_elements, log_units = cls._parse_string(value)
+            object.__setattr__(instance, "_unit_elements", MappingProxyType(unit_elements))
+            object.__setattr__(instance, "_log_units", log_units)
+            
+            # Cache the result
+            _UNIT_CACHE[value] = instance
+            return instance
+        
+        elif isinstance(value, NamedQuantity): # type: ignore
+
+            # Create a new instance
+            if subscript is None:
+                instance: Unit = value.dimension.canonical_unit
+            else:
+                instance: Unit = Dimension(value, subscript).canonical_unit
+            return instance
+        
+        else:
+            raise ValueError(f"Invalid unit value: {value}")
+
+    @classmethod
+    def _construct(
+        cls,
+        unit_elements: MappingProxyType[str, Tuple[UnitElement, ...]],
+        log_units: List[Tuple[UnitElement, "Dimension"]] = [],
+    ) -> "Unit":
+        """
+        Construct a Unit from its internal components.
+        
+        Args:
+            unit_elements: Dictionary mapping subscripts to tuples of unit elements
+            log_units: List of tuples containing (log_unit_element, dimension)
+        
+        Returns:
+            A new Unit instance
+        """
+        instance = object.__new__(cls)
+        object.__setattr__(instance, "_unit_elements", unit_elements)
+        object.__setattr__(instance, "_log_units", log_units)
+        return instance
 
 ########################################################
 # Helper methods
 ########################################################
 
-    @classmethod
-    def _get_unit_via_cache(cls, value: str) -> "Unit":
 
-        if value in _SIMPLE_UNIT_CACHE__STRING_KEY:
-            return _SIMPLE_UNIT_CACHE__STRING_KEY[value]
-        else:
-            return Unit.parse_string(value)
-
-    @classmethod
-    def dimensionless_unit(cls) -> "Unit":
-        return DIMENSIONLESS_UNIT
 
     ########################################################
     # Properties
     ########################################################
 
     @property
-    def dimension_groups(self) -> dict[str, DimensionGroup]:
-        return dict(self._dimension_groups)
+    def unit_elements(self) -> dict[str, Tuple[UnitElement, ...]]:
+        """Get the unit elements dictionary."""
+        return dict(self._unit_elements)
 
     @property
-    def unit_groups(self) -> dict[str, UnitGroup]:
-        return dict(self._unit_groups)
+    def log_units(self) -> List[Tuple[UnitElement, "Dimension"]]:
+        """Get the log units list."""
+        return list(self._log_units)
 
     @property
-    def factors(self) -> dict[str, float]:
-        return dict(self._factors)
-    
-    @property
-    def offsets(self) -> dict[str, float]:
-        return dict(self._offsets)
+    def dimension(self) -> Dimension:
+        """Get the dimension of this unit."""
+        # Start with dimensionless dimension
+        from .dimension import Dimension
+        if hasattr(self, "_dimension"):
+            return self._dimension
+        else:
+            result_dimension: Dimension = Dimension(self)
+            object.__setattr__(self, "_dimension", result_dimension)
+        
+        return result_dimension
     
     @property
     def factor(self) -> float:
-        return self._factor
+        """Get the conversion factor to canonical units."""
+        factor = 1.0
+        for elements in self._unit_elements.values():
+            for element in elements:
+                factor *= element.canonical_factor
+        return factor
     
     @property
     def offset(self) -> float:
-        return self._offset
+        """Get the offset for unit conversion."""
+        # Only one offset is allowed per unit
+        offset = 0.0
+        for elements in self._unit_elements.values():
+            for element in elements:
+                if element.canonical_offset != 0.0:
+                    if offset != 0.0:
+                        raise ValueError("Only one offset is allowed per unit")
+                    offset = element.canonical_offset
+        return offset
 
     @property
     def is_dimensionless(self) -> bool:
-        if len(self._unit_groups) == 0:
+        """Check if this unit is dimensionless."""
+        if not self._unit_elements and not self._log_units:
             return True
-        for unit_group in self._unit_groups.values():
-            if not unit_group.is_dimensionless:
+        
+        # Check if all unit elements have zero exponents
+        for elements in self._unit_elements.values():
+            for element in elements:
+                if abs(element.exponent) > EPSILON:
+                    return False
+        
+        # Check if all log units have dimensionless inner dimensions
+        for _, inner_dimension in self._log_units:
+            if not inner_dimension.is_dimensionless:
                 return False
+        
         return True
     
     @property
     def includes_log_level(self) -> bool:
-        if len(self._unit_groups) == 0:
-            return False
-        for unit_group in self._unit_groups.values():
-            if unit_group.includes_log_level:
-                return True
-        return False
-    
-    @property
-    def includes_angle(self) -> bool:
-        if len(self._unit_groups) == 0:
-            return False
-        for unit_group in self._unit_groups.values():
-            if unit_group.includes_angle:
-                return True
-        return False
-    ########################################################
-    # Other accessors
-    ########################################################
+        """Check if this unit includes logarithmic components."""
+        return len(self._log_units) > 0
 
-    def dimension(self, subscript: str) -> Dimension:
-        if subscript in self._dimension_groups:
-            return Dimension(self._dimension_groups[subscript])
-        else:
-            return Dimension.dimensionless_dimension()
-        
-    def unit(self, subscript: str) -> "Unit":
-        if subscript in self._unit_groups:
-            return Unit(self._unit_groups[subscript])
-        else:
-            return Unit.dimensionless_unit()
 
     
     ########################################################
-    # Parsing operations
+    # Arithmetic operations
     ########################################################
 
-    @classmethod
-    def parse_string(cls, unit_string: str) -> "Unit":
-        return cls._get_unit_via_cache(unit_string)
-
-    @classmethod
-    def _parse_string_to_unit_groups(cls, unit_string: str) -> dict[str, UnitGroup]:
+    def __add__(self, other: "Unit") -> "Unit":
         """
-        Parse a unit string into a tuple of SimpleUnitElements.
+        Add two units.
+        
+        For regular units, addition is only valid if the units have identical dimensions.
+        For logarithmic units, addition follows logarithmic identities.
+        
+        Args:
+            other: The unit to add to this one
+        
+        Returns:
+            A new Unit representing the sum
+        
+        Raises:
+            ValueError: If the units cannot be added
         
         Examples:
-        - "m" -> Simple_Unit(("", {"meter"}, 1))
-        - "km" -> Simple_Unit(("k", {"meter"}, 1))
-        - "m/s" -> Simple_Unit(("", {"meter"}, 1), ("s", {"second"}, -1))
-        - "V*m/ns^2" -> Simple_Unit(("", {"volt"}, 1), ("meter", {"meter"}, 1), ("n", {"second"}, -2))
-        - "s^2/(kg*m)" -> Simple_Unit(("s", {"second"}, 2), ("kg", {"gram"}, -1), ("m", {"meter"}, -1))
-        """
-
-        # Handle special case: if string is empty, return empty tuple
-        if not unit_string.strip():
-            return {}
-        
-        ########################################################
-        
-        def seperate_string(unit_string: str) -> list[tuple[str, str]]:
-            """
-            Seperate the string using "*" and "/" into a list of tuples, where the first element is the seperator and the second element is the part
-            """
-            parts_and_separators = re.split(r'([*/])', unit_string)
-            seperators_and_parts: list[tuple[str, str]] = [('', parts_and_separators[0])]
-            if seperators_and_parts[0][1] == "1":
-                seperators_and_parts.pop(0)
-            else:
-                seperators_and_parts[0] = ('*', seperators_and_parts[0][1])
-            seperators_and_parts.extend(list(zip(parts_and_separators[1::2], parts_and_separators[2::2])))
-            return seperators_and_parts
-        
-        ########################################################
-        
-        def combine_unit_groups(unit_groups_1: dict[str, UnitGroup], unit_groups_2: dict[str, UnitGroup]) -> dict[str, UnitGroup]:
-            """
-            Combine two dictionaries of unit groups.
-            If the subscript is the same, multiply the unit groups.
-            If the subscript is different, add the unit groups.
-            """
-            combined_unit_groups: dict[str, UnitGroup] = {}
-            for subscript_2, unit_group_2 in unit_groups_2.items():
-                if subscript_2 in unit_groups_1:
-                    combined_unit_groups[subscript_2] = unit_groups_1[subscript_2] * unit_group_2
-                else:
-                    combined_unit_groups[subscript_2] = unit_group_2
-            for subscript_1, unit_group_1 in unit_groups_1.items():
-                if subscript_1 not in combined_unit_groups:
-                    combined_unit_groups[subscript_1] = unit_group_1
-            return combined_unit_groups
-        
-        ########################################################
-        
-        def parse_unit_groups(string: str, position: Literal["nominator", "denominator"]) -> dict[str, UnitGroup]:
-            """
-            Parse a unit string into a dictionary of unit groups.
-            The unit groups are combined based on the position of the unit element.
-            The unit elements are combined based on the subscript.
-            The unit elements are parsed from the unit string.
-            The unit groups are returned.
-            """
-            unit_groups: dict[str, UnitGroup] = {}
-            unit_elements: defaultdict[str, list[UnitElement]] = defaultdict(list)
-            for seperator, part in seperate_string(string):
-                if (part.count("(") != part.count(")")):
-                    raise ValueError(f"Invalid unit string: {unit_string}")
-                
-                # Determine the position of the unit element (denominator or nominator)
-                if seperator == "*":
-                    if position == "nominator":
-                        position_: Literal["nominator", "denominator"] = "nominator"
-                    else:
-                        position_: Literal["nominator", "denominator"] = "denominator"
-                else:
-                    if position == "nominator":
-                        position_: Literal["nominator", "denominator"] = "denominator"
-                    else:
-                        position_: Literal["nominator", "denominator"] = "nominator"
-
-                # Deal with parentheses
-                if part.count("(") > 0:
-                    if part.startswith("(") and part.endswith(")"):
-                        # Simple parentheses
-                        unit_groups_inside_parentheses = parse_unit_groups(part[1:-1], position_)
-                        unit_groups = combine_unit_groups(unit_groups, unit_groups_inside_parentheses)
-                    elif part.endswith(")"):
-                        # Log or Angle unit
-                        raise NotImplementedError("Not implemented")
-                    else:
-                        raise ValueError(f"Invalid unit string: {unit_string}")
-                elif seperator == "*" or seperator == "/":
-                    # No parentheses, so we can parse the unit element
-                    # Figure out if there is a subscript
-                    if part.count("_") == 0:
-                        # No subscript
-                        unit_element_string: str = part
-                        subscript: str = ""
-                    elif part.count("_") == 1:
-                        # Subscript
-                        unit_element_string, subscript = part.split("_")
-                    else:
-                        raise ValueError(f"Invalid unit string: {unit_string}")
-                    # Parse the unit element
-                    unit_element: UnitElement = UnitElement.parse_string(unit_element_string, position_)
-                    # Add the unit element to the dictionary of unit elements based on the subscript
-                    unit_elements[subscript].append(unit_element)
-                else:
-                    raise ValueError(f"Invalid unit string: {unit_string}")
-                
-            # Combine the unit elements into unit groups
-            unit_groups_: dict[str, UnitGroup] = {}
-            for subscript, unit_elements_ in unit_elements.items():
-                unit_group: UnitGroup = UnitGroup(unit_elements_)
-                unit_groups_[subscript] = unit_group
-
-            # Combine the unit groups
-            unit_groups = combine_unit_groups(unit_groups, unit_groups_)
-
-            # Return the unit groups
-            return unit_groups
-        
-        ########################################################
-        
-        # Entry point for parsing the unit string
-        unit_groups: dict[str, UnitGroup] = parse_unit_groups(unit_string, "nominator")
-
-        # Return the unit groups
-        return unit_groups
-    
-    @classmethod
-    def _parse_multiplication_expression(cls, expression: str, position: Literal["nominator", "denominator"]) -> list[UnitElement]:
-        """Parse a multiplication expression (e.g., "kg*m*s^2") into unit elements."""
-        unit_elements: list[UnitElement] = []
-        
-        # Split by multiplication operators
-        parts = re.split(r'\*', expression)
-        parts = [part.strip() for part in parts if part.strip()]
-        
-        for part in parts:
-            # Skip "1" as it represents dimensionless (no contribution)
-            if part == "1":
-                continue
+            # Regular units (must be identical)
+            force1 = Unit("kg*m/s^2")
+            force2 = Unit("N")
+            total_force = force1 + force2  # Valid
             
-            unit_elements.append(UnitElement.parse_string(part, position))
+            # Logarithmic units
+            log_mass = Unit("dec(kg)")
+            log_length = Unit("dec(m)")
+            log_mass_length = log_mass + log_length  # dec(kg*m)
+        """
+        if not Unit.is_valid_for_addition(self, other):
+            raise ValueError("Invalid units for addition.")
         
-        return unit_elements
-    
-########################################################
-# Arithmetic operations
-########################################################
+        # If both units have log components, apply logarithmic identities
+        if self._log_units and other._log_units:
+            # For log units: log(a) + log(b) = log(a*b)
+            # Work with the inner dimensions and apply logarithmic identities
+            
+            # Get the inner dimensions from both log units
+            self_inner_dim, other_inner_dim = self._log_units[0][1], other._log_units[0][1]
+            
+            # Apply logarithmic identity: log(a) + log(b) = log(a*b)
+            # This means we multiply the inner dimensions
+            combined_inner_dim = self_inner_dim * other_inner_dim
+            
+            # Create a new log unit with the combined inner dimension
+            log_unit_element, _ = self._log_units[0]
+            return Unit._construct(MappingProxyType({}), [(log_unit_element, combined_inner_dim)])
+        
+        # If only one unit has log components, just return the unit with log components
+        elif self._log_units:
+            return Unit._construct(self._unit_elements, self._log_units)
+        elif other._log_units:
+            return Unit._construct(other._unit_elements, other._log_units)
+        else:
+            # No log units, just return the unit elements (should be the same for both)
+            return Unit._construct(self._unit_elements)
 
-# ----------- Simple operations -----------#
+    def __sub__(self, other: "Unit") -> "Unit":
+        """
+        Subtract two units.
+        
+        For regular units, subtraction is only valid if the units have identical dimensions.
+        For logarithmic units, subtraction follows logarithmic identities.
+        
+        Args:
+            other: The unit to subtract from this one
+        
+        Returns:
+            A new Unit representing the difference
+        
+        Raises:
+            ValueError: If the units cannot be subtracted
+        
+        Examples:
+            # Regular units (must be identical)
+            force1 = Unit("kg*m/s^2")
+            force2 = Unit("N")
+            net_force = force1 - force2  # Valid
+            
+            # Logarithmic units
+            log_mass = Unit("dec(kg)")
+            log_length = Unit("dec(m)")
+            log_ratio = log_mass - log_length  # dec(kg/m)
+        """
+        if not Unit.is_valid_for_addition(self, other):
+            raise ValueError("Invalid units for subtraction.")
+        
+        # If both units have log components, apply logarithmic identities
+        if self._log_units and other._log_units:
+            # For log units: log(a) - log(b) = log(a/b)
+            # Work with the inner dimensions and apply logarithmic identities
+            
+            # Get the inner dimensions from both log units
+            self_inner_dim, other_inner_dim = self._log_units[0][1], other._log_units[0][1]
+            
+            # Apply logarithmic identity: log(a) - log(b) = log(a/b)
+            # This means we divide the inner dimensions
+            combined_inner_dim = self_inner_dim / other_inner_dim
+            
+            # If the result is dimensionless, return a log unit with dimensionless inner dimension
+            # This will format as "dec"
+            if combined_inner_dim.is_dimensionless:
+                log_unit_element, _ = self._log_units[0]
+                return Unit._construct(MappingProxyType({}), [(log_unit_element, combined_inner_dim)])
+            
+            # Create a new log unit with the combined inner dimension
+            log_unit_element, _ = self._log_units[0]
+            return Unit._construct(MappingProxyType({}), [(log_unit_element, combined_inner_dim)])
+        
+        # If only one unit has log components, just return the unit with log components
+        elif self._log_units:
+            return Unit._construct(self._unit_elements, self._log_units)
+        elif other._log_units:
+            return Unit._construct(other._unit_elements, other._log_units)
+        else:
+            # No log units, just return the unit elements (should be the same for both)
+            return Unit._construct(self._unit_elements, [])
 
     def __mul__(self, other: "Unit") -> "Unit":
-        """Multiply two units. E.g. m * s -> m*s"""
+        """
+        Multiply two units.
+        
+        Args:
+            other: The unit to multiply by
+        
+        Returns:
+            A new unit representing the product
+        
+        Examples:
+            Unit("m") * Unit("s") -> Unit("m*s")
+            Unit("kg") * Unit("m/s^2") -> Unit("kg*m/s^2")
+        """
+        # Combine unit elements
+        new_unit_elements: dict[str, List[UnitElement]] = {}
+        
+        # Collect all elements from both units
+        all_elements: dict[Tuple[str, UnitSymbol, str], UnitElement] = {}
+        for subscript, elements in self._unit_elements.items():
+            for element in elements:
+                if not isinstance(element.unit_symbol, UnitSymbol):
+                    raise ValueError(f"Invalid unit symbol: {element.unit_symbol}")
+                key: Tuple[str, UnitSymbol, str] = (subscript, element.unit_symbol, element.prefix)
+                if key in all_elements:
+                    # Combine exponents
+                    combined_exponent: float = all_elements[key].exponent + element.exponent
+                    all_elements[key] = UnitElement(element.prefix, element.unit_symbol, combined_exponent)
+                else:
+                    all_elements[key] = element
+        
+        for subscript, elements in other._unit_elements.items():
+            for element in elements:
+                if not isinstance(element.unit_symbol, UnitSymbol):
+                    raise ValueError(f"Invalid unit symbol: {element.unit_symbol}")
+                key: Tuple[str, UnitSymbol, str] = (subscript, element.unit_symbol, element.prefix)
+                if key in all_elements:
+                    # Combine exponents
+                    combined_exponent = all_elements[key].exponent + element.exponent
+                    all_elements[key] = UnitElement(element.prefix, element.unit_symbol, combined_exponent)
+                else:
+                    all_elements[key] = element
+        
+        # Group by subscript
+        for (subscript, _, _), element in all_elements.items():
+            if abs(element.exponent) > EPSILON:  # Only include non-zero exponents
+                if subscript not in new_unit_elements:
+                    new_unit_elements[subscript] = []
+                new_unit_elements[subscript].append(element)
+        
+        # Convert lists to tuples
+        new_unit_elements_as_tuples: dict[str, Tuple[UnitElement, ...]] = {k: tuple(v) for k, v in new_unit_elements.items()}
+        
+        # Combine log units
+        new_log_units = list(self._log_units)
+        new_log_units.extend(other._log_units)
+        
+        # Create the unit and reduce it
+        result = self._construct(MappingProxyType(new_unit_elements_as_tuples), new_log_units)
+        return self.reduce_unit(result)
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            if subscript in other._unit_groups:
-                new_unit_groups[subscript] = unit_group * other._unit_groups[subscript]
-            else:
-                new_unit_groups[subscript] = unit_group
-        for subscript, unit_group in other._unit_groups.items():
-            if subscript not in new_unit_groups:
-                new_unit_groups[subscript] = unit_group
-        return Unit(new_unit_groups)
-    
     def __truediv__(self, other: "Unit") -> "Unit":
-        """Divide two units. E.g. m/s -> m/s"""
+        """
+        Divide two units.
+        
+        Args:
+            other: The unit to divide by
+        
+        Returns:
+            A new unit representing the quotient
+        
+        Examples:
+            Unit("m") / Unit("s") -> Unit("m/s")
+            Unit("kg*m/s^2") / Unit("m") -> Unit("kg/s^2")
+        """
+        # Invert the other unit and multiply
+        result = self * other.invert()
+        return self.reduce_unit(result)
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            if subscript in other._unit_groups:
-                new_unit_groups[subscript] = unit_group / other._unit_groups[subscript]
-            else:
-                new_unit_groups[subscript] = unit_group
-        for subscript, unit_group in other._unit_groups.items():
-            if subscript not in new_unit_groups:
-                new_unit_groups[subscript] = unit_group.invert()
-        return Unit(new_unit_groups)
+    def __pow__(self, exponent: float|int) -> "Unit":
+        """
+        Raise a unit to a power.
+        
+        Args:
+            exponent: The power to raise the unit to
+        
+        Returns:
+            A new unit raised to the specified power
+        
+        Examples:
+            Unit("m") ** 2 -> Unit("m^2")
+            Unit("m/s") ** 3 -> Unit("m^3/s^3")
+        """
+        # Raise unit elements to power
+        new_unit_elements: dict[str, Tuple[UnitElement, ...]] = {}
+        for subscript, elements in self._unit_elements.items():
+            new_elements = tuple(element.pow(exponent) for element in elements)
+            new_unit_elements[subscript] = new_elements
+        
+        # For log units, we don't raise them to powers in the same way
+        # Log units maintain their structure
+        new_log_units: List[Tuple[UnitElement, Dimension]] = []
+        for log_unit_element, inner_dimension in self._log_units:
+            new_log_unit_element = UnitElement(log_unit_element.prefix, log_unit_element.unit_symbol, log_unit_element.exponent * exponent)
+            new_log_units.append((new_log_unit_element, inner_dimension))
+        
+        return self._construct(MappingProxyType(new_unit_elements), new_log_units)
 
-    def pow(self, exponent: float|int) -> "Unit":
-        """Raise a unit to a power. E.g. m^2 -> m^2"""
-
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.pow(exponent)
-        return Unit(new_unit_groups)
-    
     def __invert__(self) -> "Unit":
-        """Invert a unit. E.g. ~m -> 1/m"""
+        """
+        Invert a unit.
+        
+        Returns:
+            A new unit representing the inverse
+        
+        Examples:
+            ~Unit("m") -> Unit("1/m")
+            ~Unit("kg*m/s^2") -> Unit("s^2/(kg*m)")
+        """
+        return self ** (-1)
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.invert()
-        return Unit(new_unit_groups)
-    
     def invert(self) -> "Unit":
-        """Invert a unit. E.g. ~m -> 1/m"""
+        """Invert a unit (same as ~self)."""
         return ~self
-    
-# ----------- Advanced operations -----------#
 
     def log(self) -> "Unit":
+        """
+        Take the logarithm of a unit.
+        
+        The logarithm is always applied to the canonical value, so prefixes are stripped.
+        For example, dec(mA) and dec(kA) both become dec(A) because they represent
+        decades of the canonical current unit.
+        
+        Returns:
+            A new unit representing the logarithm
+        
+        Examples:
+            Unit("m").log() -> dec(L)  # decades of length
+            Unit("mA").log() -> dec(A)  # decades of current (not decades of milliampere)
+            Unit("km").log() -> dec(m)  # decades of length (not decades of kilometer)
+        """
+        # Create a new unit with this unit's dimension in the log component
+        from .utils.units.unit_symbol import LOG_UNIT_SYMBOLS
+        log_unit_element = UnitElement("", LOG_UNIT_SYMBOLS.BASE_10, 1.0)
+        log_units = [(log_unit_element, self.dimension)]
+        
+        return self._construct(MappingProxyType({}), log_units)
 
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.log()
-        return Unit(new_unit_groups)
-    
     def exp(self) -> "Unit":
-        """Exponentiate a unit. E.g. exp(m) -> e^m"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.exp()
-        return Unit(new_unit_groups)
+        """
+        Exponentiate a unit (inverse of log).
+        
+        Only valid for dimensionless units or single logarithmic units.
+        
+        Returns:
+            A new unit representing the exponential
+        
+        Raises:
+            ValueError: If the unit is not valid for exponential
+        
+        Examples:
+            # Dimensionless unit
+            dimensionless = Unit("")
+            exp_dimless = dimensionless.exp()  # Still dimensionless
+            
+            # Logarithmic unit
+            log_mass = Unit("dec(kg)")
+            mass = log_mass.exp()  # kg
+        """
+        # If dimensionless, return dimensionless
+        if self.is_dimensionless and not self._log_units:
+            return Unit.dimensionless_unit()
+        
+        # If it's a single log unit, extract the inner dimension
+        elif len(self._log_units) == 1 and not self._unit_elements:
+            log_unit_element, inner_dimension = self._log_units[0]
+            if abs(log_unit_element.exponent - 1.0) <= EPSILON:
+                # Create a unit from the inner dimension
+                # The inner dimension represents what the log unit is logging
+                # We need to create a unit that represents this dimension
+                # For now, let's create a unit with the dimension as the inner dimension of a log unit
+                # This is a temporary approach - we need a better way to convert Dimension to Unit
+                from .utils.units.unit_symbol import LOG_UNIT_SYMBOLS
+                log_unit_element = UnitElement("", LOG_UNIT_SYMBOLS.BASE_10, 1.0)
+                # Create a unit with the inner dimension as a regular unit element
+                # This is not quite right - we need to think about this differently
+                return Unit._construct(MappingProxyType({}), [(log_unit_element, inner_dimension)])
+            else:
+                raise ValueError("Invalid unit for exponential.")
+        else:
+            raise ValueError("Invalid unit for exponential.")
+
+
+
+
     
-    def arc(self) -> "Unit":
-        """Take the arcsin of a unit. E.g. arcsin(m) -> sin^-1(m)"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.arc()
-        return Unit(new_unit_groups)
-    
-    def trig(self) -> "Unit":
-        """Take the sin of a unit. E.g. sin(m) -> sin(m)"""
-        new_unit_groups: dict[str, UnitGroup] = {}
-        for subscript, unit_group in self._unit_groups.items():
-            new_unit_groups[subscript] = unit_group.trig()
-        return Unit(new_unit_groups)
+########################################################
+    # Compatibility and comparison
+########################################################
 
-#----------- Creating a scalar/array from a float, int, complex, np.ndarray -----------#
+    def compatible_to(self, other: Union["Unit", Dimension]) -> bool:
+        """
+        Check if this unit is compatible with another unit or dimension.
+        
+        Args:
+            other: The unit or dimension to check compatibility with
+        
+        Returns:
+            True if compatible, False otherwise
+        """
+        if isinstance(other, Unit):
+            return self.dimension == other.dimension
+        else:
+            return self.dimension == other
 
-    @overload
-    def __rmul__(self, other: float|int) -> "RealUnitedScalar": # type: ignore
-        ...
-    @overload
-    def __rmul__(self, other: complex) -> "ComplexUnitedScalar":
-        ...
-    @overload
-    def __rmul__(self, other: np.ndarray) -> "RealUnitedArray|ComplexUnitedArray":
-        ...
-    def __rmul__(self, other: float|int|complex|np.ndarray) -> "RealUnitedScalar|RealUnitedArray|ComplexUnitedScalar|ComplexUnitedArray":
-        """Multiply a scalar/array by a unit. E.g. 2.5 * m -> 2.5*m"""
+    @staticmethod
+    def is_valid_for_addition(unit_1: "Unit", unit_2: "Unit") -> bool:
+        """
+        Check if two units can be added or subtracted.
+        
+        Two units can be added/subtracted if they have compatible dimensions
+        and the same log units.
+        
+        Args:
+            unit_1: First unit
+            unit_2: Second unit
+        
+        Returns:
+            True if the units can be added/subtracted, False otherwise
+        
+        Examples:
+            force1 = Unit("kg*m/s^2")
+            force2 = Unit("N")
+            assert Unit.is_valid_for_addition(force1, force2)
+            
+            # Different units cannot be added
+            mass = Unit("kg")
+            length = Unit("m")
+            assert not Unit.is_valid_for_addition(mass, length)
+        """
+        # For log units, we don't need to check dimension compatibility
+        # since we're doing logarithmic arithmetic
+        if not unit_1._log_units and not unit_2._log_units:
+            # Only check dimension compatibility for non-log units
+            if not Dimension.is_valid_for_addition(unit_1.dimension, unit_2.dimension):
+                return False
+        
+        # For log units, we only need to check that both have log units
+        # The log function type and inner dimensions can be different (they'll be combined in arithmetic)
+        if len(unit_1._log_units) != len(unit_2._log_units):
+            return False
+        
+        return True
 
-        if isinstance(other, float|int):
+    def __eq__(self, other: object) -> bool:
+        """Check if two units are equal."""
+        if not isinstance(other, Unit):
+            return False
+        
+        return (self._unit_elements == other._unit_elements and
+                self._log_units == other._log_units)
+
+    def __ne__(self, other: object) -> bool:
+        """Check if two units are not equal."""
+        return not self == other
+
+    def __hash__(self) -> int:
+        """Hash based on unit elements and log units."""
+        unit_elements_tuple = tuple(sorted(self._unit_elements.items()))
+        log_units_tuple = tuple(sorted(self._log_units))
+        return hash((unit_elements_tuple, log_units_tuple))
+
+########################################################
+    # String representation
+########################################################
+
+    def __str__(self) -> str:
+        """Get string representation of the unit."""
+        return self.format_string()
+
+    def format_string(self, as_fraction: bool = True) -> str:
+        """
+        Format the unit as a string.
+        
+        Args:
+            as_fraction: Whether to format as a fraction
+        
+        Returns:
+            String representation of the unit
+        
+        Examples:
+            Unit("m").format_string() -> "m"
+            Unit("m/s").format_string() -> "m/s"
+            Unit("kg*m/s^2").format_string() -> "kg*m/s^2"
+        """
+        # Special case: log units with dimensionless inner dimensions should format as "dec"
+        if self.is_dimensionless and self._log_units:
+            log_unit_element = self._log_units[0][0]
+            log_symbol = log_unit_element.unit_symbol.value.symbols[0]
+            return f"{log_unit_element.prefix}{log_symbol}"
+        
+        if self.is_dimensionless:
+            return ""
+        
+        # Format regular unit elements
+        nominator_parts: List[str] = []
+        denominator_parts: List[str] = []
+        
+        for subscript, elements in self._unit_elements.items():
+            for element in elements:
+                if abs(element.exponent) > EPSILON:
+                    part_str, position = element.format_string(as_fraction)
+                    if subscript:
+                        # Insert subscript before the exponent
+                        if "^" in part_str:
+                            # Split at ^ to put subscript before exponent
+                            base_part, exponent_part = part_str.split("^", 1)
+                            part_str = f"{base_part}_{subscript}^{exponent_part}"
+                        else:
+                            # No exponent, just append subscript
+                            part_str = f"{part_str}_{subscript}"
+                    
+                    if position == "nominator":
+                        nominator_parts.append(part_str)
+                    else:  # denominator
+                        denominator_parts.append(part_str)
+        
+        # Format log units (always in nominator for now)
+        for log_unit_element, inner_dimension in self._log_units:
+            # Use the first symbol from the log unit symbol
+            log_symbol = log_unit_element.unit_symbol.value.symbols[0]
+            part = f"{log_unit_element.prefix}{log_symbol}({inner_dimension.format_string()})"
+            if abs(log_unit_element.exponent - 1.0) > EPSILON:
+                part += f"^{log_unit_element.exponent}"
+            nominator_parts.append(part)
+        
+        # Combine parts
+        if not nominator_parts and not denominator_parts:
+            return ""
+        
+        result = "*".join(nominator_parts) if nominator_parts else "1"
+        
+        if denominator_parts:
+            denominator_str = "/".join(denominator_parts)
+            result = f"{result}/{denominator_str}"
+        
+        return result
+
+    def __repr__(self) -> str:
+        """Get detailed string representation of the unit."""
+        return f"Unit('{self.format_string()}')"
+
+    ########################################################
+    # Parsing
+    ########################################################
+
+    @classmethod
+    def _parse_string(cls, string: str) -> Tuple[MappingProxyType[str, Tuple[UnitElement, ...]], List[Tuple[UnitElement, "Dimension"]]]:
+        """
+        Parse a unit string into internal components.
+        
+        Args:
+            string: The unit string to parse
+        
+        Returns:
+            Dictionary with 'unit_elements' and 'log_units'
+        
+        Examples:
+            "m" -> {"unit_elements": {"": (UnitElement("", METER, 1),)}, "log_units": {}}
+            "m/s" -> {"unit_elements": {"": (UnitElement("", METER, 1), UnitElement("", SECOND, -1))}, ...}
+            "dec(N)" -> {"unit_elements": {}, "log_units": [(UnitElement("", LOG_UNIT_SYMBOLS.BASE_10, 1), Dimension("N"))]}
+        """
+        if not string.strip():
+            return (MappingProxyType({}), [])
+        
+        # Handle dimensionless unit "1"
+        if string.strip() == "1":
+            return (MappingProxyType({}), [])
+        
+        # Parse the string into components
+        unit_elements: dict[str, List[UnitElement]] = {}
+        log_units: List[Tuple[UnitElement, "Dimension"]] = []
+        
+        # Split by multiplication
+        parts = seperate_string(string, "nominator")
+        
+        for separator, part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            
+            # Handle special cases (log units) FIRST
+            log_unit_found = False
+            from .utils.units.unit_symbol import LOG_UNIT_SYMBOLS
+            for log_symbol_enum in LOG_UNIT_SYMBOLS:
+                for log_symbol in log_symbol_enum.value.symbols:
+                    if log_symbol in part and "(" in part:
+                        # Find the log symbol and any prefix
+                        log_start = part.find(log_symbol)
+                        if log_start > 0:
+                            # There's a prefix before the log symbol
+                            prefix = part[:log_start]
+                            log_part = part[log_start:]
+                        else:
+                            # No prefix
+                            prefix = ""
+                            log_part = part
+                        
+                        if log_part.startswith(f"{log_symbol}("):
+                            # Find the closing parenthesis
+                            paren_count = 1  # Start at 1 since we're after the opening parenthesis
+                            inner_start = len(log_symbol) + 1
+                            inner_end = -1
+                            
+                            for i, char in enumerate(log_part[inner_start:], inner_start):
+                                if char == '(':
+                                    paren_count += 1
+                                elif char == ')':
+                                    paren_count -= 1
+                                    if paren_count == 0:
+                                        inner_end = i
+                                        break
+                            
+                            if inner_end != -1:
+                                # Extract the inner content and any remaining part (exponent)
+                                inner_content = log_part[inner_start:inner_end]
+                                remaining_part = log_part[inner_end + 1:]
+                                
+                                # Validate that inner content is not empty
+                                if not inner_content.strip():
+                                    raise ValueError(f"Empty content in log unit: {part}")
+                                
+                                # Parse the inner content as a dimension
+                                from .dimension import Dimension
+                                
+                                # Convert unit symbols in inner_content to dimension symbols
+                                # Note: Logarithmic units are always applied to canonical values,
+                                # so dec(mA) becomes dec(A) - decades of current, not decades of milliampere
+                                
+                                # Parse the inner content as a dimension
+                                # The Dimension parser will handle unit symbols and convert them to dimension symbols
+                                dimension_string = inner_content
+                                inner_dimension = Dimension(dimension_string)
+                                
+                                # Create the log unit element
+                                log_unit_symbol: Optional[LOG_UNIT_SYMBOLS] = None
+                                for log_symbol_enum in LOG_UNIT_SYMBOLS:
+                                    if log_symbol in log_symbol_enum.value.symbols:
+                                        log_unit_symbol = log_symbol_enum
+                                        break
+                                if log_unit_symbol is None:
+                                    raise ValueError(f"Invalid log unit symbol: {log_symbol}")
+                                
+                                # Parse exponent from remaining part
+                                exponent = 1.0
+                                if remaining_part.startswith("^"):
+                                    try:
+                                        exponent = float(remaining_part[1:])
+                                    except ValueError:
+                                        raise ValueError(f"Invalid exponent in log unit: {part}")
+                                
+                                # Create UnitElement for the log symbol with prefix and exponent
+                                log_unit_element = UnitElement(prefix, log_unit_symbol, exponent)
+                                
+                                log_units.append((log_unit_element, inner_dimension))
+                                log_unit_found = True
+                                break
+                    elif log_symbol in part and "(" not in part:
+                        # Log symbol without parentheses is invalid
+                        raise ValueError(f"Log symbol '{log_symbol}' must be followed by parentheses: {part}")
+            
+            if not log_unit_found:
+                # Handle subscripts for regular unit elements
+                # Parse the part to extract unit_part and subscript, handling both ^ and _ in any order
+                
+                if part.count('^') == 0 and part.count('_') == 0:
+                    # No exponent or subscript
+                    unit_part = part
+                    subscript = ""
+                
+                elif part.count('^') == 1 and part.count('_') == 1:
+                    # Both exponent and subscript present
+                    caret_pos = part.index('^')
+                    underscore_pos = part.index('_')
+                    
+                    if caret_pos < underscore_pos:
+                        # Format: unit^exp_subscript
+                        # Split at underscore to separate unit^exp from subscript
+                        unit_with_exp, subscript = part.split("_", 1)
+                        unit_part = unit_with_exp
+                    else:
+                        # Format: unit_subscript^exp
+                        # Split at underscore to separate unit from subscript^exp
+                        unit_part, subscript_with_exp = part.split("_", 1)
+                        # The subscript_with_exp contains the subscript and exponent
+                        # We need to extract just the subscript part and reconstruct unit_part with exponent
+                        if "^" in subscript_with_exp:
+                            subscript, exponent_part = subscript_with_exp.split("^", 1)
+                            # Reconstruct unit_part to include the exponent
+                            unit_part = unit_part + "^" + exponent_part
+                        else:
+                            subscript = subscript_with_exp
+                
+                elif part.count('^') == 1 and part.count('_') == 0:
+                    # Only exponent present
+                    unit_part = part
+                    subscript = ""
+
+                elif part.count('^') == 0 and part.count('_') == 1:
+                    # Only subscript present
+                    unit_part, subscript = part.split("_", 1)
+
+                else:
+                    raise ValueError(f"Invalid unit string: {part}")
+                
+                # Regular unit element
+                position = "nominator" if separator == "*" else "denominator"
+                unit_element = UnitElement.parse_string(unit_part, position)
+                
+                if subscript not in unit_elements:
+                    unit_elements[subscript] = []
+
+                unit_elements[subscript].append(unit_element) # type: ignore
+        
+        # Convert lists to tuples
+        unit_elements_as_tuples: dict[str, tuple[UnitElement, ...]] = {k: tuple(v) for k, v in unit_elements.items()}
+        
+        return MappingProxyType(unit_elements_as_tuples), log_units
+
+########################################################
+    # Unit conversion
+########################################################
+
+    def to_canonical_value(self, value_in_unit: Union[float, int, complex, np.ndarray]) -> Union[float, int, complex, np.ndarray]:
+        """
+        Convert a value from this unit to canonical units.
+        
+        Args:
+            value_in_unit: The value in this unit
+        
+        Returns:
+            The value in canonical units
+        
+        Examples:
+            Unit("km").to_canonical_value(2.5) -> 2500.0
+            Unit("°C").to_canonical_value(25) -> 298.15
+        """
+        if isinstance(value_in_unit, (int, float)):
+            return value_in_unit * self.factor + self.offset
+        elif isinstance(value_in_unit, complex):
+            return value_in_unit * self.factor + self.offset
+        elif isinstance(value_in_unit, np.ndarray): # type: ignore
+            return value_in_unit * self.factor + self.offset
+        else:
+            raise ValueError(f"Invalid value type: {type(value_in_unit)}")
+
+    def from_canonical_value(self, canonical_value: Union[float, int, complex, np.ndarray]) -> Union[float, int, complex, np.ndarray]:
+        """
+        Convert a value from canonical units to this unit.
+        
+        Args:
+            canonical_value: The value in canonical units
+        
+        Returns:
+            The value in this unit
+        
+        Examples:
+            Unit("km").from_canonical_value(2500.0) -> 2.5
+            Unit("°C").from_canonical_value(298.15) -> 25.0
+        """
+        if isinstance(canonical_value, (int, float)):
+            return (canonical_value - self.offset) / self.factor
+        elif isinstance(canonical_value, complex):
+            return (canonical_value - self.offset) / self.factor
+        elif isinstance(canonical_value, np.ndarray): # type: ignore
+            return (canonical_value - self.offset) / self.factor
+        else:
+            raise ValueError(f"Invalid value type: {type(canonical_value)}")
+        
+########################################################
+    # Scalar/Array creation
+########################################################
+
+    def __rmul__(self, other: Union[float, int, complex, np.ndarray]) -> Union["RealUnitedScalar", "ComplexUnitedScalar", "RealUnitedArray", "ComplexUnitedArray"]:
+        """
+        Multiply a scalar/array by this unit.
+        
+        Args:
+            other: The scalar or array to multiply
+        
+        Returns:
+            A united scalar or array with this unit
+        
+        Examples:
+            2.5 * Unit("m") -> RealUnitedScalar(2.5, Unit("m"))
+        """
+        if isinstance(other, (float, int)):
             from .real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(other, self)
         elif isinstance(other, complex):
             from .complex_united_scalar import ComplexUnitedScalar
             return ComplexUnitedScalar(other, self) # type: ignore
-        else:
-            # Find out if there is a complex number in the array
+        elif isinstance(other, np.ndarray): # type: ignore
             if np.iscomplexobj(other):
                 from .complex_united_array import ComplexUnitedArray
                 return ComplexUnitedArray(other, self) # type: ignore
             else:
                 from .real_united_array import RealUnitedArray
                 return RealUnitedArray(other, self)
-            
-    def __rtruediv__(self, other: float|int|complex|np.ndarray) -> "RealUnitedScalar|RealUnitedArray|ComplexUnitedScalar|ComplexUnitedArray":
-        """Divide a scalar/array by a unit. E.g. 2.5 / m -> 2.5/m"""
+        else:
+            raise ValueError(f"Invalid type for multiplication: {type(other)}")
+
+    def __rtruediv__(self, other: Union[float, int, complex, np.ndarray]) -> Union["RealUnitedScalar", "ComplexUnitedScalar", "RealUnitedArray", "ComplexUnitedArray"]:
+        """
+        Divide a scalar/array by this unit.
+        
+        Args:
+            other: The scalar or array to divide
+        
+        Returns:
+            A united scalar or array with the inverse of this unit
+        
+        Examples:
+            2.5 / Unit("m") -> RealUnitedScalar(2.5, Unit("1/m"))
+        """
         return (~self).__rmul__(other)
-    
-#----------- Comparison operations -----------#
-
-    def equal_exact(self, other: "Unit") -> bool:
-        """
-        Check if two units are equal. This is a strong comparison, not a weak one.
-        This is used to check if two units are exactly the same, including the order of the unit elements.
-
-        - Have the same Dimension
-        - Have the same factor and offset
-        - Have the same order of unit symbols
-        - Have the same prefixes and exponents for each symbol
-        """
-        return self._unit_groups == other._unit_groups
-    
-    def equal_effectively(self, other: "Unit") -> bool:
-        """
-        Check if two units are equal. This is a weak comparison, not a strong one.
-        This is used to check if two units are effectively the same.
-
-        - Have the same dimension
-        - Have the same factor and offset        
-        """
-
-        if len(self._unit_groups) != len(other._unit_groups):
-            return False
-
-        for subscript, dimension_group in self._dimension_groups.items():
-            if subscript not in other._dimension_groups:
-                return False
-            if dimension_group != other._dimension_groups[subscript]:
-                return False
-            if self._factors[subscript] != other._factors[subscript]:
-                return False
-            if self._offsets[subscript] != other._offsets[subscript]:
-                return False
-
-        return True
-
-    def __eq__(self, other: object) -> bool:
-        """Check if two units are equal. This is a strong comparison, not a weak one."""
-        if not isinstance(other, Unit):
-            return False
-        return self.equal_exact(other)
-    
-    def __ne__(self, other: object) -> bool:
-        """Check if two units are not equal."""
-        if not isinstance(other, Unit):
-            return True
-        return not self.equal_exact(other)
-    
-    def __hash__(self) -> int:
-        """Hash based on unit elements, factor, and offset."""
-        return hash(self._unit_groups)
 
 ########################################################
-# Conversions
+    # Serialization
 ########################################################
 
-    @overload
-    def from_canonical_value(self, canonical_value: int) -> float|int:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: np.float64) -> np.float64:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: np.float32) -> np.float32:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: np.float16) -> np.float16:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: np.complex128) -> np.complex128:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: float) -> float:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: complex) -> complex:
-        ...
-    @overload
-    def from_canonical_value(self, canonical_value: np.ndarray) -> np.ndarray:
-        ...
-    def from_canonical_value(self, canonical_value: int|np.float64|np.float32|np.float16|np.complex128|float|complex|np.ndarray) -> np.float64|np.float32|np.float16|np.complex128|float|int|complex|np.ndarray:
-
-        match canonical_value:
-            case int():
-                new_value = (canonical_value - self.offset) / self.factor
-                return int(new_value) if new_value.is_integer() else new_value
-            case float():
-                float_type = type(canonical_value)
-                if float_type is np.float16:
-                    return np.float16((canonical_value - self.offset) / self.factor)
-                elif float_type is np.float32:
-                    return np.float32((canonical_value - self.offset) / self.factor)
-                elif float_type is np.float64:
-                    return np.float64((canonical_value - self.offset) / self.factor)
-                else:
-                    return (canonical_value - self.offset) / self.factor
-            case complex():
-                return (canonical_value - self.offset) / self.factor
-            case np.ndarray():
-                return (canonical_value - self.offset) / self.factor
-            case _:
-                raise ValueError(f"Invalid canonical value type: {type(canonical_value)}")
-
-    @overload
-    def to_canonical_value(self, value_in_unit: int) -> float|int:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: np.float64) -> np.float64:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: np.float32) -> np.float32:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: np.float16) -> np.float16:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: np.complex128) -> np.complex128:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: float) -> float:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: complex) -> complex:
-        ...
-    @overload
-    def to_canonical_value(self, value_in_unit: np.ndarray) -> np.ndarray:
-        ...
-    def to_canonical_value(self, value_in_unit: int|np.float64|np.float32|np.float16|np.complex128|float|complex|np.ndarray) -> np.float64|np.float32|np.float16|np.complex128|float|int|complex|np.ndarray:
-        match value_in_unit:
-            case int():
-                new_value: float = value_in_unit * self.factor + self.offset
-                if new_value.is_integer():
-                    return int(new_value)
-                else:
-                    return new_value
-            case float():
-                float_type = type(value_in_unit)
-                if float_type is np.float16:
-                    return np.float16(value_in_unit * self.factor + self.offset)
-                elif float_type is np.float32:
-                    return np.float32(value_in_unit * self.factor + self.offset)
-                elif float_type is np.float64:
-                    return np.float64(value_in_unit * self.factor + self.offset)
-                else:
-                    return value_in_unit * self.factor + self.offset
-            case complex():
-                return value_in_unit * self.factor + self.offset
-            case np.ndarray():
-                return value_in_unit * self.factor + self.offset
-            case _:
-                raise ValueError(f"Invalid value: {value_in_unit}")
-        
-########################################################
-# String representation
-########################################################
-
-    def __str__(self) -> str:
-        return self.format_string(as_fraction=True)
-    
-    def format_string(self, as_fraction: bool = True) -> str:
+    def to_json(self) -> str:
         """
-        Format the unit as a string.
-
-        Examples:
-        - "m^1", TRUE/FALSE -> "m"
-        - "m^1, s^-1", TRUE/FALSE -> "m/s"
-        - "m^1, s^-1", FALSE/TRUE -> "m*s^-1"
-        - "m^1, s^-2, kg^-1", TRUE -> "m/(s^2*kg)"
-        - "m^1, s^-2, kg^-1", FALSE -> "m*kg^-1*s^-2"
-        - "kg^1, m^1, s^2", TRUE -> "kg*s^2/m"
-        - "kg^1, m^1, s^2", FALSE -> "kg*m^-1*s^-2"
-        - "kg^1, m^2, s^-3, A^-1", TRUE -> "kg*m^2/(A*s^3)"
-        - "kg^1, m^2, s^-3, A^-1", FALSE -> "kg*m^2*A^-1*s^-3"
-        
-        Args:
-            as_fraction: Whether to format the unit as a fraction.
+        Convert the unit to JSON string representation.
         
         Returns:
-            A string representation of the unit.
-        """
-        if not self._unit_elements:
-            return ""
-        
-        nominator_parts: list[str] = []
-        denominator_parts: list[str] = []
-        
-        for element in self._unit_elements:
-            formatted, position = element.format_string(as_fraction)
-            if formatted:  # Skip empty strings (zero exponents)
-                if position == "nominator":
-                    nominator_parts.append(formatted)
-                else:  # position == "denominator"
-                    denominator_parts.append(formatted)
-        
-        # Build the final string
-        if not nominator_parts and not denominator_parts:
-            return ""
-        elif not denominator_parts:
-            return "*".join(nominator_parts)
-        elif not nominator_parts:
-            if len(denominator_parts) == 1:
-                return f"1/{denominator_parts[0]}"
-            else:
-                return f"1/({'*'.join(denominator_parts)})"
-        else:
-            if len(denominator_parts) == 1:
-                return f"{'*'.join(nominator_parts)}/{denominator_parts[0]}"
-            else:
-                return f"{'*'.join(nominator_parts)}/({'*'.join(denominator_parts)})"
-
-########################################################
-# Reducing and combining unit elements
-########################################################
-
-    def reduced_unit(self) -> "Unit":
-        return self
-    
-    @staticmethod
-    def _combine_same_unit_symbols_and_prefixes(unit_elements: Sequence[UnitElement]) -> Sequence[UnitElement]:
-        """
-        Combine unit elements that have the same unit symbol AND prefix.
-        Units with different prefixes are NOT combined to avoid factor ambiguity.
-        """
-        unit_elements_dict: dict[tuple[str, UnitSymbol], UnitElement] = {}
-        for element in unit_elements:
-            prefix: str = element.prefix
-            unit_symbol: UnitSymbol = element.unit_symbol
-            key = (prefix, unit_symbol)
-            if key in unit_elements_dict:
-                existing_unit_element: UnitElement = unit_elements_dict[key]
-                new_exponent: float = existing_unit_element.exponent + element.exponent
-                if abs(new_exponent) < 1e-12:  # treat as zero
-                    unit_elements_dict.pop(key)
-                else:
-                    unit_elements_dict[key] = UnitElement(
-                        prefix=existing_unit_element.prefix,
-                        unit_symbol=unit_symbol,
-                        exponent=new_exponent
-                    )
-            else:
-                if abs(element.exponent) >= 1e-12:
-                    unit_elements_dict[key] = element
-        return tuple(unit_elements_dict.values())
-    
-    @staticmethod
-    def combine_same_unit_symbols(unit_elements: Sequence[UnitElement]) -> tuple[Sequence[UnitElement], float]:
-        """
-        Combine unit elements that have the same unit symbol.
-
-        Prefixes may change, so a factor is returned to account for this.
+            JSON string representation
         
         Examples:
-        - ({"", "m": 1}, {"", "m": 1}, {"µ", "s": 2}) -> ({"", "m": 2}, {"µ", "s": 2}), 1
-        - ({"k", "m": 1}, {"", "m": 1}, {"µ", "s": 2}) -> ({"k", "m": 2}, {"µ", "s": 2}), 1
-        - ({"", "m": 1}, {"k", "m": 1}, {"µ", "s": 2}) -> ({"", "m": 2}, {"µ", "s": 2}), 0.001
-        
+            Unit("m").to_json() -> '"m"'
         """
-
-        unit_elements_dict: dict[UnitSymbol, UnitElement] = {}
-        factor: float = 1.0
-        for element in unit_elements:
-            unit_symbol: UnitSymbol = element.unit_symbol
-            if unit_symbol in unit_elements_dict:
-                existing_unit_element: UnitElement = unit_elements_dict[unit_symbol]
-                new_exponent: float = existing_unit_element.exponent + element.exponent
-                if new_exponent.is_integer():
-                    new_exponent = int(new_exponent)
-                else:
-                    new_exponent = float(new_exponent)
-                if new_exponent != 0:
-                    combined_unit_element: UnitElement = UnitElement(
-                        prefix=existing_unit_element.prefix,
-                        unit_symbol=unit_symbol,
-                        exponent=new_exponent
-                    )
-                    factor *= existing_unit_element.canonical_factor / element.canonical_factor
-                    unit_elements_dict[unit_symbol] = combined_unit_element
-                else:
-                    factor *= existing_unit_element.canonical_factor / element.canonical_factor
-                    unit_elements_dict.pop(unit_symbol)
-            else:
-                unit_elements_dict[unit_symbol] = element
-
-        return tuple(unit_elements_dict.values()), factor
-
-########################################################
-# Suggesting units
-########################################################
-
-    @staticmethod
-    def suggest_units(dimension: Dimension, canonical_value: float|None, must_include: set[UnitElement]|list[UnitElement]=set(), n: int = 1000) -> Tuple["Unit", list["Unit"]]:
+        return self.format_string()
+    
+    @classmethod
+    def from_json(cls, json_string: str) -> "Unit":
         """
-        Suggest units for a given dimension and canonical value, optimized for readability.
-        
-        The method finds units that make the numerical value "nice" - preferably 1-9 digits
-        before the decimal point with minimal zeros and decimal places.
-        
-        This method works without relying on NamedUnit by generating all possible combinations
-        of unit symbols and prefixes.
+        Create a unit from JSON string representation.
         
         Args:
-            quantity: The unit dimension to match
-            canonical_value: The value in canonical units to optimize for
-            must_include: Unit elements that must be included in suggestions
-            n: Maximum number of suggestions to return
+            json_string: The JSON string representation
+        
+        Returns:
+            A new Unit instance
+        
+        Examples:
+            Unit.from_json('"m"') -> Unit("m")
+        """
+        return cls(json_string)
+
+    def to_hdf5(self, hdf5_group: Group) -> None:
+        """
+        Save the unit to an HDF5 group.
+        
+        Args:
+            hdf5_group: The HDF5 group to save to
+        """
+        hdf5_group["unit"] = self.format_string()
+
+    @classmethod
+    def from_hdf5(cls, hdf5_group: Group) -> "Unit":
+        """
+        Create a unit from an HDF5 group.
+        
+        Args:
+            hdf5_group: The HDF5 group to read from
             
         Returns:
-            Tuple of (best_unit, list_of_alternative_units)
+            A new Unit instance
         """
-        from .utils.units.unit_symbol import UnitSymbol
-        from .utils.units.utils import PREFIX_PAIRS
-        from .utils.units.unit_element import UnitElement
+        unit_string: str = hdf5_group["unit"].asstr()[()] # type: ignore
+        if isinstance(unit_string, bytes):
+            unit_string = unit_string.decode("utf-8")
+        return cls(unit_string)
+
+########################################################
+    # Factory methods
+########################################################
+
+    @classmethod
+    def dimensionless_unit(cls) -> "Unit":
+        """
+        Create a dimensionless unit.
         
-        if canonical_value is None:
-            # If no value given, just return a basic canonical unit
-            canonical_unit = dimension.canonical_unit
-            return canonical_unit, [canonical_unit]
+        Returns:
+            A dimensionless unit
         
-        # Generate all possible unit combinations
-        compatible_units: list[Unit] = []
-        seen_units: set[str] = set()  # To avoid duplicates
-        
-        # Get all unit symbols
-        all_symbols = list(UnitSymbol)
-        
-        # Generate single-symbol units with various prefixes
-        for symbol in all_symbols:
-            # Try without prefix
-            try:
-                unit = Unit((UnitElement("", symbol, 1.0),))
-                if unit.compatible_to(dimension):
-                    unit_str = unit.format_string(as_fraction=False)
-                    if unit_str not in seen_units:
-                        compatible_units.append(unit)
-                        seen_units.add(unit_str)
-            except:
-                pass
-            
-            # Try with different prefixes
-            for prefix in PREFIX_PAIRS.keys():
-                if prefix == "":  # Skip empty prefix as we already tried it
-                    continue
-                try:
-                    unit = Unit((UnitElement(prefix, symbol, 1.0),))
-                    if unit.compatible_to(dimension):
-                        unit_str = unit.format_string(as_fraction=False)
-                        if unit_str not in seen_units:
-                            compatible_units.append(unit)
-                            seen_units.add(unit_str)
-                except:
-                    pass
-        
-        # Generate compound units for common derived dimensions
-        # This is more complex but we'll do some basic combinations
-        if len(compatible_units) == 0:
-            # Try some basic compound units
-            for symbol1 in all_symbols:
-                for symbol2 in all_symbols:
-                    if symbol1 == symbol2:
-                        continue
-                    # Try combinations like m/s, kg*m/s^2, etc.
-                    for exp1 in [1, -1, 2, -2]:
-                        for exp2 in [1, -1, 2, -2]:
-                            try:
-                                unit = Unit((
-                                    UnitElement("", symbol1, exp1),
-                                    UnitElement("", symbol2, exp2)
-                                ))
-                                if unit.compatible_to(dimension):
-                                    unit_str = unit.format_string(as_fraction=False)
-                                    if unit_str not in seen_units:
-                                        compatible_units.append(unit)
-                                        seen_units.add(unit_str)
-                                        if len(compatible_units) >= 50:  # Limit to prevent explosion
-                                            break
-                            except:
-                                pass
-                        if len(compatible_units) >= 50:
-                            break
-                    if len(compatible_units) >= 50:
-                        break
-                if len(compatible_units) >= 50:
-                    break
-        
-        # Add must_include elements if specified
-        if must_include:
-            required_elements = list(must_include) if isinstance(must_include, set) else must_include
-            for element in required_elements:
-                try:
-                    unit = Unit((element,))
-                    if unit.compatible_to(dimension):
-                        unit_str = unit.format_string(as_fraction=False)
-                        if unit_str not in seen_units:
-                            compatible_units.append(unit)
-                            seen_units.add(unit_str)
-                except:
-                    pass
-        
-        if not compatible_units:
-            # Fallback to canonical unit
-            canonical_unit = dimension.canonical_unit
-            return canonical_unit, [canonical_unit]
-        
-        # Score each unit based on how "nice" the resulting value would be
-        scored_units: list[Tuple[float, Unit, str]] = []
-        
-        for unit in compatible_units:
-            try:
-                # Convert canonical value to this unit
-                value_in_unit = unit.from_canonical_value(canonical_value)
-                value_str = f"{value_in_unit:g}"  # Format without unnecessary trailing zeros
-                unit_str = unit.format_string(as_fraction=False)
-                
-                # Calculate score (lower is better)
-                score = Unit._calculate_value_score(value_str, unit_str)
-                scored_units.append((score, unit, value_str))
-                
-            except (ValueError, ZeroDivisionError, OverflowError):
-                # Skip units that cause conversion errors
-                continue
-        
-        # Sort by score (ascending - lower is better)
-        scored_units.sort(key=lambda x: x[0])
-        
-        # Return top n suggestions
-        suggestions = [unit for _, unit, _ in scored_units[:n]]
-        
-        if suggestions:
-            return suggestions[0], suggestions
-        else:
-            # Fallback
-            canonical_unit = dimension.canonical_unit
-            return canonical_unit, [canonical_unit]
-    
+        Examples:
+            Unit.dimensionless_unit() -> Unit("")
+        """
+        return cls("")
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear the unit cache."""
+        clear_unit_cache()
+
+    @property
+    def reduced(self) -> "Unit":
+        """
+        Reduce this unit to its simplest form.
+        """
+        return self.reduce_unit(self)
+
     @staticmethod
-    def _calculate_value_score(value_str: str, unit_str: str) -> float:
+    def reduce_unit(unit: "Unit") -> "Unit":
         """
-        Calculate a score for how "nice" a value/unit combination is.
-        Lower scores are better.
-        """
-        import math
-        import re
+        Attempt to reduce a unit by using derived units from NamedQuantity enums.
         
-        # Parse the numeric value
-        try:
-            numeric_value = float(value_str)
-        except ValueError:
-            return float('inf')  # Invalid numbers get worst score
+        This method tries to replace combinations of base units with derived units
+        where possible, e.g., J/s -> W, kg*m/s^2 -> N, etc.
         
-        if numeric_value == 0:
-            return 0.0  # Zero is perfect
-        
-        score = 0.0
-        
-        # 1. Prefer values between 1 and 999 (1-3 digits before decimal)
-        abs_value = abs(numeric_value)
-        if 1 <= abs_value < 10:
-            score += 0.0  # Perfect range
-        elif 10 <= abs_value < 100:
-            score += 1.0  # Good range
-        elif 100 <= abs_value < 1000:
-            score += 2.0  # Acceptable range
-        elif 0.1 <= abs_value < 1:
-            score += 3.0  # Small decimals
-        elif 0.01 <= abs_value < 0.1:
-            score += 5.0  # Very small decimals
-        else:
-            # Very large or very small numbers
-            log_value = math.log10(abs_value)
-            score += 10.0 + abs(log_value)
-        
-        # 2. Penalize decimal places and zeros
-        if '.' in value_str:
-            decimal_part = value_str.split('.')[1]
-            score += len(decimal_part) * 0.5  # Each decimal place adds penalty
-            score += decimal_part.count('0') * 0.3  # Extra penalty for trailing zeros
-        
-        # 3. Penalize leading/trailing zeros in the whole number
-        if 'e' not in value_str.lower():  # Avoid scientific notation
-            score += value_str.count('0') * 0.2
-        
-        # 4. Prefer shorter unit strings
-        score += len(unit_str) * 0.1
-        
-        # 5. Total character count (value + unit)
-        score += len(value_str) * 0.1
-        
-        # 6. Heavily penalize scientific notation
-        if 'e' in value_str.lower():
-            score += 20.0
-        
-        # 7. HEAVILY penalize fractional exponents in unit strings
-        # Look for patterns like ^0.5, ^-0.5, ^1.5, ^-1.5, etc.
-        fractional_exponent_pattern = r'\^(-?\d*\.\d+)'
-        fractional_matches = re.findall(fractional_exponent_pattern, unit_str)
-        
-        for exponent_str in fractional_matches:
-            try:
-                exponent = float(exponent_str)
-                # Heavy penalty for fractional exponents
-                score += 50.0  # Base penalty for any fractional exponent
-                
-                # Extra penalty for "weird" fractions
-                if abs(exponent - 0.5) < EPSILON or abs(exponent + 0.5) < EPSILON:
-                    score += 10.0  # ±0.5 is less bad than other fractions
-                elif abs(exponent - 1.5) < EPSILON or abs(exponent + 1.5) < EPSILON:
-                    score += 20.0  # ±1.5 is worse
-                else:
-                    score += 30.0  # Other fractions are worst
-                    
-            except ValueError:
-                # If we can't parse the exponent, it's definitely bad
-                score += 100.0
-        
-        # 8. Prefer simple integer exponents
-        # Look for patterns like ^2, ^3, ^-1, ^-2, etc.
-        integer_exponent_pattern = r'\^(-?\d+)(?!\.\d)'  # Negative lookbehind to avoid matching 2.5 as 2
-        integer_matches = re.findall(integer_exponent_pattern, unit_str)
-        
-        for exponent_str in integer_matches:
-            try:
-                exponent = int(exponent_str)
-                # Small penalty for high integer exponents
-                if abs(exponent) > 3:
-                    score += abs(exponent) * 0.5
-            except ValueError:
-                pass
-        
-        # 9. Prefer simple compound units over complex derived units
-        # Count the number of different unit symbols in the string
-        # Use Unicode letter pattern to handle symbols like ν, Ω, μ, etc.
-        unit_symbols = re.findall(r'[\w\u0080-\uFFFF]+', unit_str)
-        # Filter to keep only letter-containing symbols (exclude pure numbers)
-        unit_symbols = [s for s in unit_symbols if re.search(r'[A-Za-z\u0080-\uFFFF]', s)]
-        
-        if len(unit_symbols) > 3:
-            score += (len(unit_symbols) - 3) * 2.0  # Penalty for too many different symbols
-        
-        # 10. Use UnitSymbolTag to prefer SI units over non-SI units
-        from .utils.units.unit_symbol import UnitSymbol, UNIT_SYMBOL_TAG
-        
-        for symbol in unit_symbols:
-            # Remove common prefixes to get the base symbol
-            base_symbol = symbol
-            common_prefixes = ['k', 'M', 'G', 'T', 'c', 'm', 'μ', 'µ', 'n', 'p', 'f', 'a']
-            for prefix in common_prefixes:
-                if symbol.startswith(prefix) and len(symbol) > len(prefix):
-                    base_symbol = symbol[len(prefix):]
-                    break
+        Args:
+            unit: The unit to reduce
             
-            try:
-                unit_symbol = UnitSymbol.from_symbol(base_symbol)
-                tags = unit_symbol.value.symbol_tags
-                
-                # Apply scoring based on tags
-                if UNIT_SYMBOL_TAG.SI_BASE_UNIT in tags:
-                    score += 0.0  # Best score for SI base units
-                elif UNIT_SYMBOL_TAG.SI_DERIVED_UNIT in tags:
-                    score += 0.1  # Slightly less preferred than base units
-                elif UNIT_SYMBOL_TAG.SI_BASE_UNIT_EQUIVALENT in tags:
-                    score += 0.2  # Even less preferred
-                elif UNIT_SYMBOL_TAG.NON_SI_SYSTEM in tags:
-                    score += 2.0  # Penalty for non-SI units
-                elif UNIT_SYMBOL_TAG.US_CUSTOMARY_SYSTEM in tags or UNIT_SYMBOL_TAG.IMPERIAL_SYSTEM in tags:
-                    score += 3.0  # Higher penalty for non-metric systems
-                else:
-                    score += 1.0  # Default penalty for unclassified units
-                    
-            except ValueError:
-                # Symbol not found in UnitSymbol enum - likely obscure
-                score += 5.0  # Heavy penalty for unknown symbols
+        Returns:
+            A new unit that is as reduced as possible
         
-        return score
+        Examples:
+            Unit.reduce_unit(Unit("J/s")) -> Unit("W")
+            Unit.reduce_unit(Unit("kg*m/s^2")) -> Unit("N")
+            Unit.reduce_unit(Unit("kg*m^2/s^2")) -> Unit("J")
+        """
+        if unit.is_dimensionless:
+            return unit
+        
+        # Import here to avoid circular imports
+        from .utils.units.reduce_unit_elements import reduce_unit_elements
+        from .utils.units.dimension_symbol import UnitSymbol
+
+        def consolidate_unit_elements(unit_elements: Sequence[UnitElement]) -> Sequence[UnitElement]:
+            """
+            Consolidate a group of unit elements with the same symbol by combining their exponents.
+            
+            Args:
+                unit_elements: Tuple of unit elements to consolidate
+                
+            Returns:
+                Tuple of consolidated unit elements
+            """
+            if len(unit_elements) <= 1:
+                return unit_elements
+            
+            # Group elements by their unit symbol and prefix
+            grouped_elements: dict[tuple[UnitSymbol, str], UnitElement] = {}
+            for element in unit_elements:
+                if not isinstance(element.unit_symbol, UnitSymbol):
+                    raise AssertionError("Unit symbol is not a UnitSymbol")
+                key: tuple[UnitSymbol, str] = (element.unit_symbol, element.prefix)
+                if key in grouped_elements:
+                    # Combine exponents
+                    combined_exponent: float = grouped_elements[key].exponent + element.exponent
+                    grouped_elements[key] = UnitElement(element.prefix, element.unit_symbol, combined_exponent)
+                else:
+                    grouped_elements[key] = element
+            
+            # Return only elements with non-zero exponents
+            result = [element for element in grouped_elements.values() if abs(element.exponent) > EPSILON]
+            return tuple(result)
+
+        # Handle log units by converting them to dimension symbols
+        new_log_units: list[tuple[UnitElement, Dimension]] = []
+        for log_unit_element, inner_dimension in unit._log_units:
+            # For log units, we keep the log structure but reduce the inner content
+            new_log_units.append((log_unit_element, inner_dimension))
+
+        # Process regular unit elements
+        new_unit_elements: dict[str, tuple[UnitElement, ...]] = {}
+        
+        # First, consolidate all elements across subscripts
+        all_elements: list[tuple[str, UnitElement]] = []
+        for subscript, elements in unit._unit_elements.items():
+            for element in elements:
+                # Create a new element with the subscript in the unit symbol if needed
+                if subscript and subscript != "":
+                    # For now, we'll keep the subscript structure as is
+                    all_elements.append((subscript, element))
+                else:
+                    all_elements.append(("", element))
+        
+        # Group by subscript and consolidate within each group
+        grouped_by_subscript: dict[str, list[UnitElement]] = {}
+        for subscript, element in all_elements:
+            if subscript not in grouped_by_subscript:
+                grouped_by_subscript[subscript] = []
+            grouped_by_subscript[subscript].append(element)
+        
+        # Reduce each subscript group
+        for subscript, elements in grouped_by_subscript.items():
+            consolidated_elements: Sequence[UnitElement] = consolidate_unit_elements(elements)
+            reduced_elements: Sequence[UnitElement] = reduce_unit_elements(consolidated_elements)
+            if len(reduced_elements) > 0:
+                new_unit_elements[subscript] = tuple(reduced_elements)
+        
+        return Unit._construct(MappingProxyType(new_unit_elements), new_log_units)
     
 ########################################################
 # Preset units
 ########################################################
  
-DIMENSIONLESS_UNIT: Final["Unit"] = Unit()
-DECADE: Final["Unit"] = Unit(
-    UnitGroup(
-        value=(),
-        log_unit_group=UnitGroup.dimensionless_unit_group(),
-        angle_unit_group=None,
-        log_exponent=1.0,
-        angle_exponent=0.0
-        ))
-DEGREE: Final["Unit"] = Unit(
-    UnitGroup(
-        value=(),
-        log_unit_group=None,
-        angle_unit_group=UnitGroup.dimensionless_unit_group(),
-        log_exponent=0.0,
-        angle_exponent=1.0
-        ))
+DIMENSIONLESS_UNIT: Unit = Unit.dimensionless_unit()
+# DECADE: Unit = Unit("dec(1)")  # Decade is a dimensionless log unit - commented out for now
