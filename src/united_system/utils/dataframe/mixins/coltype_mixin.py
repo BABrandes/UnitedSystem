@@ -7,13 +7,16 @@ filtering by type, and column type management.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType
+from ....column_type import ColumnType
 
 CK_CF = TypeVar("CK_CF", bound=str, default=str)
 
-class ColTypeMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class ColTypeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Column type operations mixin for UnitedDataframe.
     

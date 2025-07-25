@@ -7,19 +7,19 @@ from pandas._typing import Dtype
 from pandas import Timestamp
 import numpy as np
 
-from ...unit import Unit
-from ...real_united_scalar import RealUnitedScalar
-from ...complex_united_scalar import ComplexUnitedScalar
-from ...real_united_array import RealUnitedArray
-from ...complex_united_array import ComplexUnitedArray
-from ...string_array import StringArray
-from ...complex_array import ComplexArray
-from ...int_array import IntArray
-from ...float_array import FloatArray
-from ...bool_array import BoolArray
-from ...timestamp_array import TimestampArray
-from ..scalars.base_scalar import BaseScalar
-from ..units.united import United
+from .unit import Unit
+from .real_united_scalar import RealUnitedScalar
+from .complex_united_scalar import ComplexUnitedScalar
+from .real_united_array import RealUnitedArray
+from .complex_united_array import ComplexUnitedArray
+from .string_array import StringArray
+from .complex_array import ComplexArray
+from .int_array import IntArray
+from .float_array import FloatArray
+from .bool_array import BoolArray
+from .timestamp_array import TimestampArray
+from .utils.scalars.base_scalar import BaseScalar
+from .utils.units.united import United
 
 LOWLEVEL_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 PANDAS_SERIES_TYPE: TypeAlias = float|int|complex|bool|str|Timestamp
@@ -30,38 +30,38 @@ NUMERIC_TYPE: TypeAlias = NUMERIC_SCALAR_TYPE|NUMERIC_ARRAY_TYPE
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
 UNITED_ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray
 UNITED_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar
-ARRAY_STORAGE_TYPE: TypeAlias = float|complex|str|int|bool|Timestamp
 NUMPY_STORAGE_TYPE: TypeAlias = np.float64|np.float32|np.float16|np.complex128|np.complex64|np.int64|np.int32|np.int16|np.int8|np.bool_|np.datetime64|np.str_
 
 class ColumnTypeInformation(NamedTuple):
-    name: str
+    """
+    Simplified ColumnType metadata containing only the fields that are actually used.
+    
+    Removed unused fields: name, python_scalar_type, array_storage_type, non_values_in_scalar
+    """
     has_unit: bool
-    python_scalar_type: type[LOWLEVEL_TYPE]
     scalar_type: type[SCALAR_TYPE]
     array_type: type[ARRAY_TYPE]
     dataframe_storage_type: Dtype
-    array_storage_type: type[ARRAY_STORAGE_TYPE]
     numpy_storage_options: list[type[NUMPY_STORAGE_TYPE]]
     missing_values_in_dataframe: Any
-    non_values_in_scalar: Any
     precision: int|None
 
 class ColumnType(Enum):
     value: ColumnTypeInformation # type: ignore[assignment]
 
-    REAL_NUMBER_64 = ColumnTypeInformation(         name="Real United Numbers (64bit)",     has_unit=True,  python_scalar_type=float,         scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       non_values_in_scalar=math.nan,      precision=64)
-    REAL_NUMBER_32 = ColumnTypeInformation(         name="Real United Numbers (32bit)",     has_unit=True,  python_scalar_type=float,         scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float32Dtype(),  array_storage_type=float,       numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       non_values_in_scalar=math.nan,      precision=32)
-    COMPLEX_NUMBER_128 = ColumnTypeInformation(     name="Complex United Numbers (128bit)", has_unit=True,  python_scalar_type=complex,       scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      array_storage_type=complex,     numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, non_values_in_scalar=math.nan+1j,   precision=128)
-    STRING = ColumnTypeInformation(                 name="Strings",                         has_unit=False, python_scalar_type=str,           scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   array_storage_type=str,         numpy_storage_options=[np.str_],                                missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=None)
-    INTEGER_64 = ColumnTypeInformation(             name="Integers (64bit)",                has_unit=False, python_scalar_type=int,           scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int64Dtype(),    array_storage_type=int,         numpy_storage_options=[np.int64, np.int32, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=64)
-    INTEGER_32 = ColumnTypeInformation(             name="Integers (32bit)",                has_unit=False, python_scalar_type=int,           scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int32Dtype(),    array_storage_type=int,         numpy_storage_options=[np.int32, np.int64, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=32)
-    INTEGER_16 = ColumnTypeInformation(             name="Integers (16bit)",                has_unit=False, python_scalar_type=int,           scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int16Dtype(),    array_storage_type=int,         numpy_storage_options=[np.int16, np.int64, np.int32, np.int8],  missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=16)
-    INTEGER_8 = ColumnTypeInformation(              name="Integers (8bit)",                 has_unit=False, python_scalar_type=int,           scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int8Dtype(),     array_storage_type=int,         numpy_storage_options=[np.int8, np.int64, np.int32, np.int16],  missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=8)
-    FLOAT_64 = ColumnTypeInformation(               name="Floats (64bit)",                  has_unit=True,  python_scalar_type=float,         scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       non_values_in_scalar=math.nan,      precision=64)
-    FLOAT_32 = ColumnTypeInformation(               name="Floats (32bit)",                  has_unit=True,  python_scalar_type=float,         scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  array_storage_type=float,       numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       non_values_in_scalar=math.nan,      precision=32)
-    COMPLEX_128 = ColumnTypeInformation(            name="Complex (128bit)",                has_unit=True,  python_scalar_type=complex,       scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      array_storage_type=complex,     numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, non_values_in_scalar=math.nan+1j,   precision=128)
-    BOOL = ColumnTypeInformation(                   name="Bools",                           has_unit=False, python_scalar_type=bool,          scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  array_storage_type=bool,        numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=pd.NA,       non_values_in_scalar=None,          precision=None)
-    TIMESTAMP = ColumnTypeInformation(              name="Timestamps",                      has_unit=False, python_scalar_type=Timestamp,     scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_type=pd.Timestamp,       array_storage_type=Timestamp,   numpy_storage_options=[np.datetime64],                          missing_values_in_dataframe=pd.NaT,      non_values_in_scalar=None,          precision=None)
+    REAL_NUMBER_64 = ColumnTypeInformation(         has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
+    REAL_NUMBER_32 = ColumnTypeInformation(         has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float32Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
+    COMPLEX_NUMBER_128 = ColumnTypeInformation(     has_unit=True,  scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
+    STRING = ColumnTypeInformation(                 has_unit=False, scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   numpy_storage_options=[np.str_],                                missing_values_in_dataframe=pd.NA,       precision=None)
+    INTEGER_64 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int64Dtype(),    numpy_storage_options=[np.int64, np.int32, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=64)
+    INTEGER_32 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int32Dtype(),    numpy_storage_options=[np.int32, np.int64, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=32)
+    INTEGER_16 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int16Dtype(),    numpy_storage_options=[np.int16, np.int64, np.int32, np.int8],  missing_values_in_dataframe=pd.NA,       precision=16)
+    INTEGER_8 = ColumnTypeInformation(              has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int8Dtype(),     numpy_storage_options=[np.int8, np.int64, np.int32, np.int16],  missing_values_in_dataframe=pd.NA,       precision=8)
+    FLOAT_64 = ColumnTypeInformation(               has_unit=False, scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
+    FLOAT_32 = ColumnTypeInformation(               has_unit=False, scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
+    COMPLEX_128 = ColumnTypeInformation(            has_unit=False, scalar_type=complex,                array_type=ComplexArray,        dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
+    BOOL = ColumnTypeInformation(                   has_unit=False, scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=pd.NA,       precision=None)
+    TIMESTAMP = ColumnTypeInformation(              has_unit=False, scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_type='datetime64[ns]',   numpy_storage_options=[np.datetime64],                          missing_values_in_dataframe=pd.NaT,      precision=None)
 
     @property
     def has_unit(self) -> bool:
@@ -257,49 +257,49 @@ class ColumnType(Enum):
 
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                if not isinstance(value, float|int):
+                if not isinstance(value, (float, int)):
                     raise ValueError(f"Value {value} is not a float or int.")
                 if unit is None:
                     raise ValueError(f"Unit is required for {self.name}.")
                 return RealUnitedScalar.create_from_value_and_unit(value, unit)
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                if not isinstance(value, float|int):
+                if not isinstance(value, (float, int)):
                     raise ValueError(f"Value {value} is not a float or int.")
                 if not unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for float or int.")
                 return float(value)
             case ColumnType.COMPLEX_NUMBER_128:
-                if not isinstance(value, complex):
+                if not isinstance(value, (complex, np.complex128)):
                     raise ValueError(f"Value {value} is not a complex.")
                 if unit is None:
                     raise ValueError(f"Unit is required for {self.name}.")
                 raise NotImplementedError(f"ComplexUnitedScalar is not implemented.")
             case ColumnType.COMPLEX_128:
-                if not isinstance(value, complex):
+                if not isinstance(value, (complex, np.complex128)):
                     raise ValueError(f"Value {value} is not a complex.")
                 if not unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for complex.")
                 return complex(value)
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                if not isinstance(value, int):
+                if not isinstance(value, (int, np.integer)):
                     raise ValueError(f"Value {value} is not an int.")
                 if not unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for int.")
                 return int(value)
             case ColumnType.STRING:
-                if not isinstance(value, str):
+                if not isinstance(value, (str, np.str_)):
                     raise ValueError(f"Value {value} is not a str.")
                 if not unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for str.")
                 return str(value)
             case ColumnType.BOOL:
-                if not isinstance(value, bool):
+                if not isinstance(value, (bool, np.bool_)):
                     raise ValueError(f"Value {value} is not a bool.")
                 if not unit is None:
                     raise ValueError(f"Unit in dataframe is not allowed for bool.")
                 return bool(value)
             case ColumnType.TIMESTAMP:
-                if not isinstance(value, Timestamp):
+                if not isinstance(value, (Timestamp, np.datetime64)):
                     raise ValueError(f"Value {value} is not a Timestamp.")
                 return Timestamp(value)
             
@@ -419,36 +419,197 @@ class ColumnType(Enum):
     @classmethod
     def from_dtype(cls, dtype: pd.Series | pd.api.extensions.ExtensionDtype | np.dtype[Any] | str, has_unit: bool = False) -> "ColumnType": # type: ignore[reportUnknownReturnType]
         """
-        Infer the ColumnType from a pandas Series, dtype, or dtype string.
-        Uses `has_unit` to distinguish between united and raw types.
+        Sophisticated ColumnType inference from dtype and has_unit flag.
+        
+        This method provides comprehensive mapping between pandas/numpy dtypes and ColumnTypes,
+        using the has_unit flag to distinguish between united (with units) and raw types.
+        
+        Mapping Rules:
+        - Float types: float64/float32 -> REAL_NUMBER_XX (has_unit=True) or FLOAT_XX (has_unit=False)  
+        - Complex types: complex128 -> COMPLEX_NUMBER_128 (has_unit=True) or COMPLEX_128 (has_unit=False)
+        - Integer types: int64/32/16/8 -> INTEGER_XX (has_unit=False only)
+        - Other types: datetime64->TIMESTAMP, string->STRING, bool->BOOL (has_unit=False only)
+        
+        Args:
+            dtype: Input dtype from pandas Series, extension dtype, numpy dtype, or string
+            has_unit: Whether the column should support physical units
+            
+        Returns:
+            Appropriate ColumnType enum value
+            
+        Raises:
+            ValueError: If no matching ColumnType found for the dtype/has_unit combination
         """
+        
+        # Step 1: Normalize input to extract actual dtype
         if isinstance(dtype, pd.Series):
             dtype = dtype.dtype
-
-        dtype_str = str(dtype).lower()
-
-        candidates = [
-            col_type
-            for col_type in cls
-            if col_type.value.has_unit == has_unit
-        ]
-
-        for column_type in candidates:
-            expected_dtype = column_type.value.dataframe_storage_type
-
-            if isinstance(expected_dtype, pd.api.extensions.ExtensionDtype):
-                if dtype_str == str(expected_dtype).lower():
-                    return column_type
-            elif isinstance(expected_dtype, type):
-                try:
-                    if isinstance(dtype, expected_dtype):
-                        return column_type
-                except TypeError:
-                    pass  # e.g., str vs dtype mismatch
-            elif dtype_str == str(expected_dtype).lower():
+        
+        # Step 2: Normalize dtype to a canonical string representation
+        normalized_dtype = cls._normalize_dtype_string(dtype)
+        
+        # Step 3: Define comprehensive dtype mappings
+        # Structure: {normalized_dtype: {has_unit: ColumnType}}
+        dtype_mappings = {
+            # Float types - support both united and raw variants
+            'float64': {
+                True: cls.REAL_NUMBER_64,    # United scalars with units
+                False: cls.FLOAT_64          # Raw float values
+            },
+            'float32': {
+                True: cls.REAL_NUMBER_32,    # United scalars with units
+                False: cls.FLOAT_32          # Raw float values
+            },
+            
+            # Complex types - support both united and raw variants
+            'complex128': {
+                True: cls.COMPLEX_NUMBER_128, # United complex scalars with units
+                False: cls.COMPLEX_128        # Raw complex values (Note: currently both have has_unit=True, this may need fixing)
+            },
+            'complex64': {
+                True: None,                   # Not currently supported
+                False: cls.COMPLEX_128        # Raw complex values (64-bit maps to 128-bit storage)
+            },
+            
+            # Integer types - only raw variants supported (no physical units for counts)
+            'int64': {
+                True: None,                   # Integer units not supported
+                False: cls.INTEGER_64
+            },
+            'int32': {
+                True: None,                   # Integer units not supported
+                False: cls.INTEGER_32
+            },
+            'int16': {
+                True: None,                   # Integer units not supported
+                False: cls.INTEGER_16
+            },
+            'int8': {
+                True: None,                   # Integer units not supported
+                False: cls.INTEGER_8
+            },
+            
+            # Non-numeric types - only raw variants (no physical units)
+            'datetime64': {
+                True: None,                   # Timestamp units not supported
+                False: cls.TIMESTAMP
+            },
+            'string': {
+                True: None,                   # String units not supported
+                False: cls.STRING
+            },
+            'bool': {
+                True: None,                   # Boolean units not supported
+                False: cls.BOOL
+            }
+        }
+        
+        # Step 4: Look up the appropriate ColumnType
+        if normalized_dtype in dtype_mappings:
+            column_type = dtype_mappings[normalized_dtype].get(has_unit)
+            if column_type is not None:
                 return column_type
-
-        raise ValueError(f"No matching ColumnType for dtype: {dtype} with has_unit={has_unit}")
+            else:
+                # Specific error for unsupported has_unit combination
+                supported_has_unit = [k for k, v in dtype_mappings[normalized_dtype].items() if v is not None]
+                raise ValueError(
+                    f"ColumnType for dtype '{normalized_dtype}' does not support has_unit={has_unit}. "
+                    f"Supported has_unit values: {supported_has_unit}"
+                )
+        
+        # Step 5: No mapping found - provide helpful error
+        available_dtypes = list(dtype_mappings.keys())
+        raise ValueError(
+            f"No matching ColumnType for dtype: {dtype} (normalized: '{normalized_dtype}') with has_unit={has_unit}. "
+            f"Supported dtypes: {available_dtypes}"
+        )
+    
+    @classmethod
+    def _normalize_dtype_string(cls, dtype: Any) -> str:
+        """
+        Normalize various dtype representations to canonical string form.
+        
+        Handles pandas extension dtypes, numpy dtypes, numpy type objects, and string representations.
+        
+        Args:
+            dtype: Input dtype in any supported format
+            
+        Returns:
+            Canonical string representation (e.g., 'float64', 'complex128', 'string')
+        """
+        
+        dtype_str = str(dtype).lower()
+        
+        # Handle pandas extension dtypes (case insensitive)
+        if 'float64dtype' in dtype_str:
+            return 'float64'
+        elif 'float32dtype' in dtype_str:
+            return 'float32'
+        elif 'int64dtype' in dtype_str:
+            return 'int64'
+        elif 'int32dtype' in dtype_str:
+            return 'int32'
+        elif 'int16dtype' in dtype_str:
+            return 'int16'
+        elif 'int8dtype' in dtype_str:
+            return 'int8'
+        elif 'stringdtype' in dtype_str:
+            return 'string'
+        elif 'booleandtype' in dtype_str:
+            return 'bool'
+        elif 'complex64dtype' in dtype_str:
+            return 'complex64'
+        elif 'complex128dtype' in dtype_str:
+            return 'complex128'
+        
+        # Handle datetime types (various representations)
+        elif 'datetime64' in dtype_str:
+            return 'datetime64'
+        elif 'timestamp' in dtype_str:
+            return 'datetime64'
+        
+        # Handle direct numpy dtype strings
+        elif dtype_str in ['complex128', 'complex64', 'float64', 'float32', 
+                           'int64', 'int32', 'int16', 'int8']:
+            return dtype_str
+            
+        # Handle boolean variations
+        elif dtype_str in ['bool', 'bool_', 'boolean']:
+            return 'bool'
+            
+        # Handle string variations  
+        elif dtype_str in ['str', 'str_', 'string', 'object']:
+            return 'string'
+        
+        # Handle numpy type objects by their __name__ attribute
+        elif hasattr(dtype, '__name__'):
+            name = dtype.__name__.lower()
+            # Map numpy type names to canonical forms
+            name_mapping = {
+                'complex128': 'complex128',
+                'complex64': 'complex64', 
+                'float64': 'float64',
+                'float32': 'float32',
+                'int64': 'int64', 
+                'int32': 'int32',
+                'int16': 'int16',
+                'int8': 'int8',
+                'bool_': 'bool',
+                'str_': 'string',
+                'datetime64': 'datetime64'
+            }
+            if name in name_mapping:
+                return name_mapping[name]
+        
+        # Handle numpy type instances
+        elif hasattr(dtype, 'name'):
+            name = dtype.name.lower()
+            if name in ['complex128', 'complex64', 'float64', 'float32',
+                       'int64', 'int32', 'int16', 'int8', 'bool', 'str', 'datetime64']:
+                return name if name != 'str' else 'string'
+        
+        # Fallback: return the string representation for debugging
+        return dtype_str
 
     @overload
     @classmethod
@@ -535,99 +696,6 @@ class ColumnType(Enum):
                 else:
                     return False
 
-    # ------------ Maybe delete? ------------
-
-    # def create_scalar_from_value(self, value: float|complex|str|bool|int|Timestamp|None, unit: Unit|None = None) -> SCALAR_TYPE:
-
-    #     if value is None:
-    #         match self:
-    #             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-    #                 if unit is None:
-    #                     raise ValueError(f"Unit is required for real number types.")
-    #                 return RealUnitedScalar(np.nan, unit)
-    #             case ColumnType.COMPLEX_NUMBER_128:
-    #                 raise ValueError(f"Complex United Scalar is not yet supported.")
-    #             case ColumnType.STRING:
-    #                 raise ValueError(f"Missing values are not supported for string types.")
-    #             case ColumnType.BOOL:
-    #                 raise ValueError(f"Missing values are not supported for boolean types.")
-    #             case ColumnType.TIMESTAMP:
-    #                 raise ValueError(f"Missing values are not supported for timestamp types.")
-    #             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-    #                 raise ValueError(f"Missing values are not supported for integer types.")
-    #             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-    #                 return math.nan
-    #             case ColumnType.COMPLEX_128:
-    #                 return math.nan + 1j
-
-    #     if isinstance(value, float) and self is not ColumnType.FLOAT_64 and self is not ColumnType.FLOAT_32 and self is not ColumnType.REAL_NUMBER_64 and self is not ColumnType.REAL_NUMBER_32:
-    #         raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-
-    #     match self:
-    #         case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-    #             if unit is None:
-    #                 raise ValueError(f"Unit is required for real number types.")
-    #             if not isinstance(value, (float, int)):
-    #                 raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-    #             return RealUnitedScalar(value, unit)
-    #         case ColumnType.COMPLEX_NUMBER_128:
-    #             raise ValueError(f"Complex United Scalar is not yet supported.")
-    #         case ColumnType.STRING:
-    #             return str(value)
-    #         case ColumnType.BOOL:
-    #             return bool(value)
-    #         case ColumnType.TIMESTAMP:
-    #             if not isinstance(value, Timestamp):
-    #                 raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-    #             return Timestamp(value)
-    #         case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-    #             if not isinstance(value, (int, float)):
-    #                 raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-    #             return int(value)
-    #         case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-    #             if not isinstance(value, (float, int)):
-    #                 raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-    #             return float(value)
-    #         case ColumnType.COMPLEX_128:
-    #             if not isinstance(value, (complex, float, int)):
-    #                 raise ValueError(f"Invalid value: {value} for column type {self.name}.")
-    #             return complex(value)
-            
-    # def create_array_from_values(self, values: np.ndarray[Any, Any], unit: Unit|None = None) -> ARRAY_TYPE:
-    #     match self:
-    #         case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-    #             if unit is None:
-    #                 raise ValueError(f"Unit is required for RealUnitedArray.")
-    #             return RealUnitedArray(values, unit)
-    #         case ColumnType.COMPLEX_NUMBER_128:
-    #             if unit is None:
-    #                 raise ValueError(f"Unit is required for ComplexUnitedArray.")
-    #             raise NotImplementedError(f"ComplexUnitedArray is not yet supported.")
-    #         case ColumnType.STRING:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for StringArray.")
-    #             return StringArray(values)
-    #         case ColumnType.BOOL:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for BoolArray.")
-    #             return BoolArray(values)
-    #         case ColumnType.TIMESTAMP:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for TimestampArray.")
-    #             return TimestampArray(values)
-    #         case ColumnType.COMPLEX_128:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for ComplexUnitedArray.")
-    #             raise NotImplementedError(f"ComplexUnitedArray is not yet supported.")
-    #         case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for FloatArray.")
-    #             return FloatArray(values)
-    #         case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-    #             if not unit is None:
-    #                 raise ValueError(f"Unit is not allowed for IntArray.")
-    #             return IntArray(values)
-
     def check_scalar_type(self, type: type) -> bool:
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
@@ -665,3 +733,7 @@ class ColumnType(Enum):
                 return issubclass(type, FloatArray)
             case ColumnType.COMPLEX_128:
                 return issubclass(type, ComplexArray)
+
+    def __reduce_ex__(self, _: Any):
+        """Custom pickle reduction to preserve enum identity by name."""
+        return (getattr, (self.__class__, self.name))

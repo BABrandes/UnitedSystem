@@ -9,22 +9,21 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import Dict, List, TYPE_CHECKING, Union, cast
 from collections.abc import Sequence
-from bidict import bidict
 import pandas as pd
 from pandas._typing import Dtype
 
 from .dataframe_protocol import CK, UnitedDataframeProtocol
-from ..column_type import ColumnType
+from ....column_type import ColumnType
 from ....dimension import Dimension
 from ....unit import Unit
 from ...units.united import United
-from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
-from ..column_type import ARRAY_TYPE, LOWLEVEL_TYPE
+from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
+from ....column_type import ARRAY_TYPE, LOWLEVEL_TYPE
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
 
-class ConstructorMixin(UnitedDataframeProtocol[CK]):
+class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Constructor operations mixin for UnitedDataframe.
     
@@ -91,7 +90,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             empty_df[internal_column_strings[column_key]] = pd.Series(dtype=dtype)
         
         # Step 5: Create UnitedDataframe instance
-        return UnitedDataframe[CK](
+        return cls._construct( # type: ignore
             dataframe=empty_df,
             column_keys=column_keys,
             column_types=column_types,
@@ -108,7 +107,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
         arrays: Dict[CK, Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]]],
         column_types: Dict[CK, ColumnType],
         column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]],
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter()
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a dictionary of arrays.
@@ -199,7 +198,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             dataframe[internal_column_strings[column_key]] = pandas_series
         
         # Step 8: Create UnitedDataframe instance
-        return UnitedDataframe[CK](
+        return cls._construct( # type: ignore
             dataframe=dataframe,
             column_keys=column_keys,
             column_types=final_column_types,
@@ -239,12 +238,14 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             column_keys.append(column_key)
             column_units[column_key] = column_unit
             pandas_series: pd.Series = pandas_dataframe[column_name] # type: ignore
-            column_types[column_key] = ColumnType.infer_approbiate_column_type(pandas_series) # type: ignore
-            if column_types[column_key].has_unit == column_unit is not None:
+            # Infer column type based on dtype and whether unit was found in column name
+            has_unit = column_unit is not None
+            column_types[column_key] = ColumnType.from_dtype(pandas_series.dtype, has_unit=has_unit) # type: ignore
+            if column_types[column_key].has_unit != has_unit:
                 raise ValueError(f"Column type {column_types[column_key]} is not compatible with column unit {column_unit}")
 
         # Step 2: Create UnitedDataframe instance
-        return UnitedDataframe[CK](
+        return cls._construct( # type: ignore
             dataframe=pandas_dataframe,
             column_keys=column_keys,
             column_types=column_types,
@@ -259,7 +260,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
     def create_dataframe_from_pandas_with_incorrect_column_names(
         cls,
         pandas_dataframe: pd.DataFrame,
-        column_key_mapping: bidict[str, CK],
+        column_key_mapping: dict[str, CK],
         column_types: Dict[CK, ColumnType],
         column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
@@ -302,6 +303,9 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
 
         # Step 3: Create the correct column names
         correct_column_names: dict[str, str] = {}
+        # Check that column_key_mapping is a bijection
+        if len(column_key_mapping) != len(set(column_key_mapping.values())):
+            raise ValueError("column_key_mapping is not a bijection")
         for column_name in pandas_dataframe.columns:
             correct_column_names[column_name] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key_mapping[column_name], column_units[column_key_mapping[column_name]])
         if deep_copy:
@@ -311,7 +315,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
         pandas_dataframe.rename(columns=correct_column_names, inplace=True)
 
         # Step 4: Create UnitedDataframe instance
-        return UnitedDataframe[CK](
+        return cls._construct( # type: ignore
             dataframe=pandas_dataframe_with_correct_column_names,
             column_keys=column_keys,
             column_types=column_types,
@@ -327,7 +331,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
         Internal: Create a UnitedDataframe from a pandas DataFrame with incorrect column names. (No locks, no read-only check)
         """
 
-        return UnitedDataframe[CK](
+        return self.__class__._construct( # type: ignore
             dataframe=dataframe,
             column_keys=self._column_keys,
             column_types=self._column_types,
@@ -370,7 +374,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
             for row_index in sorted(row_indices, reverse=True):
                 dataframe_cropped = dataframe_cropped.drop(row_index)
 
-        return UnitedDataframe[CK](
+        return cls._construct( # type: ignore
             dataframe=dataframe_cropped,
             column_keys=column_keys,
             column_types=column_types_to_keep,
@@ -395,10 +399,16 @@ class ConstructorMixin(UnitedDataframeProtocol[CK]):
         """
         with self._rlock:  # Full IDE support!
             
-            return self.create_dataframe_from_pandas_with_correct_column_names(
-                pandas_dataframe=self._internal_dataframe,
+            # For copy, preserve the original column metadata instead of inferring from pandas dtypes
+            dataframe_copy = self._internal_dataframe.copy(deep=deep)
+            
+            return self.__class__._construct( # type: ignore
+                dataframe=dataframe_copy,
+                column_keys=self._column_keys,
+                column_types=self._column_types.copy(),
+                column_units=self._column_units.copy(),
                 internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter,
-                deep_copy=deep
+                read_only=False  # Copy should not be read-only by default
             )
 
     def copy_structure(self) -> "UnitedDataframe[CK]":

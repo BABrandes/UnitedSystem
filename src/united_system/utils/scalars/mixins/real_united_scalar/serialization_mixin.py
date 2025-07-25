@@ -1,14 +1,15 @@
 """Serialization methods for RealUnitedScalar."""
 
-from typing import TYPE_CHECKING, Any, Type, Optional
+from typing import TYPE_CHECKING, Any, Optional
 import h5py
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....real_united_scalar import RealUnitedScalar
     from .....unit import Unit
     from .....dimension import Dimension
 
-class SerializationMixin:
+class SerializationMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Serialization functionality for RealUnitedScalar."""
     
     # These will be provided by the core class
@@ -25,14 +26,14 @@ class SerializationMixin:
         }
     
     @classmethod
-    def from_json(cls, data: dict[str, Any], **_: Type["Unit"]) -> "RealUnitedScalar":
+    def from_json(cls, data: dict[str, Any]) -> "RealUnitedScalar":
         """Create from dictionary (JSON deserialization)."""
         from .....unit import Unit
         from .....dimension import Dimension
         from .....real_united_scalar import RealUnitedScalar
 
         dimension = Dimension.from_json(data["dimension"])
-        display_unit: Optional["Unit"] = Unit.from_json(data["display_unit"]) if data["display_unit"] is not None else None
+        display_unit: Optional[Unit] = Unit.from_json(data["display_unit"]) if data["display_unit"] is not None else None
         
         return RealUnitedScalar.create_from_canonical_value(data["canonical_value"], dimension, display_unit)
     
@@ -52,17 +53,17 @@ class SerializationMixin:
             hdf5_group.create_dataset("display_unit", data=None) # type: ignore
 
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, **type_parameters: Type[Any]) -> "RealUnitedScalar":
+    def from_hdf5(cls, hdf5_group: h5py.Group) -> "RealUnitedScalar":
         """Load from HDF5 group."""
         from .....unit import Unit
         from .....dimension import Dimension
         from .....real_united_scalar import RealUnitedScalar
         
         canonical_value: float = float(hdf5_group["canonical_value"][()]) # type: ignore   
-        dimension: "Dimension" = Dimension.from_hdf5(hdf5_group["dimension"]) # type: ignore
+        dimension: Dimension = Dimension.from_hdf5(hdf5_group["dimension"]) # type: ignore
         
         # Load display unit
-        display_unit: Optional["Unit"] = None
+        display_unit: Optional[Unit] = None
         if "display_unit" in hdf5_group:
             display_unit_item = hdf5_group["display_unit"]
             if isinstance(display_unit_item, h5py.Group):

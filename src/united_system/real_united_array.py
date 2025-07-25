@@ -34,6 +34,12 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         ...
     def __init__(self, np_array: np.ndarray, unit_or_dimension: Optional[Unit|str|Dimension|NamedQuantity] = None, display_unit: Optional[Unit] = None) -> None:
 
+        if np.iscomplexobj(np_array):
+            raise ValueError("RealUnitedArray does not support complex numbers.")
+        
+        if np_array.ndim != 1:
+            raise ValueError("RealUnitedArray only supports 1D arrays.")
+
         if display_unit is None:
             if isinstance(unit_or_dimension, Unit|str):
                 if isinstance(unit_or_dimension, str):
@@ -41,14 +47,14 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
                 else:
                     _display_unit: Optional[Unit] = unit_or_dimension
                 _dimension: Dimension = _display_unit.dimension
-                _canonical_np_array: np.ndarray = _display_unit.to_canonical_value(np_array)
+                _canonical_np_array: np.ndarray = _display_unit.to_canonical_value(np_array) # type: ignore
             elif isinstance(unit_or_dimension, Dimension):
                 _dimension: Dimension = unit_or_dimension
                 _display_unit: Optional[Unit] = None
                 _canonical_np_array: np.ndarray = np_array
             elif isinstance(unit_or_dimension, NamedQuantity):
                 _dimension: Dimension = Dimension(unit_or_dimension)
-                _display_unit: Optional[Unit] = Unit(unit_or_dimension)
+                _display_unit: Optional[Unit] = None
                 _canonical_np_array: np.ndarray = np_array
             else:
                 _dimension: Dimension = Dimension.dimensionless_dimension()
@@ -57,7 +63,7 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         else:
             _dimension: Dimension = display_unit.dimension
             _display_unit: Optional[Unit] = display_unit
-            _canonical_np_array: np.ndarray = display_unit.to_canonical_value(np_array)
+            _canonical_np_array: np.ndarray = display_unit.to_canonical_value(np_array) # type: ignore
 
         object.__setattr__(self, "canonical_np_array", _canonical_np_array)
         object.__setattr__(self, "dimension", _dimension)
@@ -70,7 +76,7 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
 
     def get_scalar_from_value(self, value: float) -> RealUnitedScalar:
         """Create a RealUnitedScalar from a primitive value with this array's dimension and display unit."""
-        canonical_value: float = self.display_unit.to_canonical_value(value)
+        canonical_value: float = self.display_unit.to_canonical_value(value) # type: ignore
         return RealUnitedScalar.create_from_canonical_value(canonical_value, self.dimension, self._display_unit)
     
     def get_numpy_array(self, slice: slice|None = None) -> np.ndarray:
@@ -80,9 +86,9 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         If no slice is provided, the array is returned as a copy of the original array.
         """
         if slice is None:
-            return self.display_unit.from_canonical_value(self.canonical_np_array)
+            return self.display_unit.from_canonical_value(self.canonical_np_array) # type: ignore
         else:
-            return self.display_unit.from_canonical_value(self.canonical_np_array[slice])
+            return self.display_unit.from_canonical_value(self.canonical_np_array[slice]) # type: ignore
     
     @property
     def shape(self) -> tuple[int, ...]:

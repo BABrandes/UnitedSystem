@@ -1,14 +1,14 @@
 """String formatting and representation for RealUnitedScalar."""
 
 from typing import Union, Optional, TYPE_CHECKING
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
-    from .....utils.scalars.united_scalar import UnitedScalar
     from .....real_united_scalar import RealUnitedScalar
 
-class FormattingMixin(UnitedScalar["RealUnitedScalar", float]):
+class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """String formatting and representation for RealUnitedScalar."""
     
     # These will be provided by the core class

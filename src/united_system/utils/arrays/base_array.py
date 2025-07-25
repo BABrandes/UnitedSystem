@@ -12,7 +12,7 @@ PT_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 
 PT = TypeVar("PT", bound=PT_TYPE)
 IT = TypeVar("IT")
-AT = TypeVar("AT", bound="BaseArray[PT_TYPE, Any]")
+AT = TypeVar("AT", bound="BaseArray[PT_TYPE, PT_TYPE, Any]")
 
 @dataclass(frozen=True, slots=True)
 class BaseArray(ABC, Generic[PT, IT, AT]):

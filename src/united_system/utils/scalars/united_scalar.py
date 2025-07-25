@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from ...utils.general import JSONable, HDF5able
 from ..units.united import United
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from ...unit import Unit
 from typing import TypeVar, Generic, TYPE_CHECKING, Any
 from ..scalars.base_scalar import BaseScalar
@@ -14,7 +14,7 @@ PT = TypeVar("PT", bound=float|complex)
 UST = TypeVar("UST", bound="UnitedScalar[Any, Any]")
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United, Generic[UST, PT]):
+class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], United, Generic[UST, PT]):
 
     canonical_value: PT
     
@@ -35,19 +35,19 @@ class UnitedScalar(BaseScalar, ABC, JSONable, HDF5able, United, Generic[UST, PT]
         ...
     
     @abstractmethod
-    def __mul__(self, other: UST) -> UST:
+    def __mul__(self, other: UST|PT) -> UST:
         ...
     
     @abstractmethod
-    def __rmul__(self, other: UST) -> UST:
+    def __rmul__(self, other: UST|PT) -> UST:
         ...
     
     @abstractmethod
-    def __truediv__(self, other: UST) -> UST:
+    def __truediv__(self, other: UST|PT) -> UST:
         ...
     
     @abstractmethod
-    def __rtruediv__(self, other: UST) -> UST:
+    def __rtruediv__(self, other: UST|PT) -> UST:
         ...
 
     @abstractmethod

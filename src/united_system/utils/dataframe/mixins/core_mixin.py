@@ -10,15 +10,15 @@ import pandas as pd
 import numpy as np
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
+from ....column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
 from ...units.united import United
 from ...dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from ....unit import Unit
 
 if TYPE_CHECKING:
-    from ...dataframe import UnitedDataframe
+    from ....united_dataframe import UnitedDataframe
 
-class CoreMixin(UnitedDataframeProtocol[CK]):
+class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Core functionality mixin for UnitedDataframe.
     
@@ -248,12 +248,15 @@ class CoreMixin(UnitedDataframeProtocol[CK]):
         with self._rlock:
             return self._internal_dataframe.__repr__()
         
-    def __repr_html__(self) -> str:
+    def _repr_html_(self) -> str:
         """
-        Return an HTML representation of the dataframe.
+        Return an HTML representation of the dataframe for Jupyter notebook display.
+        
+        The internal dataframe already contains unit information in column names,
+        so we can directly expose the pandas HTML representation.
         """
         with self._rlock:
-            return self._internal_dataframe.to_html() # type: ignore
+            return self._internal_dataframe._repr_html_() # type: ignore
         
     def to_html(self, **kwargs: Any) -> str:
         """

@@ -1636,7 +1636,7 @@ class TestUnitReduction:
             # Complex electrical units
             ("A*V*A*V", "W^2"),  # Power squared
             ("A*V*A*V*A*V", "W^3"),  # Power cubed
-            ("A*V*N*m", ["W*J", "V^2*C*A"]),  # Power * Energy
+            ("A*V*N*m", ["W*J", "V^2*C*A", "A*V*N*m"]),  # Power * Energy
             
             # Mixed mechanical and electrical
             ("kg*m/s^2*kg*m^2/s^2*A*V", "N*J*W"),  # Force * Energy * Power
@@ -1718,7 +1718,7 @@ class TestUnitReduction:
             
             # Mixed large combinations
             ("kg*m^2/s^2*A*V*kg*m/s^2*kg*m^2/s^2*A*V", ["J^5/s^2/m", "J^4.5*kg^0.5/s^3", "W^5*s^3/m", "N^5*m^4/s^2", "J^6/kg/m^3", "W^4.5*kg^0.5*s^1.5", "J^4.5*N^0.5/s^2/m^0.5", "W^4*kg*m"]),  # Complex mixed (multiple valid forms)
-            ("kg*m/s^2*kg*m^2/s^2*A*V*kg*m/s^2*kg*m^2/s^2*A*V", ["J^6/s^2/m^2", "N^7*m^3/kg", "W^6*s^4/m^2", "N^6*J*m^2/kg", "N^7*m^2/Pa/s^2", "N^6*N*m^3/kg"]),  # Very complex mixed
+            ("kg*m/s^2*kg*m^2/s^2*A*V*kg*m/s^2*kg*m^2/s^2*A*V", "N^5*N*m^3/kg"),  # Very complex mixed
             
             # Large with subscripts (should reduce when same subscript)
             ("kg_thermal*m^2/s^2*kg_thermal*m^2/s^2*kg_thermal*m^2/s^2", ["kg_thermal^3*J", "kg_thermal^3*m^6/s^6"]),

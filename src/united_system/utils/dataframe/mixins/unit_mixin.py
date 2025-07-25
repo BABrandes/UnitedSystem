@@ -6,11 +6,15 @@ setting, and display unit management.
 
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
+from typing import TYPE_CHECKING
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ....unit import Unit
 
-class UnitMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class UnitMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Unit operations mixin for UnitedDataframe.
     
@@ -103,6 +107,6 @@ class UnitMixin(UnitedDataframeProtocol[CK]):
         
         dataframe_column_name: str = self._internal_dataframe_column_names[column_key]
         numpy_array_in_old_unit: np.ndarray = self._internal_dataframe[dataframe_column_name].to_numpy() # type: ignore
-        numpy_array_in_new_unit: np.ndarray = Unit.convert(numpy_array_in_old_unit, old_unit, unit)
+        numpy_array_in_new_unit: np.ndarray = Unit.convert(numpy_array_in_old_unit, old_unit, unit) # type: ignore
         self._internal_dataframe[dataframe_column_name] = numpy_array_in_new_unit
         self._column_units[column_key] = unit

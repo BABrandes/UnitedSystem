@@ -1,14 +1,14 @@
 """Unit conversion methods for RealUnitedScalar."""
 
 from typing import TYPE_CHECKING, Optional
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
     from .....real_united_scalar import RealUnitedScalar
-    from .....utils.scalars.united_scalar import UnitedScalar
 
-class ConversionMixin(UnitedScalar["RealUnitedScalar", float]):
+class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Unit conversion functionality for RealUnitedScalar."""
     
     # These will be provided by the core class
@@ -92,23 +92,6 @@ class ConversionMixin(UnitedScalar["RealUnitedScalar", float]):
         from .....real_united_scalar import RealUnitedScalar
         display_unit = self.dimension.canonical_unit if with_display_unit else None
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, display_unit)
-
-    def with_suggested_unit(self) -> "RealUnitedScalar":
-        """
-        Return a new scalar with a suggested display unit.
-        
-        Returns:
-            A new RealUnitedScalar with an automatically suggested display unit
-            
-        Example:
-            >>> scalar = RealUnitedScalar(0.001, mass_dim)  # 1g in canonical units
-            >>> result = scalar.with_suggested_unit()
-            >>> result._display_unit
-            Unit("g")  # Suggested unit for small mass values
-        """
-        from .....real_united_scalar import RealUnitedScalar
-        suggested_unit = self.active_unit.reduced
-        return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, suggested_unit)
 
     def to_unit(self, unit: "Unit") -> "RealUnitedScalar":
         """Return a new scalar with the specified unit as display unit."""

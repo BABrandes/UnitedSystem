@@ -1,19 +1,45 @@
-from dataclasses import dataclass
-from typing import Any, TypeVar, Iterator, overload
+from typing import Any, TypeVar, Iterator, overload, Generic, Sequence
 from .base_array import BaseArray, PT_TYPE
 import numpy as np
 from pandas._typing import Dtype
 import pandas as pd
+from abc import abstractmethod
 
 PT = TypeVar("PT", bound=PT_TYPE)
 AT = TypeVar("AT", bound="NonUnitedArray[PT_TYPE, Any]")
 
-@dataclass(frozen=True, slots=True)
-class NonUnitedArray(BaseArray[PT, PT, AT]):
-    
-    @classmethod
-    def create(cls, values: np.ndarray) -> "NonUnitedArray[PT_TYPE, Any]":
-        return cls(values)
+class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
+
+    def __post_init__(self) -> None:
+        """Override BaseArray's __post_init__ to safely handle our custom construction."""
+        if hasattr(self, 'canonical_np_array') and hasattr(self.canonical_np_array, 'ndim'):
+            if self.canonical_np_array.ndim != 1:
+                raise ValueError(f"The canonical_np_array is not a 1D array. It is a {self.canonical_np_array.ndim}D array.")
+        # If canonical_np_array isn't properly set yet, skip validation (it will happen in __new__)
+
+    def __new__(cls, values: np.ndarray|Sequence[PT_TYPE]) -> AT:
+        # Create instance using object.__new__ to avoid inheritance issues
+        instance: AT = object.__new__(cls) # type: ignore
+
+        # Process values
+        if isinstance(values, np.ndarray):
+            values_array: np.ndarray = values
+        elif isinstance(values, Sequence): # type: ignore
+            values_array: np.ndarray = np.array(values)
+        else:
+            raise ValueError(f"Invalid values type: {type(values)}")
+        
+        # Set the canonical_np_array attribute directly BEFORE validation
+        object.__setattr__(instance, "canonical_np_array", values_array)
+        
+        if not instance._check_numpy_type(values_array):
+            raise ValueError(f"Array has wrong numpy type: {values_array.dtype}")
+        
+        # Do the validation inline
+        if values_array.ndim != 1:
+            raise ValueError(f"The canonical_np_array is not a 1D array. It is a {values_array.ndim}D array.")
+        
+        return instance
     
     @overload
     def __getitem__(self, key: int) -> PT:...
@@ -66,6 +92,10 @@ class NonUnitedArray(BaseArray[PT, PT, AT]):
 
     def get_array(self, slice: slice) -> AT:  # type: ignore
         return type(self)(self.canonical_np_array[slice])  # type: ignore
+    
+    @abstractmethod
+    def _check_numpy_type(self, array: np.ndarray) -> bool:
+        raise NotImplementedError("Subclasses must implement this method")
     
 class NonUnitedArrayIterator(Iterator[PT]):
     """Iterator for NonUnitedArray that maintains separate state."""

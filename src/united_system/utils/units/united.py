@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 from abc import abstractmethod
 
 from ...unit import Unit
 from ...dimension import Dimension
 
-class United():
+@runtime_checkable
+class United(Protocol):
 
     dimension: Dimension
     _display_unit: Optional[Unit]

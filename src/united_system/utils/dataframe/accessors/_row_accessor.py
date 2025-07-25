@@ -2,10 +2,10 @@ from typing import Generic, Iterator, TypeVar, TYPE_CHECKING, Any, Sequence, ove
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
-    from ..column_key import ColumnKey
+    from ....column_key import ColumnKey
 
 from ...scalars.united_scalar import UnitedScalar
-from ..column_type import SCALAR_TYPE
+from ....column_type import SCALAR_TYPE
 
 CK = TypeVar("CK", bound="ColumnKey|str")
 

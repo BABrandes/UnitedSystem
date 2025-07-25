@@ -1,13 +1,14 @@
 """Core functionality for RealUnitedScalar."""
 
 from typing import TYPE_CHECKING, Optional
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....real_united_scalar import RealUnitedScalar
     from .....unit import Unit
     from .....dimension import Dimension
 
-class RealUnitedScalarCore:
+class RealUnitedScalarCore(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Core functionality for RealUnitedScalar."""
     
     # These will be provided by the dataclass

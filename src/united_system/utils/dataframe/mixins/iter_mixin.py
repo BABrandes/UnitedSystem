@@ -11,13 +11,14 @@ from typing import Iterator, TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ....unit import Unit
 from ....dimension import Dimension
-from ..column_type import ColumnType
+from ....column_type import ColumnType
 
 if TYPE_CHECKING:
     from ..accessors._row_accessor import RowAccessor # type: ignore
     from ..accessors._column_accessor import ColumnAccessor # type: ignore
+    from ....united_dataframe import UnitedDataframe
 
-class IterMixin(UnitedDataframeProtocol[CK]):
+class IterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Mixin providing magic methods for dataframe item assignment.
     
@@ -68,7 +69,7 @@ class IterMixin(UnitedDataframeProtocol[CK]):
         Iterate over units.
         """
         for column_key in self._column_keys:
-            yield self._unit_get(column_key)
+            yield self._column_units[column_key]
 
     def iter_dimensions(self) -> Iterator[Dimension|None]:
         """

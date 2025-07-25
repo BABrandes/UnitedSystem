@@ -6,18 +6,17 @@ solving the "blind mixins" problem where mixins can't see what methods
 and attributes are available.
 """
 
-from typing import Protocol, Generic, Dict, List, runtime_checkable, Any, Optional, TypeVar, Union, Sequence, Iterator, Tuple, Callable, overload
-from bidict import bidict
+from typing import Generic, Dict, List, Any, Optional, TypeVar, Union, Sequence, Iterator, Tuple, Callable, overload
 from typing import TYPE_CHECKING
+from pathlib import Path
 import pandas as pd
 import numpy as np
 from readerwriterlock import rwlock
 import h5py
-from ....utils.general import JSONable, HDF5able
 
 # Runtime imports needed for TypeVar definitions and protocol class
-from ..column_key import ColumnKey
-from ..column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, LOWLEVEL_TYPE, NUMERIC_SCALAR_TYPE
+from ....column_key import ColumnKey
+from ....column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, LOWLEVEL_TYPE, NUMERIC_SCALAR_TYPE
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ....unit import Unit
 from ....dimension import Dimension
@@ -33,8 +32,9 @@ CK = TypeVar("CK", bound=Union[ColumnKey, str])
 CK_CF = TypeVar("CK_CF", bound=Union[ColumnKey, str])
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
-@runtime_checkable
-class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
+T = TypeVar("T", bound="UnitedDataframe", covariant=True) # type: ignore[type-arg]
+
+class UnitedDataframeProtocol(Generic[CK, T]):
     """
     Protocol for UnitedDataframe mixins.
 
@@ -66,6 +66,9 @@ class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
     ######### METHODS #########
 
     ######### INTERNAL METHODS (NO LOCKS, NO READ-ONLY CHECK) #########
+
+    @classmethod
+    def _construct(cls, dataframe: pd.DataFrame, column_keys: List[CK], column_types: Dict[CK, ColumnType], column_units: Dict[CK, Optional[Unit]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False, copy_dataframe: bool = False, rename_dataframe_columns: bool = False) -> "UnitedDataframe[CK]": ...
 
     # UnitMixin internal methods
     def _unit_has(self, column_key: CK) -> bool: ...
@@ -133,7 +136,7 @@ class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
     def __setitem__(self, key: Any, value: Any) -> None: ...
     def __contains__(self, key: Any) -> bool: ...
     def __repr__(self) -> str: ...
-    def __repr_html__(self) -> str: ...
+    def _repr_html_(self) -> str: ...
     @property
     def columns(self) -> pd.Index: ... # type: ignore[reportUnknownReturnType]
     @property
@@ -277,12 +280,12 @@ class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
     # SerializationMixin user methods
     def to_json(self) -> dict[str, Any]: ...
     def to_csv(self, path: str|None = None) -> str|None: ...
-    def to_hdf5(self, hdf5_group: h5py.Group) -> None: ...
+    def to_hdf5(self, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", **kwargs: Any) -> None: ...
     def to_pickle(self, path: str|None = None) -> None: ...
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]": ...
+    def from_hdf5(cls, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **kwargs: Any) -> "UnitedDataframe[CK]": ...
     @classmethod
-    def from_json(cls, data: dict[str, Any], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]": ...
+    def from_json(cls, data: dict[str, Any], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter()) -> T: ...
     @classmethod
     def from_pickle(cls, path: str|None = None, **kwargs: Any) -> "UnitedDataframe[CK]": ...
 
@@ -294,7 +297,7 @@ class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
     @classmethod
     def create_dataframe_from_pandas_with_correct_column_names(cls, pandas_dataframe: pd.DataFrame, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, deep_copy: bool) -> "UnitedDataframe[CK]": ...
     @classmethod
-    def create_dataframe_from_pandas_with_incorrect_column_names(cls, pandas_dataframe: pd.DataFrame, column_key_mapping: bidict[str, CK], column_types: Dict[CK, ColumnType], column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, deep_copy: bool) -> "UnitedDataframe[CK]": ...
+    def create_dataframe_from_pandas_with_incorrect_column_names(cls, pandas_dataframe: pd.DataFrame, column_key_mapping: dict[str, CK], column_types: Dict[CK, ColumnType], column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, deep_copy: bool) -> "UnitedDataframe[CK]": ...
 
     # GroupbyMixin user methods
     def groupby(self, by: Union[CK, List[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]: ...
@@ -305,12 +308,12 @@ class UnitedDataframeProtocol(JSONable, HDF5able, Protocol, Generic[CK]):
 
     ######### INITIALIZER #########
 
-    def __init__(self: "UnitedDataframeProtocol[ColumnKey|str]") -> None: ...
+    def __init__(self) -> None: ...
 
     ######### HELPER PROPERTY #########
 
     @property
-    def _self(self) -> "UnitedDataframeProtocol[CK]":
+    def _self(self) -> T:
         """
         Helper property that provides typed access to self.
         

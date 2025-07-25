@@ -1,0 +1,747 @@
+#!/usr/bin/env python3
+"""
+Test suite for UnitedDataframe operations.
+
+This test suite systematically tests UnitedDataframe CRUD operations including:
+- Column operations (add, remove, rename, set values)
+- Row operations (add, insert, remove, set values, clear)
+- Cell operations (get, set individual cells)
+- Data retrieval (as arrays, numpy arrays, pandas series)
+- Metadata access (units, column types, column information)
+"""
+
+import tempfile
+import numpy as np
+import pandas as pd
+from datetime import datetime
+from typing import Any
+
+from tests.test_dataframe import TestColumnKey
+from src.united_system.united_dataframe import UnitedDataframe
+from src.united_system.column_type import ColumnType
+from src.united_system.unit import Unit
+from src.united_system.real_united_array import RealUnitedArray
+from src.united_system.int_array import IntArray
+from src.united_system.string_array import StringArray
+from src.united_system.bool_array import BoolArray
+from src.united_system.complex_array import ComplexArray
+from src.united_system.timestamp_array import TimestampArray
+from src.united_system.real_united_scalar import RealUnitedScalar
+from src.united_system.utils.dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+
+
+class TestUnitedDataframeOperations:
+    """Test class for UnitedDataframe operations."""
+
+    def test_column_operations_comprehensive(self):
+        """Test all column operations: add, remove, rename, set values."""
+        print("\n🔧 Testing comprehensive column operations...")
+        
+        # Test 1: Create dataframe with initial data
+        print("\n📊 Testing dataframe creation with data...")
+        
+        # Create dataframe with initial data using the constructor approach
+        arrays = {
+            TestColumnKey("sample_id"): ["A", "B", "C"],
+            TestColumnKey("temperature"): [20.0, 25.0, 30.0],
+            TestColumnKey("count"): [1, 2, 3]
+        }
+        column_types = {
+            TestColumnKey("sample_id"): ColumnType.STRING,
+            TestColumnKey("temperature"): ColumnType.REAL_NUMBER_64,
+            TestColumnKey("count"): ColumnType.INTEGER_64
+        }
+        column_units = {
+            TestColumnKey("sample_id"): None,
+            TestColumnKey("temperature"): Unit("°C"),
+            TestColumnKey("count"): None
+        }
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        assert len(df.colkeys) == 3
+        assert len(df) == 3
+        print("✅ Created dataframe with 3 columns and 3 rows successfully")
+        
+        # Test 2: Column access and metadata
+        print("\n📋 Testing column metadata access...")
+        
+        column_keys = df.colkeys
+        assert len(column_keys) == 3
+        print(f"✅ Column keys: {[str(key) for key in column_keys]}")
+        
+        # Test units
+        temp_unit = df.units[TestColumnKey("temperature")]
+        assert str(temp_unit) == "°C"
+        print(f"✅ Temperature unit: {temp_unit}")
+        
+        # Test column types
+        temp_type = df.coltypes[TestColumnKey("temperature")]
+        assert temp_type == ColumnType.REAL_NUMBER_64
+        print(f"✅ Temperature type: {temp_type}")
+        
+        # Test columns with/without units
+        with_units = df.column_get_with_units()
+        without_units = df.column_get_without_units()
+        assert len(with_units) == 1
+        assert len(without_units) == 2
+        print(f"✅ Columns with units: {[str(key) for key in with_units]}")
+        print(f"✅ Columns without units: {[str(key) for key in without_units]}")
+        
+        # Test 3: Create a new dataframe with an additional column (instead of adding to existing)
+        print("\n➕ Testing dataframe creation with additional column...")
+        arrays_with_bool = {
+            TestColumnKey("sample_id"): ["A", "B", "C"],
+            TestColumnKey("temperature"): [20.0, 25.0, 30.0],
+            TestColumnKey("count"): [1, 2, 3],
+            TestColumnKey("active"): [True, False, True]
+        }
+        column_types_with_bool = {
+            TestColumnKey("sample_id"): ColumnType.STRING,
+            TestColumnKey("temperature"): ColumnType.REAL_NUMBER_64,
+            TestColumnKey("count"): ColumnType.INTEGER_64,
+            TestColumnKey("active"): ColumnType.BOOL
+        }
+        column_units_with_bool = {
+            TestColumnKey("sample_id"): None,
+            TestColumnKey("temperature"): Unit("°C"),
+            TestColumnKey("count"): None,
+            TestColumnKey("active"): None
+        }
+        
+        df_with_bool = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays_with_bool,
+            column_types=column_types_with_bool,
+            column_units_or_dimensions=column_units_with_bool,
+            internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
+        )
+        
+        assert len(df_with_bool.colkeys) == 4
+        assert TestColumnKey("active") in df_with_bool.colkeys
+        print("✅ Created dataframe with BOOL column successfully")
+        
+        # Use this dataframe for the rest of the tests
+        df = df_with_bool
+        
+        # Test 4: Column rename
+        print("\n🏷️ Testing column_rename...")
+        df.column_rename(TestColumnKey("sample_id"), TestColumnKey("id"))
+        column_keys = df.colkeys
+        assert TestColumnKey("id") in column_keys
+        assert TestColumnKey("sample_id") not in column_keys
+        print("✅ Column renamed successfully")
+        
+        # Test 5: Column set values
+        print("\n🔄 Testing column_set_values...")
+        new_string_data = StringArray(np.array(["X", "Y", "Z"]))
+        df.column_set_values(TestColumnKey("id"), new_string_data)
+        
+        # Verify the change
+        retrieved_data = df.column_get_as_array(TestColumnKey("id"))
+        assert isinstance(retrieved_data, StringArray)
+        assert retrieved_data.canonical_np_array.tolist() == ["X", "Y", "Z"]
+        print("✅ Column values updated successfully")
+        
+        # Test 6: Column removal
+        print("\n🗑️ Testing column_remove...")
+        df.column_remove(TestColumnKey("count"))
+        assert len(df.colkeys) == 3  # Was 4, now 3 after removal
+        assert TestColumnKey("count") not in df.colkeys
+        print("✅ Column removed successfully")
+        
+        # Test 7: Error cases
+        print("\n❌ Testing column operation error cases...")
+        
+        try:
+            # Try to add existing column
+            duplicate_data = StringArray(np.array(["D", "E", "F"]))
+            df.column_add(TestColumnKey("id"), duplicate_data, ColumnType.STRING, None)
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            print(f"✅ Correctly caught duplicate column error: {e}")
+        
+        try:
+            # Try to remove non-existent column
+            df.column_remove(TestColumnKey("nonexistent"))
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            print(f"✅ Correctly caught missing column error: {e}")
+        
+        print("🎉 Column operations test completed successfully!")
+
+    def test_row_operations_comprehensive(self):
+        """Test all row operations: add, insert, remove, set values, clear."""
+        print("\n🔧 Testing comprehensive row operations...")
+        
+        # Create initial dataframe with data
+        arrays = {
+            TestColumnKey("id"): ["A", "B"],
+            TestColumnKey("value"): [10.0, 20.0]
+        }
+        column_types = {
+            TestColumnKey("id"): ColumnType.STRING,
+            TestColumnKey("value"): ColumnType.REAL_NUMBER_64
+        }
+        column_units = {
+            TestColumnKey("id"): None,
+            TestColumnKey("value"): Unit("m")
+        }
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        assert len(df) == 2
+        print("✅ Initial dataframe: 2 rows, 2 columns")
+        
+        # Test 1: Add empty rows
+        print("\n➕ Testing row_add_empty...")
+        df.row_add_empty(2)
+        assert len(df) == 4
+        print("✅ Added 2 empty rows successfully")
+        
+        # Test 2: Add rows with values
+        print("\n📝 Testing row_add_values...")
+        new_values = {
+            TestColumnKey("id"): ["E", "F"],
+            TestColumnKey("value"): [RealUnitedScalar(50.0, Unit("m")), RealUnitedScalar(60.0, Unit("m"))]
+        }
+        df.row_add_values(new_values)
+        assert len(df) == 6
+        print("✅ Added 2 rows with values successfully")
+        
+        # Test 3: Insert empty rows
+        print("\n⬇️ Testing row_insert_empty...")
+        df.row_insert_empty(1, 1)  # Insert 1 empty row at index 1
+        assert len(df) == 7
+        print("✅ Inserted 1 empty row at index 1 successfully")
+        
+        # Test 4: Insert rows with values
+        print("\n📋 Testing row_insert_values...")
+        insert_values = {
+            TestColumnKey("id"): ["X"],
+            TestColumnKey("value"): [RealUnitedScalar(35.0, Unit("m"))]
+        }
+        df.row_insert_values(2, insert_values)
+        assert len(df) == 8
+        print("✅ Inserted 1 row with values at index 2 successfully")
+        
+        # Test 5: Set row values (replace)
+        print("\n🔄 Testing row_set_values...")
+        replace_values = {
+            TestColumnKey("id"): ["Y"],
+            TestColumnKey("value"): [RealUnitedScalar(99.0, Unit("m"))]
+        }
+        df.row_set_values(0, replace_values)
+        
+        # Verify the change
+        first_row = df.row_get_as_dict(0)
+        # Handle both scalar objects (with get_value()) and raw values
+        id_value = first_row[TestColumnKey("id")]
+        actual_value = id_value.get_value() if hasattr(id_value, 'get_value') else id_value
+        assert actual_value == "Y"
+        print("✅ Row values replaced successfully")
+        
+        # Test 6: Clear specific rows
+        print("\n🧹 Testing row_clear...")
+        initial_rows = len(df)
+        df.row_clear(1, 2)  # Clear 2 rows starting at index 1
+        
+        # Rows should still exist but be filled with NA
+        assert len(df) == initial_rows
+        print("✅ Cleared 2 rows successfully (set to NA)")
+        
+        # Test 7: Remove rows
+        print("\n🗑️ Testing row_remove...")
+        df.row_remove(1, 3)  # Remove rows 1-2 (stop exclusive)
+        assert len(df) == initial_rows - 2
+        print("✅ Removed 2 rows successfully")
+        
+        # Test 8: Clear all rows
+        print("\n🧽 Testing row_clear_all...")
+        df.row_clear_all()
+        # Rows should still exist but be filled with NA
+        current_rows = len(df)
+        assert current_rows > 0
+        print(f"✅ Cleared all {current_rows} rows successfully (set to NA)")
+        
+        # Test 9: Remove all rows
+        print("\n🗑️ Testing row_remove_all...")
+        df.row_remove_all()
+        assert len(df) == 0
+        print("✅ Removed all rows successfully")
+        
+        print("🎉 Row operations test completed successfully!")
+
+    def test_cell_operations_comprehensive(self):
+        """Test individual cell operations: get and set cell values."""
+        print("\n🔧 Testing comprehensive cell operations...")
+        
+        # Create dataframe with mixed data types
+        arrays = {
+            TestColumnKey("text"): ["Hello", "World", "Test"],
+            TestColumnKey("length"): [1.5, 2.5, 3.5],
+            TestColumnKey("count"): [10, 20, 30],
+            TestColumnKey("active"): [True, False, True]
+        }
+        column_types = {
+            TestColumnKey("text"): ColumnType.STRING,
+            TestColumnKey("length"): ColumnType.REAL_NUMBER_64,
+            TestColumnKey("count"): ColumnType.INTEGER_64,
+            TestColumnKey("active"): ColumnType.BOOL
+        }
+        column_units = {
+            TestColumnKey("text"): None,
+            TestColumnKey("length"): Unit("m"),
+            TestColumnKey("count"): None,
+            TestColumnKey("active"): None
+        }
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        print("✅ Created test dataframe: 3 rows, 4 columns")
+        
+        # Test 1: Get cell values
+        print("\n📖 Testing cell_get_value...")
+        
+        text_value = df.cell_get_value(0, TestColumnKey("text"))
+        actual_text = text_value.get_value() if hasattr(text_value, 'get_value') else text_value
+        assert actual_text == "Hello"
+        print(f"✅ Text cell [0]: {actual_text}")
+        
+        length_value = df.cell_get_value(1, TestColumnKey("length"))
+        assert length_value.value_in_display_unit() == 2.5
+        assert str(length_value.active_unit) == "m"
+        print(f"✅ Length cell [1]: {length_value.value_in_display_unit()} {length_value.active_unit}")
+        
+        count_value = df.cell_get_value(2, TestColumnKey("count"))
+        actual_count = count_value.get_value() if hasattr(count_value, 'get_value') else count_value
+        assert actual_count == 30
+        print(f"✅ Count cell [2]: {actual_count}")
+        
+        bool_value = df.cell_get_value(0, TestColumnKey("active"))
+        actual_bool = bool_value.get_value() if hasattr(bool_value, 'get_value') else bool_value
+        assert actual_bool == True
+        print(f"✅ Boolean cell [0]: {actual_bool}")
+        
+        # Test 2: Set cell values
+        print("\n✏️ Testing cell_set_value...")
+        
+        # Set string value
+        new_text = "Modified"  # Use raw string directly
+        df.cell_set_value(0, TestColumnKey("text"), new_text)
+        
+        # Verify change
+        updated_text = df.cell_get_value(0, TestColumnKey("text"))
+        actual_text = updated_text.get_value() if hasattr(updated_text, 'get_value') else updated_text
+        assert actual_text == "Modified"
+        print("✅ Updated text cell successfully")
+        
+        # Set numeric value with unit
+        new_length = RealUnitedScalar(4.5, Unit("m"))
+        df.cell_set_value(1, TestColumnKey("length"), new_length)
+        
+        # Verify change
+        updated_length = df.cell_get_value(1, TestColumnKey("length"))
+        assert updated_length.value_in_display_unit() == 4.5
+        print("✅ Updated length cell successfully")
+        
+        # Set integer value
+        new_count = 99  # Use raw integer directly
+        df.cell_set_value(2, TestColumnKey("count"), new_count)
+        
+        # Verify change
+        updated_count = df.cell_get_value(2, TestColumnKey("count"))
+        actual_count = updated_count.get_value() if hasattr(updated_count, 'get_value') else updated_count
+        assert actual_count == 99
+        print("✅ Updated count cell successfully")
+        
+        # Set boolean value
+        new_bool = False  # Use raw boolean directly
+        df.cell_set_value(0, TestColumnKey("active"), new_bool)
+        
+        # Verify change
+        updated_bool = df.cell_get_value(0, TestColumnKey("active"))
+        actual_bool = updated_bool.get_value() if hasattr(updated_bool, 'get_value') else updated_bool
+        assert actual_bool == False
+        print("✅ Updated boolean cell successfully")
+        
+        # Test 3: Error cases
+        print("\n❌ Testing cell operation error cases...")
+        
+        try:
+            # Try to access out of bounds row
+            df.cell_get_value(10, TestColumnKey("text"))
+            assert False, "Should have raised IndexError"
+        except (IndexError, ValueError) as e:
+            print(f"✅ Correctly caught out of bounds error: {type(e).__name__}")
+        
+        try:
+            # Try to access non-existent column
+            df.cell_get_value(0, TestColumnKey("nonexistent"))
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            print(f"✅ Correctly caught missing column error: {e}")
+        
+        print("🎉 Cell operations test completed successfully!")
+
+    def test_data_retrieval_comprehensive(self):
+        """Test data retrieval in different formats: arrays, numpy arrays, pandas series."""
+        print("\n🔧 Testing comprehensive data retrieval...")
+        
+        # Create test dataframe
+        arrays = {
+            TestColumnKey("strings"): ["A", "B", "C", "D"],
+            TestColumnKey("reals"): [1.1, 2.2, 3.3, 4.4],
+            TestColumnKey("integers"): [10, 20, 30, 40],
+            TestColumnKey("complex_vals"): [1+2j, 3+4j, 5+6j, 7+8j]
+        }
+        column_types = {
+            TestColumnKey("strings"): ColumnType.STRING,
+            TestColumnKey("reals"): ColumnType.REAL_NUMBER_64,
+            TestColumnKey("integers"): ColumnType.INTEGER_64,
+            TestColumnKey("complex_vals"): ColumnType.COMPLEX_128
+        }
+        column_units = {
+            TestColumnKey("strings"): None,
+            TestColumnKey("reals"): Unit("kg"),
+            TestColumnKey("integers"): None,
+            TestColumnKey("complex_vals"): None
+        }
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        print("✅ Created test dataframe: 4 rows, 4 columns with mixed types")
+        
+        # Test 1: Get as UnitedSystem arrays
+        print("\n📊 Testing column_get_as_array...")
+        
+        string_array = df.column_get_as_array(TestColumnKey("strings"))
+        assert isinstance(string_array, StringArray)
+        assert string_array.canonical_np_array.tolist() == ["A", "B", "C", "D"]
+        print(f"✅ String array: {string_array.canonical_np_array.tolist()}")
+        
+        real_array = df.column_get_as_array(TestColumnKey("reals"))
+        assert isinstance(real_array, RealUnitedArray)
+        assert real_array.canonical_np_array.tolist() == [1.1, 2.2, 3.3, 4.4]
+        assert str(real_array.active_unit) == "kg"
+        print(f"✅ Real array: {real_array.canonical_np_array.tolist()} {real_array.active_unit}")
+        
+        int_array = df.column_get_as_array(TestColumnKey("integers"))
+        assert isinstance(int_array, IntArray)
+        assert int_array.canonical_np_array.tolist() == [10, 20, 30, 40]
+        print(f"✅ Integer array: {int_array.canonical_np_array.tolist()}")
+        
+        complex_array = df.column_get_as_array(TestColumnKey("complex_vals"))
+        assert isinstance(complex_array, ComplexArray)
+        expected_complex = [1+2j, 3+4j, 5+6j, 7+8j]
+        assert complex_array.canonical_np_array.tolist() == expected_complex
+        print(f"✅ Complex array: {complex_array.canonical_np_array.tolist()}")
+        
+        # Test 2: Get as NumPy arrays
+        print("\n🔢 Testing column_get_as_numpy_array...")
+        
+        string_numpy = df.column_get_as_numpy_array(TestColumnKey("strings"))
+        assert isinstance(string_numpy, np.ndarray)
+        assert list(string_numpy) == ["A", "B", "C", "D"]
+        print(f"✅ String NumPy array: {list(string_numpy)}")
+        
+        real_numpy = df.column_get_as_numpy_array(TestColumnKey("reals"))
+        assert isinstance(real_numpy, np.ndarray)
+        assert np.allclose(real_numpy, [1.1, 2.2, 3.3, 4.4])
+        print(f"✅ Real NumPy array: {list(real_numpy)}")
+        
+        int_numpy = df.column_get_as_numpy_array(TestColumnKey("integers"))
+        assert isinstance(int_numpy, np.ndarray)
+        assert list(int_numpy) == [10, 20, 30, 40]
+        print(f"✅ Integer NumPy array: {list(int_numpy)}")
+        
+        # Test 3: Get as Pandas Series
+        print("\n🐼 Testing column_get_as_pd_series...")
+        
+        string_series = df.column_get_as_pd_series(TestColumnKey("strings"))
+        assert isinstance(string_series, pd.Series)
+        assert list(string_series) == ["A", "B", "C", "D"]
+        print(f"✅ String Pandas Series: {list(string_series)}")
+        
+        real_series = df.column_get_as_pd_series(TestColumnKey("reals"))
+        assert isinstance(real_series, pd.Series)
+        assert np.allclose(real_series, [1.1, 2.2, 3.3, 4.4])
+        print(f"✅ Real Pandas Series: {list(real_series)}")
+        
+        # Test 4: Sliced data retrieval
+        print("\n✂️ Testing sliced data retrieval...")
+        
+        # Get slice of data as array
+        sliced_reals = df.column_get_as_array(TestColumnKey("reals"), expected_column_type=None, slice=slice(1, 3))
+        assert isinstance(sliced_reals, RealUnitedArray)
+        assert sliced_reals.canonical_np_array.tolist() == [2.2, 3.3]
+        print(f"✅ Sliced real array [1:3]: {sliced_reals.canonical_np_array.tolist()}")
+        
+        # Get slice as numpy array
+        sliced_numpy = df.column_get_as_numpy_array(TestColumnKey("integers"), slice=slice(0, 2))
+        assert list(sliced_numpy) == [10, 20]
+        print(f"✅ Sliced integer NumPy array [0:2]: {list(sliced_numpy)}")
+        
+        # Get slice as pandas series
+        sliced_series = df.column_get_as_pd_series(TestColumnKey("strings"), slice=slice(2, 4))
+        assert list(sliced_series) == ["C", "D"]
+        print(f"✅ Sliced string Pandas Series [2:4]: {list(sliced_series)}")
+        
+        # Test 5: Type-specific retrieval
+        print("\n🎯 Testing type-specific retrieval...")
+        
+        # Specify expected type
+        typed_real_array = df.column_get_as_array(TestColumnKey("reals"), expected_column_type=RealUnitedArray)
+        assert isinstance(typed_real_array, RealUnitedArray)
+        print("✅ Type-specific retrieval works")
+        
+        try:
+            # Try wrong type
+            df.column_get_as_array(TestColumnKey("strings"), expected_column_type=RealUnitedArray)
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            print(f"✅ Correctly caught type mismatch error: {e}")
+        
+        print("🎉 Data retrieval test completed successfully!")
+
+    def test_metadata_access_comprehensive(self):
+        """Test comprehensive metadata access: units, types, column information."""
+        print("\n🔧 Testing comprehensive metadata access...")
+        
+        # Create test dataframe with diverse metadata
+        now = datetime.now()
+        arrays = {
+            TestColumnKey("mass"): [1.0, 2.0],
+            TestColumnKey("length"): [10.0, 20.0],
+            TestColumnKey("voltage"): [1+0j, 2+0j],
+            TestColumnKey("name"): ["A", "B"],
+            TestColumnKey("count"): [5, 10],
+            TestColumnKey("active"): [True, False],
+            TestColumnKey("timestamp"): [now, now]
+        }
+        column_types = {
+            TestColumnKey("mass"): ColumnType.REAL_NUMBER_64,
+            TestColumnKey("length"): ColumnType.REAL_NUMBER_32,
+            TestColumnKey("voltage"): ColumnType.COMPLEX_NUMBER_128,
+            TestColumnKey("name"): ColumnType.STRING,
+            TestColumnKey("count"): ColumnType.INTEGER_32,
+            TestColumnKey("active"): ColumnType.BOOL,
+            TestColumnKey("timestamp"): ColumnType.TIMESTAMP
+        }
+        column_units = {
+            TestColumnKey("mass"): Unit("kg"),
+            TestColumnKey("length"): Unit("cm"),
+            TestColumnKey("voltage"): Unit("V"),
+            TestColumnKey("name"): None,
+            TestColumnKey("count"): None,
+            TestColumnKey("active"): None,
+            TestColumnKey("timestamp"): None
+        }
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        print("✅ Created test dataframe: 2 rows, 7 columns with diverse metadata")
+        
+        # Test 1: Basic metadata
+        print("\n📋 Testing basic metadata access...")
+        
+        assert len(df) == 2
+        assert len(df.colkeys) == 7
+        print(f"✅ Dataframe dimensions: {len(df)} rows, {len(df.colkeys)} columns")
+        
+        column_keys = df.colkeys
+        assert len(column_keys) == 7
+        expected_keys = ["mass", "length", "voltage", "name", "count", "active", "timestamp"]
+        assert all(TestColumnKey(key) in column_keys for key in expected_keys)
+        print(f"✅ Column keys: {[str(key) for key in column_keys]}")
+        
+        # Test 2: Units access
+        print("\n📏 Testing units access...")
+        
+        mass_unit = df.units[TestColumnKey("mass")]
+        assert str(mass_unit) == "kg"
+        print(f"✅ Mass unit: {mass_unit}")
+        
+        length_unit = df.units[TestColumnKey("length")]
+        assert str(length_unit) == "cm"
+        print(f"✅ Length unit: {length_unit}")
+        
+        voltage_unit = df.units[TestColumnKey("voltage")]
+        assert str(voltage_unit) == "V"
+        print(f"✅ Voltage unit: {voltage_unit}")
+        
+        name_unit = df.units[TestColumnKey("name")]
+        assert name_unit is None or str(name_unit) == "None"
+        print(f"✅ Name unit: {name_unit}")
+        
+        # Test 3: Column types access
+        print("\n🔤 Testing column types access...")
+        
+        mass_type = df.coltypes[TestColumnKey("mass")]
+        assert mass_type == ColumnType.REAL_NUMBER_64
+        print(f"✅ Mass type: {mass_type}")
+        
+        length_type = df.coltypes[TestColumnKey("length")]
+        assert length_type == ColumnType.REAL_NUMBER_32
+        print(f"✅ Length type: {length_type}")
+        
+        voltage_type = df.coltypes[TestColumnKey("voltage")]
+        assert voltage_type == ColumnType.COMPLEX_NUMBER_128
+        print(f"✅ Voltage type: {voltage_type}")
+        
+        name_type = df.coltypes[TestColumnKey("name")]
+        assert name_type == ColumnType.STRING
+        print(f"✅ Name type: {name_type}")
+        
+        count_type = df.coltypes[TestColumnKey("count")]
+        assert count_type == ColumnType.INTEGER_32
+        print(f"✅ Count type: {count_type}")
+        
+        active_type = df.coltypes[TestColumnKey("active")]
+        assert active_type == ColumnType.BOOL
+        print(f"✅ Active type: {active_type}")
+        
+        timestamp_type = df.coltypes[TestColumnKey("timestamp")]
+        assert timestamp_type == ColumnType.TIMESTAMP
+        print(f"✅ Timestamp type: {timestamp_type}")
+        
+        # Test 4: Columns categorized by units
+        print("\n🎯 Testing unit categorization...")
+        
+        with_units = df.column_get_with_units()
+        without_units = df.column_get_without_units()
+        
+        expected_with_units = [TestColumnKey("mass"), TestColumnKey("length"), TestColumnKey("voltage")]
+        expected_without_units = [TestColumnKey("name"), TestColumnKey("count"), TestColumnKey("active"), TestColumnKey("timestamp")]
+        
+        assert len(with_units) == 3
+        assert len(without_units) == 4
+        
+        for key in expected_with_units:
+            assert key in with_units
+        for key in expected_without_units:
+            assert key in without_units
+        
+        print(f"✅ Columns with units: {[str(key) for key in with_units]}")
+        print(f"✅ Columns without units: {[str(key) for key in without_units]}")
+        
+        # Test 5: Dimensions access
+        print("\n📐 Testing dimensions access...")
+        
+        mass_dimension = df.dim_get_dimension(TestColumnKey("mass"))
+        assert mass_dimension is not None
+        print(f"✅ Mass dimension: {mass_dimension}")
+        
+        length_dimension = df.dim_get_dimension(TestColumnKey("length"))
+        assert length_dimension is not None
+        print(f"✅ Length dimension: {length_dimension}")
+        
+        # Check if name column has dimension first
+        if df.dim_has_dimension(TestColumnKey("name")):
+            name_dimension = df.dim_get_dimension(TestColumnKey("name"))
+        else:
+            name_dimension = None
+        assert name_dimension is None
+        print(f"✅ Name dimension: {name_dimension}")
+        
+        # Test 6: Iterator access
+        print("\n🔄 Testing iterator access...")
+        
+        # Test unit iterator
+        units_list = list(df.iter_units())
+        assert len(units_list) == 7
+        print(f"✅ Units iterator: {len(units_list)} units")
+        
+        # Test dimensions iterator
+        dimensions_list = list(df.iter_dimensions())
+        assert len(dimensions_list) == 7
+        print(f"✅ Dimensions iterator: {len(dimensions_list)} dimensions")
+        
+        # Test column iterator
+        columns_list = list(df.iter_columns())
+        assert len(columns_list) == 7
+        print(f"✅ Columns iterator: {len(columns_list)} column accessors")
+        
+        # Test row iterator
+        rows_list = list(df.iter_rows())
+        assert len(rows_list) == 2
+        print(f"✅ Rows iterator: {len(rows_list)} row accessors")
+        
+        print("🎉 Metadata access test completed successfully!")
+
+    def test_read_only_mode_comprehensive(self):
+        """Test operations in read-only mode to ensure proper error handling."""
+        print("\n🔧 Testing read-only mode comprehensive...")
+        
+        # Create test dataframe
+        arrays = {TestColumnKey("test"): ["A", "B"]}
+        column_types = {TestColumnKey("test"): ColumnType.STRING}
+        column_units = {TestColumnKey("test"): None}
+        
+        df = UnitedDataframe.create_dataframe_from_data(
+            arrays=arrays,
+            column_types=column_types,
+            column_units_or_dimensions=column_units
+        )
+        
+        # Convert to read-only
+        read_only_df = df.copy()
+        read_only_df.set_read_only(True)
+        
+        print("✅ Created read-only dataframe copy")
+        
+        # Test that read operations still work
+        print("\n📖 Testing read operations on read-only dataframe...")
+        
+        assert len(read_only_df) == 2
+        assert len(read_only_df.colkeys) == 1
+        
+        data = read_only_df.column_get_as_array(TestColumnKey("test"))
+        assert data.canonical_np_array.tolist() == ["A", "B"]
+        
+        cell_value = read_only_df.cell_get_value(0, TestColumnKey("test"))
+        actual_cell_value = cell_value.get_value() if hasattr(cell_value, 'get_value') else cell_value
+        assert actual_cell_value == "A"
+        
+        print("✅ Read operations work correctly in read-only mode")
+        
+        # Test that write operations fail
+        print("\n❌ Testing write operations on read-only dataframe...")
+        
+        operations_to_test = [
+            ("column_add", lambda: read_only_df.column_add(TestColumnKey("new"), StringArray(np.array(["X", "Y"])), ColumnType.STRING, None)),
+            ("column_remove", lambda: read_only_df.column_remove(TestColumnKey("test"))),
+            ("column_set_values", lambda: read_only_df.column_set_values(TestColumnKey("test"), StringArray(np.array(["X", "Y"])))),
+            ("row_add_empty", lambda: read_only_df.row_add_empty(1)),
+            ("row_remove", lambda: read_only_df.row_remove(0, 1)),
+            ("cell_set_value", lambda: read_only_df.cell_set_value(0, TestColumnKey("test"), "X")),
+        ]
+        
+        for op_name, op_func in operations_to_test:
+            try:
+                op_func()
+                assert False, f"{op_name} should have raised ValueError in read-only mode"
+            except ValueError as e:
+                assert "read-only" in str(e).lower()
+                print(f"✅ {op_name} correctly blocked in read-only mode")
+        
+        print("🎉 Read-only mode test completed successfully!")

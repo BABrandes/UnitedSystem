@@ -3,11 +3,12 @@
 from typing import TYPE_CHECKING, Union, Optional
 from .....unit import Unit
 from .....dimension import Dimension
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....real_united_scalar import RealUnitedScalar
 
-class FactoryMixin:
+class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Factory methods for RealUnitedScalar."""
 
     @classmethod

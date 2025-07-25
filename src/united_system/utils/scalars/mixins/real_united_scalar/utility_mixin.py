@@ -3,13 +3,14 @@
 from typing import TYPE_CHECKING, Optional
 import math
 import numpy as np
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....real_united_scalar import RealUnitedScalar
     from .....unit import Unit
     from .....dimension import Dimension
 
-class UtilityMixin:
+class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Utility methods for RealUnitedScalar."""
     
     # These will be provided by the core class

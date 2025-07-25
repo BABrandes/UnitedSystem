@@ -11,7 +11,7 @@ from typing import Any, Callable, TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ...scalars.united_scalar import UnitedScalar
 from ....unit import Unit
-from ....utils.dataframe.column_type import SCALAR_TYPE
+from ....column_type import SCALAR_TYPE
 from ....bool_array import BoolArray
 import pandas as pd
 import numpy as np
@@ -19,7 +19,7 @@ import numpy as np
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
 
-class MaskOperationsMixin(UnitedDataframeProtocol[CK]):
+class MaskOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Mask operations mixin for UnitedDataframe.
     

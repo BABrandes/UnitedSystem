@@ -7,9 +7,13 @@ filtering by type, and column key management.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
+from typing import TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK, CK_CF
 
-class ColKeyMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class ColKeyMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Column key operations mixin for UnitedDataframe.
     

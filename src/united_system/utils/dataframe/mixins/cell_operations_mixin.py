@@ -7,15 +7,18 @@ including getting and setting individual cell values.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ....column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 import pandas as pd
+
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
 
 ST = TypeVar("ST", bound=SCALAR_TYPE)
 LT = TypeVar("LT", bound=LOWLEVEL_TYPE)
 
-class CellOperationsMixin(UnitedDataframeProtocol[CK]):
+class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Cell operations mixin for UnitedDataframe.
     
@@ -119,13 +122,14 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK]):
             ValueError: If the dataframe is read-only or parameters are invalid
         """
 
-        if 0 <= row_index < len(self._internal_dataframe):
+        if row_index < 0 or row_index >= len(self._internal_dataframe):
             raise ValueError(f"Row index {row_index} is out of bounds.")
         if column_key not in self._column_keys:
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
         internal_column_name = self._internal_dataframe_column_names[column_key]
-        self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].get_value_for_dataframe(value)
+        column_unit = self._column_units[column_key]
+        self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].get_value_for_dataframe(value, column_unit)
         
 
     def cell_set_value(self, row_index: int, column_key: CK, value: Any) -> None:

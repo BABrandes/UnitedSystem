@@ -5,7 +5,6 @@ This is the primary class that users will interact with. It inherits from all
 the mixins to provide a complete dataframe implementation with units support.
 """
 
-from dataclasses import dataclass, field
 from typing import Generic, Dict, Optional, Type
 from collections.abc import Sequence
 from types import TracebackType
@@ -14,11 +13,11 @@ from readerwriterlock import rwlock
 
 from .utils.dataframe.mixins import *
 from .utils.dataframe.mixins.dataframe_protocol import CK
-from .utils.dataframe.column_type import ColumnType
-from .utils.dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
+from .column_type import ColumnType
+from .utils.dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
 from .unit import Unit
+from .dimension import Dimension
 
-@dataclass(init=False)
 class UnitedDataframe(
     CoreMixin[CK],
     ColKeyMixin[CK],
@@ -61,27 +60,55 @@ class UnitedDataframe(
     This class is the main entry point for users and combines all the mixins
     to provide a complete dataframe solution.
     """
-    
-    # Core data structures
-    _internal_dataframe: pd.DataFrame
-    _internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter
-    _internal_dataframe_column_names: Dict[CK, str] = field(default_factory=dict, init=False)
-
-    # Derived data structures (populated in __post_init__)
-    _column_keys: list[CK] = field(default_factory=list, init=False)
-    _column_types: Dict[CK, ColumnType] = field(default_factory=dict, init=False)
-    _column_units: Dict[CK, Optional[Unit]] = field(default_factory=dict, init=False)
-    
-    # Read-only state
-    _read_only: bool = False
-    
-    # Thread safety
-    _lock: rwlock.RWLockFairD = field(init=False)
-    _rlock: rwlock.RWLockFairD._aReader = field(init=False) # type: ignore
-    _wlock: rwlock.RWLockFairD._aWriter = field(init=False) # type: ignore
 
     def __init__(
             self,
+            column_keys: Sequence[CK] = [],
+            column_types: Dict[CK, ColumnType] = {},
+            column_units: Dict[CK, Optional[Unit]] = {},
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> None:
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        pass
+
+    def __new__(
+            cls,
+            column_keys: Sequence[CK] = [],
+            column_types: Dict[CK, ColumnType] = {},
+            column_units: Dict[CK, Optional[Unit]] = {},
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Create a new UnitedDataframe instance.
+        """
+        
+        # If column_keys are provided, create an empty dataframe with those columns
+        if column_keys:
+            column_units_or_dimensions: dict[CK, Optional[Unit | Dimension]] = {key: column_units.get(key) for key in column_keys}
+            return cls.create_empty_dataframe(
+                column_keys=list(column_keys),
+                column_types=column_types,
+                column_units_or_dimensions=column_units_or_dimensions,
+                internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter
+            )
+        else:
+            # Empty dataframe case
+            return cls._construct(
+                dataframe=pd.DataFrame(),
+                column_keys=column_keys,
+                column_types=column_types,
+                column_units=column_units,
+                internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
+                read_only=read_only,
+            )
+    
+    @classmethod
+    def _construct(
+            cls,
             dataframe: pd.DataFrame,
             column_keys: Sequence[CK],
             column_types: Dict[CK, ColumnType],
@@ -90,7 +117,7 @@ class UnitedDataframe(
             read_only: bool = False,
             copy_dataframe: bool = False,
             rename_dataframe_columns: bool = False
-    ) -> None:
+    ) -> "UnitedDataframe[CK]":
         """
         Initialize derived data structures and set up thread safety.
         """
@@ -114,19 +141,23 @@ class UnitedDataframe(
         if copy_dataframe:
             dataframe = dataframe.copy(deep=True)
 
+        instance: "UnitedDataframe[CK]" = object.__new__(cls)
+
         # Initialize locks
-        self._lock = rwlock.RWLockFairD()
-        object.__setattr__(self, '_rlock', self._lock.gen_rlock())
-        object.__setattr__(self, '_wlock', self._lock.gen_wlock())
+        instance._lock = rwlock.RWLockFairD()
+        object.__setattr__(instance, '_rlock', instance._lock.gen_rlock())
+        object.__setattr__(instance, '_wlock', instance._lock.gen_wlock())
         
         # Initialize derived data structures
-        object.__setattr__(self, '_column_keys', list(column_keys))
-        object.__setattr__(self, '_column_types', column_types)
-        object.__setattr__(self, '_column_units', column_units)
-        object.__setattr__(self, '_internal_dataframe', dataframe)
-        object.__setattr__(self, '_internal_dataframe_column_names', dataframe_column_names)
-        object.__setattr__(self, '_internal_dataframe_column_name_formatter', internal_dataframe_column_name_formatter)
-        object.__setattr__(self, '_read_only', read_only)
+        object.__setattr__(instance, '_column_keys', list(column_keys))
+        object.__setattr__(instance, '_column_types', column_types)
+        object.__setattr__(instance, '_column_units', column_units)
+        object.__setattr__(instance, '_internal_dataframe', dataframe)
+        object.__setattr__(instance, '_internal_dataframe_column_names', dataframe_column_names)
+        object.__setattr__(instance, '_internal_dataframe_column_name_formatter', internal_dataframe_column_name_formatter)
+        object.__setattr__(instance, '_read_only', read_only)
+
+        return instance
 
     def __str__(self) -> str:
         """

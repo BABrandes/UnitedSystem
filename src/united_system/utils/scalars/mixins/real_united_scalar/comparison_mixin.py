@@ -1,12 +1,14 @@
 """Comparison operations for RealUnitedScalar."""
 
 from typing import TYPE_CHECKING, Optional
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from .....unit import Unit
     from .....dimension import Dimension
+    from .....real_united_scalar import RealUnitedScalar
 
-class ComparisonMixin:
+class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Comparison operations for RealUnitedScalar."""
     
     # These will be provided by the core class

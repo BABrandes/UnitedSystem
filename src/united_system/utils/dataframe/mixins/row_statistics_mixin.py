@@ -7,9 +7,13 @@ counting missing values.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
+from typing import TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 
-class RowStatisticsMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class RowStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     def rows_count_missing_values(self) -> dict[int, int]:
         """

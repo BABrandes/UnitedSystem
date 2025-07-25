@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_key import ColumnKey
-from ..column_type import LOWLEVEL_TYPE
+from ....column_key import ColumnKey
+from ....column_type import LOWLEVEL_TYPE
 from ....bool_array import BoolArray
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from ..accessors._row_accessor import RowAccessor # type: ignore
     from ..accessors._column_accessor import ColumnAccessor # type: ignore
 
-class AccessorGetitemMixin(UnitedDataframeProtocol[CK]):
+class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Mixin providing magic methods for dataframe access patterns.
     

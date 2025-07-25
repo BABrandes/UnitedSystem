@@ -9,8 +9,8 @@ to provide a complete dataframe solution.
 from typing import TYPE_CHECKING
 
 from .internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
-from .column_key import ColumnKey
-from .column_type import ColumnType
+from ...column_key import ColumnKey
+from ...column_type import ColumnType
 
 # Import all mixins for advanced usage
 from .mixins import (

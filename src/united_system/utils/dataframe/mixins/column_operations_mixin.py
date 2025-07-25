@@ -7,14 +7,17 @@ addition, removal, and column data manipulation.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import TypeVar, Optional
+from typing import TYPE_CHECKING, TypeVar, Optional
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType, ARRAY_TYPE
+from ....column_type import ColumnType, ARRAY_TYPE
 from ....unit import Unit
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
-class ColumnOperationsMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Column operations mixin for UnitedDataframe.
     
@@ -72,7 +75,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK]):
         # Add to internal dataframe
         internal_column_name: str = self._create_internal_dataframe_column_name(column_key)
         self._internal_dataframe_column_names[column_key] = internal_column_name
-        self._internal_dataframe[internal_column_name] = column_type.get_values_for_dataframe(array, unit)
+        self._internal_dataframe[internal_column_name] = column_type.get_values_for_dataframe(array, unit) # type: ignore
 
     def column_remove(self, column_key: CK) -> None:
         """
@@ -140,7 +143,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK]):
         
         # Replace in internal dataframe
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
-        self._internal_dataframe[internal_column_name] = self._column_types[column_key].get_values_for_dataframe(array, self._column_units[column_key])
+        self._internal_dataframe[internal_column_name] = self._column_types[column_key].get_values_for_dataframe(array, self._column_units[column_key]) # type: ignore
 
     def column_rename(self, current_column_key: CK, new_column_key: CK):
         """

@@ -7,15 +7,18 @@ addition, removal, and row data manipulation.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 import pandas as pd
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType
+from ....column_type import ColumnType
 from ....unit import Unit
 from ...scalars.united_scalar import UnitedScalar
 from ...arrays.base_array import PT_TYPE
 
-class RowOperationsMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Row operations mixin for UnitedDataframe.
     
@@ -44,14 +47,14 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
         if self._read_only:
             raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
         
-        if row_index < 0 or row_index > len(self._internal_canonical_dataframe):
+        if row_index < 0 or row_index > len(self._internal_dataframe):
             raise ValueError(f"Row index {row_index} is out of bounds for insertion.")
         
         # Create empty rows
-        empty_rows = pd.DataFrame(index=range(row_index, row_index + number_of_rows), columns=self._internal_canonical_dataframe.columns)
-        self._internal_canonical_dataframe = pd.concat([self._internal_canonical_dataframe.iloc[:row_index], empty_rows, self._internal_canonical_dataframe.iloc[row_index:]], ignore_index=True)      
+        empty_rows = pd.DataFrame(index=range(row_index, row_index + number_of_rows), columns=self._internal_dataframe.columns)
+        self._internal_dataframe = pd.concat([self._internal_dataframe.iloc[:row_index], empty_rows, self._internal_dataframe.iloc[row_index:]], ignore_index=True)      
 
-    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any]|PT_TYPE]]) -> None:
+    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any]|PT_TYPE|None]]) -> None:
         """
         Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
 
@@ -68,7 +71,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
         if not values:
             return
 
-        num_rows:int = len(next(iter(values.values())))
+        num_rows: int = len(next(iter(values.values())))
 
         # Validate all inputs and convert values
         converted_values: dict[str, list[Any]] = {}
@@ -84,7 +87,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             converted_column: list[Any] = []
 
             for value in value_list:
-                if column_type.has_unit:
+                if column_type.has_unit and value is not None:
                     if not isinstance(value, UnitedScalar):
                         raise ValueError(f"Value '{value}' in column '{column_key}' is not a UnitedScalar.")
                     if value.active_unit != column_unit:
@@ -113,7 +116,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
                 )
 
         # Assign using .loc with new DataFrame
-        self._internal_canonical_dataframe.loc[row_start:row_stop - 1, list(converted_values.keys())] = pd.DataFrame(converted_values, index=range(row_start, row_stop))
+        self._internal_dataframe.loc[row_start:row_stop - 1, list(converted_values.keys())] = pd.DataFrame(converted_values, index=range(row_start, row_stop))
 
     def _row_remove(self, row_index_start_inclusive: int, row_index_stop_exclusive: int) -> None:
         """
@@ -125,11 +128,11 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
         if row_index_start_inclusive < 0 or row_index_start_inclusive >= row_index_stop_exclusive:
             raise ValueError(f"Row index start {row_index_start_inclusive} is out of bounds.")
         
-        if row_index_stop_exclusive < 0 or row_index_stop_exclusive > len(self._internal_canonical_dataframe):
+        if row_index_stop_exclusive < 0 or row_index_stop_exclusive > len(self._internal_dataframe):
             raise ValueError(f"Row index stop {row_index_stop_exclusive} is out of bounds.")
         
-        self._internal_canonical_dataframe.drop(index=range(row_index_start_inclusive, row_index_stop_exclusive), inplace=True)
-        self._internal_canonical_dataframe.reset_index(drop=True, inplace=True)
+        self._internal_dataframe.drop(index=range(row_index_start_inclusive, row_index_stop_exclusive), inplace=True)
+        self._internal_dataframe.reset_index(drop=True, inplace=True)
 
     ##### Base row operations end #####
 
@@ -147,7 +150,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if self._read_only:  # And _read_only!
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_insert_empty(len(self._internal_canonical_dataframe), number_of_rows)
+            self._row_insert_empty(len(self._internal_dataframe), number_of_rows)
 
     def row_add_values(self, values: Dict[CK, list[Any] | Dict[CK, Any]]) -> None:
         """
@@ -176,7 +179,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
                 values = {column_key: [values[column_key]] for column_key in values}
 
             number_of_rows_to_add = len(next(iter(values.values())))
-            start_index = len(self._internal_canonical_dataframe)
+            start_index = len(self._internal_dataframe)
 
             self._row_insert_empty(start_index, number_of_rows_to_add)
             self._row_set_values(slice(start_index, start_index + number_of_rows_to_add), values) # type: ignore
@@ -282,13 +285,13 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            if row_index_start_inclusive < 0 or row_index_start_inclusive >= len(self._internal_canonical_dataframe):
+            if row_index_start_inclusive < 0 or row_index_start_inclusive >= len(self._internal_dataframe):
                 raise ValueError(f"Start row index {row_index_start_inclusive} is out of bounds for insertion.")
             
-            if number_of_rows < 0 or row_index_start_inclusive + number_of_rows > len(self._internal_canonical_dataframe):
+            if number_of_rows < 0 or row_index_start_inclusive + number_of_rows > len(self._internal_dataframe):
                 raise ValueError(f"Number of rows {number_of_rows} is out of bounds for insertion.")
             
-            self._row_set_values(slice(row_index_start_inclusive, row_index_start_inclusive + number_of_rows), {column_key: [pd.NA] * number_of_rows for column_key in self._column_keys}) # type: ignore
+            self._row_set_values(slice(row_index_start_inclusive, row_index_start_inclusive + number_of_rows), {column_key: [None] * number_of_rows for column_key in self._column_keys}) # type: ignore
             
     def row_remove(self, row_index_start_inclusive: int, row_index_stop_exclusive: int) -> None:
         """
@@ -302,7 +305,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if row_index_start_inclusive < 0 or row_index_start_inclusive >= row_index_stop_exclusive:
                 raise ValueError(f"Row index start {row_index_start_inclusive} is out of bounds.")
             
-            if row_index_stop_exclusive < 0 or row_index_stop_exclusive > len(self._internal_canonical_dataframe):
+            if row_index_stop_exclusive < 0 or row_index_stop_exclusive > len(self._internal_dataframe):
                 raise ValueError(f"Row index stop {row_index_stop_exclusive} is out of bounds.")
             
             self._row_remove(row_index_start_inclusive, row_index_stop_exclusive)
@@ -316,7 +319,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_set_values(slice(0, len(self._internal_canonical_dataframe)), {column_key: [pd.NA] * len(self._internal_canonical_dataframe) for column_key in self._column_keys}) # type: ignore
+            self._row_set_values(slice(0, len(self._internal_dataframe)), {column_key: [None] * len(self._internal_dataframe) for column_key in self._column_keys}) # type: ignore
 
     def row_remove_all(self) -> None:
         """
@@ -327,4 +330,4 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_remove(0, len(self._internal_canonical_dataframe))
+            self._row_remove(0, len(self._internal_dataframe))

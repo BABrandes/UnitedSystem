@@ -9,9 +9,9 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import overload, TYPE_CHECKING, Any, Union
 from collections.abc import Sequence
-from ..column_key import ColumnKey
+from ....column_key import ColumnKey
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import LOWLEVEL_TYPE, ARRAY_TYPE, SCALAR_TYPE
+from ....column_type import LOWLEVEL_TYPE, ARRAY_TYPE, SCALAR_TYPE
 import numpy as np
 import pandas as pd
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from ..accessors._row_accessor import RowAccessor # type: ignore
     from ..accessors._column_accessor import ColumnAccessor # type: ignore
 
-class AccessorSetitemMixin(UnitedDataframeProtocol[CK]):
+class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Mixin providing magic methods for dataframe item assignment.
     

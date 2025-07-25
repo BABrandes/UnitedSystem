@@ -19,7 +19,7 @@ from .dataframe_protocol import UnitedDataframeProtocol, CK
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
 
-class SerializationMixin(UnitedDataframeProtocol[CK]):
+class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Serialization operations mixin for UnitedDataframe.
     
@@ -105,36 +105,93 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             df = pd.read_csv(path) # type: ignore
             
             # Replace internal dataframe
-            self._internal_canonical_dataframe = df
+            self._internal_dataframe = df
 
     # ----------- HDF5 Serialization ------------
 
-    def to_hdf5(self, hdf5_group: h5py.Group) -> None:
+    def to_hdf5(self, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", **kwargs: Any) -> None:
         """
         Serialize dataframe to HDF5 format.
         
         Args:
-            path (Union[str, Path]): File path to save HDF5
-            key (str): HDF5 key/group name
+            path_or_group (Union[Path, str, h5py.Group]): File path or h5py Group to save to
+            key (str): HDF5 key/group name (default: "dataframe") - ignored if path_or_group is a Group
             **kwargs: Additional arguments passed to pandas.DataFrame.to_hdf()
         """
         with self._rlock:
-            self._internal_canonical_dataframe.to_hdf(hdf5_group, "dataframe") # type: ignore
+            if isinstance(path_or_group, (str, Path)):
+                # File path - use pandas standard HDF5 interface
+                # Convert extension arrays to numpy arrays for HDF5 compatibility
+                df_to_save = self._internal_dataframe.copy()
+                for col in df_to_save.columns:
+                    if hasattr(df_to_save[col].dtype, 'numpy_dtype'):
+                        # Convert extension arrays (FloatingArray, etc.) to numpy arrays
+                        df_to_save[col] = df_to_save[col].astype(df_to_save[col].dtype.numpy_dtype) #type: ignore
+                df_to_save.to_hdf(str(path_or_group), key, **kwargs) # type: ignore
+            else:
+                # h5py Group - need to use a different approach
+                # Save to temporary file then copy to group
+                import tempfile
+                import os
+                with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
+                    temp_path = tmp_file.name
+                try:
+                    # Save to temporary file with extension array conversion
+                    df_to_save = self._internal_dataframe.copy()
+                    for col in df_to_save.columns:
+                        if hasattr(df_to_save[col].dtype, 'numpy_dtype'):
+                            # Convert extension arrays (FloatingArray, etc.) to numpy arrays
+                            df_to_save[col] = df_to_save[col].astype(df_to_save[col].dtype.numpy_dtype) #type: ignore
+                    df_to_save.to_hdf(temp_path, key, **kwargs) # type: ignore
+                    
+                    # Copy from temporary file to target group
+                    import h5py
+                    with h5py.File(temp_path, 'r') as temp_h5:
+                        temp_h5.copy(key, path_or_group, name=key) # type: ignore
+                finally:
+                    # Clean up temporary file
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
 
     @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
+    def from_hdf5(cls, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **kwargs: Any) -> "UnitedDataframe[CK]":
         """
         Load dataframe from HDF5 format.
         
         Args:
-            path (Union[str, Path]): File path to load HDF5 from
-            key (str): HDF5 key/group name
+            path_or_group (Union[Path, str, h5py.Group]): File path or h5py Group to load from
+            key (str): HDF5 key/group name (default: "dataframe") - ignored if path_or_group is a Group
+            internal_dataframe_column_name_formatter: Formatter for internal column names
             **kwargs: Additional arguments passed to pandas.read_hdf()
         """
         import pandas as pd
-        df: pd.DataFrame = pd.read_hdf(hdf5_group, "dataframe") # type: ignore
+        
+        if isinstance(path_or_group, (str, Path)):
+            # File path - use pandas standard HDF5 interface
+            df: pd.DataFrame = pd.read_hdf(str(path_or_group), key, **kwargs) # type: ignore
+        else:
+            # h5py Group - need to use a different approach
+            # Copy from group to temporary file then read
+            import tempfile
+            import os
+            import h5py
+            
+            with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
+                temp_path = tmp_file.name
+            try:
+                # Copy from group to temporary file
+                with h5py.File(temp_path, 'w') as temp_h5:
+                    path_or_group.copy(key, temp_h5, name=key) # type: ignore
+                
+                # Read from temporary file
+                df: pd.DataFrame = pd.read_hdf(temp_path, key, **kwargs) # type: ignore
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+        
         united_dataframe: "UnitedDataframe[CK]" = cls.create_dataframe_from_pandas_with_correct_column_names(
-            pandas_dataframe=df,
+            pandas_dataframe=df, # type: ignore
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
             deep_copy=False
         ) # type: ignore
@@ -185,7 +242,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             Union[Dict[str, Any], list]: Dictionary representation
         """
         with self._rlock:
-            return self._internal_canonical_dataframe.to_dict(orient=orient) # type: ignore
+            return self._internal_dataframe.to_dict(orient=orient) # type: ignore
 
     def from_dict(self, data: Dict[str, Any], orient: str = "columns") -> None:
         """
@@ -204,7 +261,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             df = pd.DataFrame.from_dict(data, orient=orient) # type: ignore
             
             # Replace internal dataframe
-            self._internal_canonical_dataframe = df # type: ignore
+            self._internal_dataframe = df # type: ignore
 
     # ----------- Metadata Serialization ------------
 
@@ -236,3 +293,44 @@ class SerializationMixin(UnitedDataframeProtocol[CK]):
             metadata = self.get_metadata()
             with open(path, 'w') as f:
                 json.dump(metadata, f, indent=2) 
+
+    # ----------- Pickle State Management ------------
+
+    def __getstate__(self) -> Dict[str, Any]:
+        """
+        Custom pickle state management - exclude thread locks.
+        
+        Thread locks cannot be pickled, so we exclude them from the state
+        and recreate them during unpickling.
+        
+        Returns:
+            Dict[str, Any]: Picklable state dictionary
+        """
+        # Get all instance attributes except locks
+        state = self.__dict__.copy()
+        
+        # Remove the unpicklable thread lock objects
+        state.pop('_lock', None)
+        state.pop('_rlock', None) 
+        state.pop('_wlock', None)
+        
+        return state
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """
+        Custom pickle state restoration - recreate thread locks.
+        
+        Restores the pickled state and recreates the thread locks that
+        were excluded during pickling.
+        
+        Args:
+            state (Dict[str, Any]): Restored state dictionary
+        """
+        # Restore all attributes from the pickled state
+        self.__dict__.update(state)
+        
+        # Recreate the thread locks
+        from readerwriterlock import rwlock
+        self._lock = rwlock.RWLockFairD()
+        self._rlock = self._lock.gen_rlock()
+        self._wlock = self._lock.gen_wlock() 

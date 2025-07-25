@@ -2376,7 +2376,7 @@ class TestDimensionConstructorEdgeCases:
         from united_system.unit import Unit
         
         # Test Unit + subscript combination (should work but ignore subscript)
-        dim = Dimension(Unit("kg"), subscript="test")
+        dim = Dimension(Unit("kg"), subscript="test") # type: ignore
         assert dim == Dimension("M")  # Should ignore subscript and use Unit's dimension
     
     def test_none_with_subscript(self):
@@ -2399,16 +2399,16 @@ class TestDimensionConstructorEdgeCases:
         from united_system.unit import Unit
         
         # Test string with Unit (constructor is permissive, ignores extra args)
-        dim = Dimension("M", Unit("kg"))
+        dim: Dimension = Dimension("M", Unit("kg")) # type: ignore
         assert dim == Dimension("M")  # Should ignore the Unit argument
         
         # Test NamedQuantity with Unit as subscript (should fail due to type checking)
         with pytest.raises(TypeError, match="'Unit' object is not iterable"):
-            Dimension(NamedQuantity.MASS, Unit("kg"))
+            Dimension(NamedQuantity.MASS, Unit("kg")) # type: ignore
         
         # Test with unknown keyword argument (should fail)
         with pytest.raises(TypeError):
-            Dimension("M", unknown_param="test")
+            Dimension("M", unknown_param="test") # type: ignore
 
 
 class TestDimensionMathematicalProperties:
@@ -2444,7 +2444,7 @@ class TestDimensionMathematicalProperties:
         
         # Test addition identity (should fail for different dimensions)
         with pytest.raises(ValueError):
-            self.a + self.b  # Different dimensions
+            _ = self.a + self.b  # Different dimensions
     
     def test_distributive_property_with_log(self):
         """Test distributive property with logarithmic dimensions."""
@@ -2504,10 +2504,10 @@ class TestDimensionMemoryAndPerformance:
         dimensions = []
         for i in range(1000):
             dim_str = f"M^{i%5}*L^{i%3}/T^{i%2}"
-            dimensions.append(Dimension(dim_str))
+            dimensions.append(Dimension(dim_str)) # type: ignore
         
         # Verify cache is working
-        cache_size_before = len(Dimension._CACHE)
+        cache_size_before = len(Dimension._CACHE) # type: ignore
         
         # Create the same dimensions again
         for i in range(1000):
@@ -2515,12 +2515,12 @@ class TestDimensionMemoryAndPerformance:
             Dimension(dim_str)
         
         # Cache size should be the same (no new entries)
-        cache_size_after = len(Dimension._CACHE)
+        cache_size_after = len(Dimension._CACHE) # type: ignore
         assert cache_size_after == cache_size_before
         
         # Clear cache
         Dimension.clear_cache()
-        assert len(Dimension._CACHE) == 0
+        assert len(Dimension._CACHE) == 0 # type: ignore
     
     def test_deeply_nested_performance(self):
         """Test performance with deeply nested log dimensions."""
@@ -2529,13 +2529,13 @@ class TestDimensionMemoryAndPerformance:
         # Create a deeply nested log dimension
         base = Dimension("M*L/T^2")
         nested = base
-        for i in range(10):
+        for _ in range(10):
             nested = nested.log()
         
         # Test that operations on deeply nested dimensions are reasonable
         start_time = time.time()
         for _ in range(100):
-            result = nested * nested
+            _ = nested * nested
         end_time = time.time()
         
         # Should complete in reasonable time
@@ -2550,7 +2550,7 @@ class TestDimensionMemoryAndPerformance:
         
         start_time = time.time()
         for _ in range(100):
-            result = large_dim ** 2
+            _ = large_dim ** 2
         end_time = time.time()
         
         # Should complete in reasonable time
@@ -2571,11 +2571,11 @@ class TestDimensionMemoryAndPerformance:
         gc.collect()
         
         # Cache should still contain the dimensions
-        assert len(Dimension._CACHE) > 0
+        assert len(Dimension._CACHE) > 0 # type: ignore
         
         # Clear cache manually
         Dimension.clear_cache()
-        assert len(Dimension._CACHE) == 0
+        assert len(Dimension._CACHE) == 0 # type: ignore
 
 
 class TestDimensionUnicodeAndSpecialCharacters:

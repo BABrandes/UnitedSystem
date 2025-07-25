@@ -7,12 +7,15 @@ setting, and dimension management.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ....dimension import Dimension
 from ....unit import Unit
 
-class DimensionMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class DimensionMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Dimension operations mixin for UnitedDataframe.
     

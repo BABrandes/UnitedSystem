@@ -7,16 +7,19 @@ getting the column data as a pandas Series, numpy array, or array.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 import pandas as pd
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType, ARRAY_TYPE
+from ....column_type import ColumnType, ARRAY_TYPE
 from ..accessors._column_accessor import ColumnAccessor
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
-class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class ColumnAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Column access mixin for UnitedDataframe.
     
@@ -82,7 +85,7 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK]):
                 result: AT = self._column_get_as_array(column_key, expected_column_type, slice) # type: ignore
                 return result
             else:
-                result: ARRAY_TYPE = self._column_get_as_array(column_key, slice) # type: ignore
+                result: ARRAY_TYPE = self._column_get_as_array(column_key, None, slice) # type: ignore
                 return result # type: ignore[no-any-return]
 
     @overload

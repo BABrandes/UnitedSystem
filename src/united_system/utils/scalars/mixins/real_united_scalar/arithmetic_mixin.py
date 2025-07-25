@@ -1,17 +1,18 @@
 """Arithmetic operations for RealUnitedScalar."""
 
-from typing import TYPE_CHECKING, Optional
+
+from typing import TYPE_CHECKING, Optional, overload, Union
 import math
 from .....unit import Unit
+from .....dimension import Dimension
 from ....units.unit_symbol import UnitSymbol
+from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
     from .....dimension import Dimension
-    from .....unit import Unit
-    from ....units.unit_symbol import UnitSymbol
+    from .....real_united_scalar import RealUnitedScalar
 
-class ArithmeticMixin:
+class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Arithmetic operations for RealUnitedScalar."""
 
     # These will be provided by the core class
@@ -63,7 +64,13 @@ class ArithmeticMixin:
 
     # Multiplication # -----------------------------------
 
-    def __mul__(self, other: "RealUnitedScalar|float|int") -> "RealUnitedScalar":
+    @overload
+    def __mul__(self, other: float|int) -> "RealUnitedScalar":
+        ...
+    @overload
+    def __mul__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
+        ...
+    def __mul__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Multiply scalars or scalar by number"""
 
         if hasattr(other, 'canonical_value') and hasattr(other, 'dimension'):
@@ -109,14 +116,26 @@ class ArithmeticMixin:
                 return RealUnitedScalar(float('inf') * sign, new_dimension, None) # type: ignore
             case _:
                 raise ValueError(f"Cannot multiply {self} and {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
-
+            
+    @overload
     def __rmul__(self, other: float|int) -> "RealUnitedScalar":
+        ...
+    @overload
+    def __rmul__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
+        ...
+    def __rmul__(self, other: Union[float, int, "RealUnitedScalar"]) -> "RealUnitedScalar":
         """Multiply by number (reverse operation)."""
         return self * other
 
     # Division # -----------------------------------------
 
-    def __truediv__(self, other: "RealUnitedScalar|float|int") -> "RealUnitedScalar":
+    @overload
+    def __truediv__(self, other: float|int) -> "RealUnitedScalar":
+        ...
+    @overload
+    def __truediv__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
+        ...
+    def __truediv__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Divide scalars or scalar by number."""
         if hasattr(other, 'canonical_value') and hasattr(other, 'dimension'):
             new_dimension: "Dimension" = self.dimension / other.dimension # type: ignore
@@ -161,7 +180,13 @@ class ArithmeticMixin:
             case _:
                 raise ValueError(f"Cannot divide {self} by {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
 
-    def __rtruediv__(self, other: "RealUnitedScalar|float|int") -> "RealUnitedScalar":
+    @overload
+    def __rtruediv__(self, other: float|int) -> "RealUnitedScalar":
+        ...
+    @overload
+    def __rtruediv__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
+        ...
+    def __rtruediv__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Divide number by scalar."""
         if hasattr(other, 'canonical_value') and hasattr(other, 'dimension'):
             new_dimension: "Dimension" = other.dimension / self.dimension # type: ignore

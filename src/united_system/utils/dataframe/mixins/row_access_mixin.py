@@ -7,11 +7,14 @@ head, tail, first, last, and row iteration.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Sequence
+from typing import Sequence, TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE
 from ..accessors._row_accessor import RowAccessor
 
-class RowAccessMixin(UnitedDataframeProtocol[CK]):
+if TYPE_CHECKING:
+    from ....united_dataframe import UnitedDataframe
+
+class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Row access mixin for UnitedDataframe.
     

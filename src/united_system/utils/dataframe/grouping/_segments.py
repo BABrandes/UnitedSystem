@@ -3,8 +3,8 @@ from collections.abc import Sequence
 from bidict import bidict
 
 from ._base_grouping import BaseGrouping, GroupingContainer
-from ..column_key import ColumnKey
-from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ....column_key import ColumnKey
+from ....column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 from ..accessors._row_accessor import RowAccessor
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe

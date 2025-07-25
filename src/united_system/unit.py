@@ -49,7 +49,7 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence
+from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from h5py import Group
@@ -252,7 +252,7 @@ class Unit:
         Returns:
             A new Unit instance
         """
-        instance = object.__new__(cls)
+        instance: "Unit" = object.__new__(cls)
         object.__setattr__(instance, "_unit_elements", unit_elements)
         object.__setattr__(instance, "_log_units", log_units)
         return instance
@@ -334,10 +334,8 @@ class Unit:
     @property
     def includes_log_level(self) -> bool:
         """Check if this unit includes logarithmic components."""
-        return len(self._log_units) > 0
+        return len(self._log_units) > 0    
 
-
-    
     ########################################################
     # Arithmetic operations
     ########################################################
@@ -472,6 +470,10 @@ class Unit:
             Unit("m") * Unit("s") -> Unit("m*s")
             Unit("kg") * Unit("m/s^2") -> Unit("kg*m/s^2")
         """
+        # Handle numpy arrays by returning NotImplemented to trigger __rmul__
+        if isinstance(other, np.ndarray):
+            return NotImplemented
+            
         # Combine unit elements
         new_unit_elements: dict[str, List[UnitElement]] = {}
         
@@ -649,10 +651,6 @@ class Unit:
                 raise ValueError("Invalid unit for exponential.")
         else:
             raise ValueError("Invalid unit for exponential.")
-
-
-
-
     
 ########################################################
     # Compatibility and comparison
@@ -991,7 +989,25 @@ class Unit:
     # Unit conversion
 ########################################################
 
-    def to_canonical_value(self, value_in_unit: Union[float, int, complex, np.ndarray]) -> Union[float, int, complex, np.ndarray]:
+    @overload
+    def to_canonical_value(self, value_in_unit: float|int) -> float:
+        """
+        Convert a value from this unit to canonical units.
+        """
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: complex) -> complex:
+        """ 
+        Convert a complex value from this unit to canonical units.
+        """
+        ...
+    @overload
+    def to_canonical_value(self, value_in_unit: np.ndarray) -> np.ndarray:
+        """
+        Convert a numpy array from this unit to canonical units.
+        """
+        ...
+    def to_canonical_value(self, value_in_unit: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
         """
         Convert a value from this unit to canonical units.
         
@@ -1013,8 +1029,26 @@ class Unit:
             return value_in_unit * self.factor + self.offset
         else:
             raise ValueError(f"Invalid value type: {type(value_in_unit)}")
-
-    def from_canonical_value(self, canonical_value: Union[float, int, complex, np.ndarray]) -> Union[float, int, complex, np.ndarray]:
+    
+    @overload
+    def from_canonical_value(self, canonical_value: float) -> float:
+        """
+        Convert a value from canonical units to this unit.
+        """
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: complex) -> complex:
+        """
+        Convert a complex value from canonical units to this unit.
+        """
+        ...
+    @overload
+    def from_canonical_value(self, canonical_value: np.ndarray) -> np.ndarray:
+        """
+        Convert a numpy array from canonical units to this unit.
+        """
+        ...
+    def from_canonical_value(self, canonical_value: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
         """
         Convert a value from canonical units to this unit.
         
@@ -1037,40 +1071,98 @@ class Unit:
         else:
             raise ValueError(f"Invalid value type: {type(canonical_value)}")
         
+    @classmethod
+    def convert(cls, from_unit: "Unit", to_unit: "Unit", value: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
+        """
+        Create a unit from a canonical value.
+        """
+        return to_unit.from_canonical_value(from_unit.to_canonical_value(value))
+        
 ########################################################
     # Scalar/Array creation
 ########################################################
 
-    def __rmul__(self, other: Union[float, int, complex, np.ndarray]) -> Union["RealUnitedScalar", "ComplexUnitedScalar", "RealUnitedArray", "ComplexUnitedArray"]:
+    @overload
+    def __rmul__(self, other: int) -> "RealUnitedScalar": # type: ignore
         """
-        Multiply a scalar/array by this unit.
+        Multiply a unit by a scalar. Represents int * Unit.
         
         Args:
-            other: The scalar or array to multiply
+            other: The scalar to multiply by
         
         Returns:
-            A united scalar or array with this unit
+            A new unit representing the product
         
         Examples:
-            2.5 * Unit("m") -> RealUnitedScalar(2.5, Unit("m"))
+            Unit("m") * 2 -> Unit("2*m")
+            Unit("kg") * 2 -> Unit("2*kg")
         """
+        ...
+
+    @overload
+    def __rmul__(self, other: float) -> "RealUnitedScalar":
+        """
+        Multiply a unit by a scalar. Represents float * Unit.
+        
+        Args:
+            other: The scalar to multiply by
+        
+        Returns:
+            A new unit representing the product
+        
+        Examples:
+            Unit("m") * 2 -> Unit("2*m")
+            Unit("kg") * 2 -> Unit("2*kg")
+        """
+        ...
+
+    @overload
+    def __rmul__(self, other: complex) -> "ComplexUnitedScalar":
+        """
+        Multiply a unit by a complex scalar. Represents complex * Unit.
+        
+        Args:
+            other: The complex scalar to multiply by
+        
+        Returns:
+            A new unit representing the product
+        
+        Examples:
+            Unit("m") * 2.0 -> Unit("2.0*m")
+            Unit("kg") * 2.0 -> Unit("2.0*kg")
+        """
+        ...
+
+    @overload
+    def __rmul__(self, other: Sequence[float|int]|Sequence[complex]) -> "RealUnitedArray|ComplexUnitedArray":
+        """
+        Multiply a unit by a numpy array. Represents np.ndarray * Unit.
+        """
+        ...
+
+    def __rmul__(self, other: float|int|complex|Sequence[float|int]|Sequence[complex]) -> "RealUnitedScalar|ComplexUnitedScalar|RealUnitedArray|ComplexUnitedArray":
+        """
+        Multiply a unit by a scalar. Represents float|int|complex|np.ndarray * Unit.
+        """
+        
         if isinstance(other, (float, int)):
             from .real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(other, self)
         elif isinstance(other, complex):
-            from .complex_united_scalar import ComplexUnitedScalar
-            return ComplexUnitedScalar(other, self) # type: ignore
-        elif isinstance(other, np.ndarray): # type: ignore
-            if np.iscomplexobj(other):
-                from .complex_united_array import ComplexUnitedArray
-                return ComplexUnitedArray(other, self) # type: ignore
+            from .complex_united_scalar import ComplexUnitedScalar # type: ignore
+            raise NotImplementedError("Complex multiplication is not supported for units.")
+        elif isinstance(other, Sequence): # type: ignore
+            from .real_united_array import RealUnitedArray
+            from .complex_united_array import ComplexUnitedArray
+            numpy_array: np.ndarray = np.array(other)
+            if np.iscomplexobj(numpy_array):
+                return ComplexUnitedArray(numpy_array, self) # type: ignore
             else:
-                from .real_united_array import RealUnitedArray
-                return RealUnitedArray(other, self)
+                return RealUnitedArray(numpy_array, self)
         else:
-            raise ValueError(f"Invalid type for multiplication: {type(other)}")
+            raise ValueError(f"Invalid scalar: {other}")
 
-    def __rtruediv__(self, other: Union[float, int, complex, np.ndarray]) -> Union["RealUnitedScalar", "ComplexUnitedScalar", "RealUnitedArray", "ComplexUnitedArray"]:
+    def __rtruediv__(self, other: Union[float, int, complex, Sequence[float|int|complex]]) -> Union["RealUnitedScalar", "ComplexUnitedScalar", "RealUnitedArray", "ComplexUnitedArray"]:
         """
         Divide a scalar/array by this unit.
         
@@ -1089,6 +1181,8 @@ class Unit:
     # Serialization
 ########################################################
 
+    #----------- JSON Serialization -----------
+    
     def to_json(self) -> str:
         """
         Convert the unit to JSON string representation.
@@ -1117,6 +1211,8 @@ class Unit:
         """
         return cls(json_string)
 
+    #----------- HDF5 Serialization -----------
+
     def to_hdf5(self, hdf5_group: Group) -> None:
         """
         Save the unit to an HDF5 group.
@@ -1141,6 +1237,37 @@ class Unit:
         if isinstance(unit_string, bytes):
             unit_string = unit_string.decode("utf-8")
         return cls(unit_string)
+    
+    #----------- For pickle compatibility -----------
+        
+    def __getstate__(self) -> dict[str, Any]:
+        """Custom pickle state management for slotted dataclass."""
+        # Ensure _dimension is computed before pickling
+        _ = self.dimension  # This will initialize _dimension if not already set
+        
+        # For slotted dataclasses, manually collect field values
+        # Convert MappingProxyType to dict for pickling
+        return {
+            "_unit_elements": dict(self._unit_elements),  # Convert MappingProxyType to dict
+            "_log_units": self._log_units,
+            "_dimension": self._dimension
+        }
+    
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Custom pickle state restoration for slotted dataclass."""
+        # Convert dict back to MappingProxyType
+        from types import MappingProxyType
+        if "_unit_elements" in state:
+            state["_unit_elements"] = MappingProxyType(state["_unit_elements"])
+        
+        # Restore all attributes
+        for key, value in state.items():
+            object.__setattr__(self, key, value)
+        
+        # Ensure _dimension is properly set (in case it wasn't in the state)
+        if not hasattr(self, "_dimension"):
+            from .dimension import Dimension
+            object.__setattr__(self, "_dimension", Dimension(self))
 
 ########################################################
     # Factory methods

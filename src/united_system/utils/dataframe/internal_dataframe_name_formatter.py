@@ -1,6 +1,6 @@
 from typing import Protocol, Callable, Optional
 from ...unit import Unit
-from .column_key import ColumnKey
+from ...column_key import ColumnKey
 
 class InternalDataFrameColumnNameFormatter(Protocol):
     def create_internal_dataframe_column_name(self, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:
@@ -21,7 +21,7 @@ class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter)
         # Find the indices of '[' and ']' in the internal_dataframe_column_name, looking from the end of the string
         internal_dataframe_column_name = internal_dataframe_column_name.strip()
         index_bracket_close: int = internal_dataframe_column_name.rfind(']')
-        index_bracket_open: int = internal_dataframe_column_name[index_bracket_close:].rfind('[')
+        index_bracket_open: int = internal_dataframe_column_name.rfind('[')  # Fixed: search in full string, not substring
         unit_str: str = internal_dataframe_column_name[index_bracket_open+1:index_bracket_close]
         # Make sure there is a space before the '['
         if index_bracket_open > 0 and internal_dataframe_column_name[index_bracket_open-1] != ' ':
@@ -31,7 +31,7 @@ class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter)
         if unit_str == "-":
             unit: Optional[Unit] = None
         else:
-            unit: Optional[Unit] = Unit.parse_string(unit_str)
+            unit: Optional[Unit] = Unit(unit_str)
         if column_key_constructor is not None:
             column_key: ColumnKey|str = column_key_constructor(column_key_str)
         else:

@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from enum import Enum, auto
 
-from ..column_key import ColumnKey
-from ..column_type import SCALAR_TYPE, ColumnType, LOWLEVEL_TYPE
+from ....column_key import ColumnKey
+from ....column_type import SCALAR_TYPE, ColumnType, LOWLEVEL_TYPE
 from ..accessors._row_accessor import RowAccessor
 from ....unit import Unit
 from ...scalars.united_scalar import UnitedScalar
@@ -51,7 +51,7 @@ class GroupingContainer(Generic[CK]):
         _column_units: dict[CK, Unit|None] = {col: self.available_column_units[col] for col in _column_keys}
 
         if self._united_dataframe is None:
-            self._united_dataframe = UnitedDataframe[CK](  # type: ignore
+            self._united_dataframe = UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=self.dataframe,
                 column_keys=_column_keys,
                 column_types=_column_types,
@@ -370,7 +370,7 @@ class BaseGrouping(Generic[CK]):
                     result_column_types[result_key] = ColumnType.FLOAT_64
                     result_column_units[result_key] = None
 
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -417,7 +417,7 @@ class BaseGrouping(Generic[CK]):
             result_column_units = {col: col_info.column_unit for col, col_info in self._categorical_column_information.items()}
             result_column_units[size_column_key] = None
 
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -538,7 +538,7 @@ class BaseGrouping(Generic[CK]):
                 result_column_types[result_key] = self._available_column_information[col].column_type
                 result_column_units[result_key] = self._available_column_information[col].column_unit
             
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -609,7 +609,7 @@ class BaseGrouping(Generic[CK]):
                 result_column_types[result_column_key] = result_column_type
                 result_column_units[result_column_key] = result_column_unit
             
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=result_column_keys,
                 column_types=result_column_types,
@@ -647,7 +647,7 @@ class BaseGrouping(Generic[CK]):
                 result_df = pd.DataFrame()
             
             # Create United_Dataframe for result
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=self._dataframe.colkeys,
                 column_types=self._dataframe.coltypes,
@@ -694,7 +694,7 @@ class BaseGrouping(Generic[CK]):
                 result_df = pd.DataFrame()
             
             # Create United_Dataframe for result
-            return UnitedDataframe[CK](  # type: ignore
+            return UnitedDataframe[CK]._construct(  # type: ignore
                 dataframe=result_df,
                 column_keys=self._dataframe.colkeys,
                 column_types=self._dataframe.coltypes,

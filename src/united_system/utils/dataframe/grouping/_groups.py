@@ -4,10 +4,10 @@ from typing import Callable, TypeVar, Tuple, TYPE_CHECKING, Union
 from collections.abc import Sequence
 from bidict import bidict
 
-from ..column_key import ColumnKey
+from ....column_key import ColumnKey
 from ..accessors._row_accessor import RowAccessor
 from ._base_grouping import BaseGrouping, GroupingContainer
-from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ....column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 import pandas as pd
 
 if TYPE_CHECKING:

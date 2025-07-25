@@ -14,7 +14,7 @@ from ....bool_array import BoolArray
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
 
-class FilterMixin(UnitedDataframeProtocol[CK]):
+class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Filter operations mixin for UnitedDataframe.
     

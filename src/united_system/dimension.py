@@ -45,7 +45,7 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple
+from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, Any
 from types import MappingProxyType
 from h5py import Group
 from .utils.units.utils import seperate_string
@@ -1445,6 +1445,29 @@ class Dimension:
             assert dimensionless.is_dimensionless
         """
         return DIMENSIONLESS_DIMENSION
+    
+    def __getstate__(self) -> dict[str, Any]:
+        """Custom pickle state management for Dimension class."""
+        # Convert MappingProxyType objects to regular dicts for pickling
+        return {
+            "_proper_exponents": dict(self._proper_exponents),
+            "_log_dimensions": dict(self._log_dimensions)
+        }
+    
+    def __getnewargs__(self) -> tuple[str]:
+        """Provide arguments for __new__ during pickle restoration."""
+        # Return empty string to create a basic dimensionless dimension
+        # __setstate__ will then properly restore the actual state
+        return ("",)
+    
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Custom pickle state restoration for Dimension class."""
+        # Convert dicts back to MappingProxyType and set directly on the object
+        from types import MappingProxyType
+        
+        # Set attributes directly on the already-created object
+        object.__setattr__(self, '_proper_exponents', MappingProxyType(state.get("_proper_exponents", {})))
+        object.__setattr__(self, '_log_dimensions', MappingProxyType(state.get("_log_dimensions", {})))
     
     @classmethod
     def clear_cache(cls) -> None:

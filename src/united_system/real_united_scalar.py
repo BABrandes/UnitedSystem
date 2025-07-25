@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from typing import Optional, overload
-from .utils.scalars.united_scalar import UnitedScalar
 from .named_quantity import NamedQuantity
 from .dimension import Dimension
 from .unit import Unit
@@ -28,7 +27,6 @@ class RealUnitedScalar(
     UtilityMixin,
     SerializationMixin,
     RealUnitedScalarCore,
-    UnitedScalar["RealUnitedScalar", float]
 ):
     """
     A real-valued scalar with units using a mixin-based architecture.

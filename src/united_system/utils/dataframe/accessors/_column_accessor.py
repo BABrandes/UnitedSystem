@@ -2,9 +2,9 @@ from typing import Generic, TypeVar, Iterator, overload, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
-    from ..column_key import ColumnKey
+    from ....column_key import ColumnKey
 
-from ..column_type import ARRAY_TYPE, ColumnType, NUMERIC_SCALAR_TYPE, SCALAR_TYPE
+from ....column_type import ARRAY_TYPE, ColumnType, NUMERIC_SCALAR_TYPE, SCALAR_TYPE
 from ....dimension import Dimension
 from ....unit import Unit
 from ....bool_array import BoolArray

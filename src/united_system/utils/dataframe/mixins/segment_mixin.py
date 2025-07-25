@@ -11,13 +11,13 @@ from typing import List, Callable, Union, Optional, TYPE_CHECKING
 from collections.abc import Sequence
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import SCALAR_TYPE
+from ....column_type import SCALAR_TYPE
 from ..grouping._segments import Segments
 
 if TYPE_CHECKING:
     from ....united_dataframe import UnitedDataframe
 
-class SegmentMixin(UnitedDataframeProtocol[CK]):
+class SegmentMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """
     Segment operations mixin for UnitedDataframe.
     
