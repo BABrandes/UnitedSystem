@@ -2,11 +2,11 @@
 
 import pytest
 import numpy as np
-from src.united_system.real_united_array import RealUnitedArray
-from src.united_system.real_united_scalar import RealUnitedScalar
-from src.united_system.dimension import Dimension
-from src.united_system.unit import Unit
-from src.united_system.named_quantity import NamedQuantity
+from united_system._arrays.real_united_array import RealUnitedArray
+from united_system._scalars.real_united_scalar import RealUnitedScalar
+from united_system._units_and_dimension.dimension import Dimension
+from united_system._units_and_dimension.unit import Unit
+from united_system._units_and_dimension.named_quantity import NamedQuantity
 
 
 class TestRealUnitedArrayCore:

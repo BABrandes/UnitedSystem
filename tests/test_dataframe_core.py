@@ -6,15 +6,10 @@ This test suite systematically tests UnitedDataframe functionality to identify
 and debug any issues with the implementation.
 """
 
-import pandas as pd
-import numpy as np
-
-from src.united_system import UnitedDataframe
-from src.united_system.unit import Unit
-from src.united_system.dimension import Dimension
-from src.united_system.column_key import ColumnKey
-from src.united_system.column_type import ColumnType
-from src.united_system.utils.dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from united_system._dataframe.united_dataframe import UnitedDataframe
+from united_system._units_and_dimension.unit import Unit
+from united_system._dataframe.column_type import ColumnType
+from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
 
 # Import TestColumnKey from the main test module
 from tests.test_dataframe import TestColumnKey
@@ -135,7 +130,7 @@ class TestUnitedDataframeCore:
             )
             
             # Test data creation with arrays
-            from src.united_system.real_united_scalar import RealUnitedScalar
+            from united_system._scalars.real_united_scalar import RealUnitedScalar
             
             # Create some temperature data
             temperatures = [

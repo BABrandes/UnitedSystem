@@ -22,9 +22,9 @@ import tempfile
 import os
 
 # Import the modules to test
-from src.united_system.real_united_scalar import RealUnitedScalar
-from src.united_system.dimension import Dimension
-from src.united_system.unit import Unit
+from united_system._scalars.real_united_scalar import RealUnitedScalar
+from united_system._units_and_dimension.dimension import Dimension
+from united_system._units_and_dimension.unit import Unit
 
 class TestRealUnitedScalarCore:
     """Test core functionality of RealUnitedScalar."""
@@ -53,7 +53,7 @@ class TestRealUnitedScalarCore:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == unit.dimension
-        assert scalar.display_unit == unit
+        assert scalar.unit == unit
     
     def test_initialization_with_unit_string(self):
         """Test initialization with unit string."""
@@ -61,7 +61,7 @@ class TestRealUnitedScalarCore:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == Unit("kg").dimension
-        assert scalar.display_unit == Unit("kg")
+        assert scalar.unit == Unit("kg")
     
     def test_initialization_with_string(self):
         """Test initialization with string containing value and unit."""
@@ -69,7 +69,7 @@ class TestRealUnitedScalarCore:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == Unit("kg").dimension
-        assert scalar.display_unit == Unit("kg")
+        assert scalar.unit == Unit("kg")
     
     def test_initialization_dimensionless(self):
         """Test initialization of dimensionless scalar."""
@@ -77,14 +77,14 @@ class TestRealUnitedScalarCore:
         
         assert scalar.canonical_value == 42.0
         assert scalar.dimension.is_dimensionless
-        assert scalar._display_unit is None  # type: ignore
+        assert scalar.unit is None  # type: ignore
     
     def test_display_unit_property(self):
         """Test display_unit property."""
         unit = Unit("kg")
         scalar = RealUnitedScalar(5.0, unit)
         
-        assert scalar.display_unit == unit
+        assert scalar.unit == unit
     
     def test_display_unit_property_none(self):
         """Test display_unit property when display_unit is None."""
@@ -92,7 +92,7 @@ class TestRealUnitedScalarCore:
         scalar = RealUnitedScalar(5.0, dimension)
         
         # Should return canonical unit
-        assert scalar.display_unit == dimension.canonical_unit
+        assert scalar.unit == dimension.canonical_unit
     
     def test_unit_property(self):
         """Test unit property."""
@@ -264,7 +264,7 @@ class TestRealUnitedScalarConversion:
         result = self.scalar.in_unit(self.g_unit)
         assert result.canonical_value == 1.0  # Same canonical value
         assert result.dimension == self.mass_dim
-        assert result.display_unit == self.g_unit
+        assert result.unit == self.g_unit
     
     def test_in_unit_incompatible(self):
         """Test conversion to incompatible unit raises error."""
@@ -285,7 +285,7 @@ class TestRealUnitedScalarConversion:
         result = self.scalar.to_canonical(with_display_unit=True)
         assert result.canonical_value == 1.0
         assert result.dimension == self.mass_dim
-        assert result.display_unit == self.mass_dim.canonical_unit
+        assert result.unit == self.mass_dim.canonical_unit
     
     def test_value_in_unit(self):
         """Test getting value in specific unit."""
@@ -414,7 +414,7 @@ class TestRealUnitedScalarFactory:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == kg_unit.dimension
-        assert scalar.display_unit == kg_unit
+        assert scalar.unit == kg_unit
     
     def test_parse_string(self):
         """Test parse_string factory method."""
@@ -422,7 +422,7 @@ class TestRealUnitedScalarFactory:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == Unit("kg").dimension
-        assert scalar.display_unit == Unit("kg")
+        assert scalar.unit == Unit("kg")
     
     def test_parse_string_complex(self):
         """Test parse_string with complex units."""
@@ -469,7 +469,7 @@ class TestRealUnitedScalarFactory:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == mass_dim
-        assert scalar.display_unit == kg_unit
+        assert scalar.unit == kg_unit
     
     def test_create_from_canonical_value_without_unit(self):
         """Test create_from_canonical_value without unit."""
@@ -478,7 +478,7 @@ class TestRealUnitedScalarFactory:
         
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == mass_dim
-        assert scalar._display_unit is None  # type: ignore
+        assert scalar.unit is None  # type: ignore
     
     def test_create_from_canonical_value_incompatible_unit(self):
         """Test create_from_canonical_value with incompatible unit."""
@@ -629,7 +629,7 @@ class TestRealUnitedScalarSerialization:
         scalar = RealUnitedScalar.from_json(json_data)
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == self.mass_dim
-        assert scalar.display_unit == self.kg_unit
+        assert scalar.unit == self.kg_unit
     
     def test_to_hdf5(self):
         """Test to_hdf5 method."""
@@ -662,7 +662,7 @@ class TestRealUnitedScalarSerialization:
                     
                     assert scalar.canonical_value == 5.0
                     assert scalar.dimension == self.mass_dim
-                    assert scalar.display_unit == self.kg_unit
+                    assert scalar.unit == self.kg_unit
             finally:
                 os.unlink(tmp_file.name)
 
@@ -723,7 +723,7 @@ class TestRealUnitedScalarMathematical:
         self.one_scalar = RealUnitedScalar(1.0, self.kg_unit)
         
         # Import LOG_LEVEL_DIMENSION for testing
-        from united_system.dimension import LOG_LEVEL_DIMENSION
+        from united_system._units_and_dimension.dimension import LOG_LEVEL_DIMENSION
         self.log_level_dim = LOG_LEVEL_DIMENSION
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
@@ -734,8 +734,8 @@ class TestRealUnitedScalarMathematical:
         assert isinstance(result, RealUnitedScalar)
         assert result.canonical_value == pytest.approx(math.log(10.0))  # type: ignore
         assert result.dimension == self.log_level_dim
-        assert result.display_unit is not None
-        assert "dec" in str(result.display_unit)  # Should have log level unit
+        assert result.unit is not None
+        assert "dec" in str(result.unit)  # Should have log level unit
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
     def test_log_custom_base(self):
@@ -882,7 +882,7 @@ class TestRealUnitedScalarMathematical:
         result = self.positive_scalar.log()
         
         # Should have a display unit with log level
-        assert result.display_unit is not None
+        assert result.unit is not None
         assert result.dimension == self.log_level_dim
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
@@ -892,7 +892,7 @@ class TestRealUnitedScalarMathematical:
         scalar_no_display = RealUnitedScalar.create_from_canonical_value(10.0, self.kg_unit.dimension)
         result = scalar_no_display.log()
         
-        assert result.display_unit is None
+        assert result.unit is None
         assert result.dimension == self.log_level_dim
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
@@ -901,7 +901,7 @@ class TestRealUnitedScalarMathematical:
         result = self.positive_scalar.exp()
         
         # Should have a display unit with log level
-        assert result.display_unit is not None
+        assert result.unit is not None
         assert result.dimension == self.log_level_dim
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
@@ -911,7 +911,7 @@ class TestRealUnitedScalarMathematical:
         scalar_no_display = RealUnitedScalar.create_from_canonical_value(2.0, self.kg_unit.dimension)
         result = scalar_no_display.exp()
         
-        assert result.display_unit is None
+        assert result.unit is None
         assert result.dimension == self.log_level_dim
     
     @pytest.mark.skip(reason="Log/exp operations not yet implemented")
@@ -993,7 +993,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 5.0
         assert scalar.dimension == self.kg_unit.dimension
-        assert scalar.display_unit == self.kg_unit
+        assert scalar.unit == self.kg_unit
     
     def test_unit_rmul_with_int(self):
         """Test creating scalar by multiplying int with unit."""
@@ -1002,7 +1002,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 3.0
         assert scalar.dimension == self.m_unit.dimension
-        assert scalar.display_unit == self.m_unit
+        assert scalar.unit == self.m_unit
     
     def test_unit_rmul_with_zero(self):
         """Test creating scalar by multiplying zero with unit."""
@@ -1011,7 +1011,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 0.0
         assert scalar.dimension == self.kg_unit.dimension
-        assert scalar.display_unit == self.kg_unit
+        assert scalar.unit == self.kg_unit
     
     def test_unit_rmul_with_negative(self):
         """Test creating scalar by multiplying negative number with unit."""
@@ -1020,7 +1020,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == -2.5
         assert scalar.dimension == self.s_unit.dimension
-        assert scalar.display_unit == self.s_unit
+        assert scalar.unit == self.s_unit
     
     def test_unit_rtruediv_with_float(self):
         """Test creating scalar by dividing float by unit."""
@@ -1029,7 +1029,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 10.0
         assert scalar.dimension == self.kg_unit.dimension.invert()
-        assert scalar.display_unit == ~self.kg_unit
+        assert scalar.unit == ~self.kg_unit
     
     def test_unit_rtruediv_with_int(self):
         """Test creating scalar by dividing int by unit."""
@@ -1038,7 +1038,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 6.0
         assert scalar.dimension == self.m_unit.dimension.invert()
-        assert scalar.display_unit == ~self.m_unit
+        assert scalar.unit == ~self.m_unit
     
     def test_unit_rtruediv_with_zero(self):
         """Test creating scalar by dividing zero by unit."""
@@ -1047,7 +1047,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 0.0
         assert scalar.dimension == self.s_unit.dimension.invert()
-        assert scalar.display_unit == ~self.s_unit
+        assert scalar.unit == ~self.s_unit
     
     def test_unit_rtruediv_with_negative(self):
         """Test creating scalar by dividing negative number by unit."""
@@ -1056,7 +1056,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == -4.0
         assert scalar.dimension == self.kg_unit.dimension.invert()
-        assert scalar.display_unit == ~self.kg_unit
+        assert scalar.unit == ~self.kg_unit
     
     def test_unit_operations_with_complex_units(self):
         """Test unit operations with complex units."""
@@ -1067,7 +1067,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 15.0
         assert scalar.dimension == velocity_unit.dimension
-        assert scalar.display_unit == velocity_unit
+        assert scalar.unit == velocity_unit
     
     def test_unit_operations_with_prefixed_units(self):
         """Test unit operations with prefixed units."""
@@ -1078,7 +1078,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 2500.0  # 2.5 km = 2500 m
         assert scalar.dimension == km_unit.dimension
-        assert scalar.display_unit == km_unit
+        assert scalar.unit == km_unit
     
     def test_unit_operations_chain(self):
         """Test chaining unit operations."""
@@ -1100,7 +1100,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(scalar, RealUnitedScalar)
         assert scalar.canonical_value == 3.14
         assert scalar.dimension == rad_unit.dimension
-        assert scalar.display_unit == rad_unit
+        assert scalar.unit == rad_unit
     
     def test_chained_scalar_unit_multiplication(self):
         """Test chained multiplication: 3 * Unit('m/s') * 4 * Unit('h')"""
@@ -1111,7 +1111,7 @@ class TestRealUnitedScalarUnitOperations:
         # 4 h = 14400 s, so canonical value: 3 * 14400 = 43200 m
         assert isinstance(result, RealUnitedScalar)
         assert result.dimension == Unit('m').dimension
-        assert result.display_unit.dimension == Unit('m').dimension
+        assert result.unit.dimension == Unit('m').dimension
         assert result.canonical_value == 43200.0
         # Optionally, print for debug
         print(f"Result: {result}")
@@ -1124,7 +1124,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(result, RealUnitedScalar)
         assert result.dimension == Unit('m').dimension
         assert result.canonical_value == 5.0
-        assert result.display_unit == Unit('m')
+        assert result.unit == Unit('m')
 
     def test_chained_subtraction_with_units(self):
         """Test subtraction: (5 * Unit('s')) - (2 * Unit('s'))"""
@@ -1134,7 +1134,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(result, RealUnitedScalar)
         assert result.dimension == Unit('s').dimension
         assert result.canonical_value == 3.0
-        assert result.display_unit == Unit('s')
+        assert result.unit == Unit('s')
 
     def test_chained_multiplication_with_units(self):
         """Test multiplication: (2 * Unit('m')) * (3 * Unit('s'))"""
@@ -1145,7 +1145,7 @@ class TestRealUnitedScalarUnitOperations:
         assert result.dimension == (Unit('m').dimension * Unit('s').dimension)
         assert result.canonical_value == 6.0
         # Display unit is a compound unit
-        assert result.display_unit.dimension == (Unit('m').dimension * Unit('s').dimension)
+        assert result.unit.dimension == (Unit('m').dimension * Unit('s').dimension)
 
     def test_chained_division_with_units(self):
         """Test division: (10 * Unit('m')) / (2 * Unit('s'))"""
@@ -1156,7 +1156,7 @@ class TestRealUnitedScalarUnitOperations:
         assert result.dimension == (Unit('m').dimension / Unit('s').dimension)
         assert result.canonical_value == 5.0
         # Display unit is a compound unit
-        assert result.display_unit.dimension == (Unit('m').dimension / Unit('s').dimension)
+        assert result.unit.dimension == (Unit('m').dimension / Unit('s').dimension)
 
     def test_mixed_operations_with_scalars_and_units(self):
         """Test mixed operations: (2 * Unit('m')) * 3 + (4 * Unit('m')) / 2"""
@@ -1167,7 +1167,7 @@ class TestRealUnitedScalarUnitOperations:
         assert isinstance(result, RealUnitedScalar)
         assert result.dimension == Unit('m').dimension
         assert result.canonical_value == 8.0
-        assert result.display_unit == Unit('m')
+        assert result.unit == Unit('m')
 
 
 if __name__ == "__main__":

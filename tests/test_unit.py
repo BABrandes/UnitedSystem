@@ -19,11 +19,11 @@ import numpy as np
 import h5py
 
 # Import the modules to test
-from united_system.unit import Unit
-from united_system.dimension import Dimension
-from united_system.utils.units.unit_symbol import UnitSymbol
-from united_system.utils.units.utils import seperate_string
-from united_system.named_quantity import NamedQuantity
+from united_system._units_and_dimension.unit import Unit
+from united_system._units_and_dimension.dimension import Dimension
+from united_system._units_and_dimension.unit_symbol import UnitSymbol
+from united_system._units_and_dimension.utils import seperate_string
+from united_system._units_and_dimension.named_quantity import NamedQuantity
 
 class TestUnitCreation:
     """Test unit creation and initialization."""

@@ -13,8 +13,8 @@ Tests all functionality including:
 import pytest
 
 # Import the modules to test
-from united_system.dimension import Dimension, DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
-from united_system.named_quantity import NamedQuantity
+from united_system._units_and_dimension.dimension import Dimension, DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
+from united_system._units_and_dimension.named_quantity import NamedQuantity
 
 
 class TestDimensionStringParsing:
@@ -546,7 +546,7 @@ class TestDimensionStringParsing:
     
     def test_parse_all_log_function_symbols(self):
         """Test parsing all log function symbols defined in LOG_UNIT_SYMBOLS."""
-        from united_system.utils.units.unit_symbol import LOG_UNIT_SYMBOLS
+        from united_system._units_and_dimension.unit_symbol import LOG_UNIT_SYMBOLS
         
         # Test all log function symbols
         for log_symbol_enum in LOG_UNIT_SYMBOLS:
@@ -2373,7 +2373,7 @@ class TestDimensionConstructorEdgeCases:
     
     def test_unit_with_subscript_combination(self):
         """Test that Unit + subscript combination works but ignores subscript."""
-        from united_system.unit import Unit
+        from united_system._units_and_dimension.unit import Unit
         
         # Test Unit + subscript combination (should work but ignore subscript)
         dim = Dimension(Unit("kg"), subscript="test") # type: ignore
@@ -2386,7 +2386,7 @@ class TestDimensionConstructorEdgeCases:
     
     def test_malformed_unit_objects(self):
         """Test handling of malformed Unit objects."""
-        from united_system.unit import Unit
+        from united_system._units_and_dimension.unit import Unit
         
         # Test with Unit that has no dimension property
         # This would require mocking, but we can test the basic case
@@ -2396,7 +2396,7 @@ class TestDimensionConstructorEdgeCases:
     
     def test_invalid_constructor_combinations(self):
         """Test various invalid constructor combinations."""
-        from united_system.unit import Unit
+        from united_system._units_and_dimension.unit import Unit
         
         # Test string with Unit (constructor is permissive, ignores extra args)
         dim: Dimension = Dimension("M", Unit("kg")) # type: ignore
@@ -2663,7 +2663,7 @@ class TestDimensionIntegrationScenarios:
     
     def test_dataframe_integration_edge_cases(self):
         """Test DataFrame integration edge cases."""
-        from united_system.unit import Unit
+        from united_system._units_and_dimension.unit import Unit
         
         # Test that dimensions work with units in DataFrame context
         mass_dim = Dimension("M")

@@ -6,7 +6,7 @@ This test suite systematically tests UnitedDataframe functionality to identify
 and debug any issues with the implementation.
 """
 
-from src.united_system.column_key import ColumnKey
+from united_system._dataframe.column_key import ColumnKey
 from typing import Any
 
 class TestColumnKey(ColumnKey):

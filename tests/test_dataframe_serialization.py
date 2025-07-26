@@ -6,15 +6,11 @@ This test suite systematically tests UnitedDataframe functionality to identify
 and debug any issues with the implementation.
 """
 
-import pandas as pd
-import numpy as np
-
-from src.united_system import UnitedDataframe
-from src.united_system.unit import Unit
-from src.united_system.dimension import Dimension
-from src.united_system.column_key import ColumnKey
-from src.united_system.column_type import ColumnType
-from src.united_system.utils.dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from united_system._dataframe.united_dataframe import UnitedDataframe
+from united_system._units_and_dimension.unit import Unit
+from united_system._dataframe.column_type import ColumnType
+from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from united_system._units_and_dimension.dimension import Dimension
 
 # Import TestColumnKey from the main test module
 from tests.test_dataframe import TestColumnKey
@@ -40,7 +36,7 @@ class TestUnitedDataframeSerialization:
                 temp_key: ColumnType.REAL_NUMBER_64,
                 pressure_key: ColumnType.REAL_NUMBER_64
             }
-            column_units = {
+            column_units: dict[TestColumnKey, Unit|Dimension|None] = {
                 temp_key: Unit("K"),
                 pressure_key: Unit("Pa")
             }
@@ -98,14 +94,14 @@ class TestUnitedDataframeSerialization:
             try:
                 # Save to HDF5 using h5py Group
                 with h5py.File(hdf5_path, 'w') as h5file:
-                    group = h5file.create_group("test_group")
+                    group: h5py.Group = h5file.create_group("test_group")
                     df_original.to_hdf5(group, key="dataframe")
                 print(f"✅ Saved to HDF5 group: {hdf5_path}")
                 
                 # Load from HDF5 using h5py Group
                 with h5py.File(hdf5_path, 'r') as h5file:
                     group = h5file["test_group"]
-                    df_loaded_group = UnitedDataframe.from_hdf5(group, key="dataframe")
+                    df_loaded_group: UnitedDataframe[TestColumnKey] = UnitedDataframe.from_hdf5(group, key="dataframe")
                 print(f"✅ Loaded from HDF5 group: {len(df_loaded_group)} rows, {len(df_loaded_group.colkeys)} columns")
                 
                 # Verify integrity for h5py Group method
@@ -746,7 +742,7 @@ class TestUnitedDataframeSerialization:
                 impedance_key: Unit("Ω")
             }
             
-            df_complex = UnitedDataframe.create_dataframe_from_data(
+            df_complex: UnitedDataframe[TestColumnKey] = UnitedDataframe.create_dataframe_from_data(
                 arrays=complex_arrays,
                 column_types=complex_column_types,
                 column_units_or_dimensions=complex_column_units,

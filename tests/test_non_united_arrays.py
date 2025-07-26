@@ -9,13 +9,15 @@ direct array construction, but the dataframe system works fine for data
 storage and basic operations.
 """
 
+from typing import Any
 import numpy as np
 from pandas import Timestamp
-
+from united_system._units_and_dimension.unit import Unit
+from united_system._units_and_dimension.dimension import Dimension
 from tests.test_dataframe import TestColumnKey
-from src.united_system.united_dataframe import UnitedDataframe
-from src.united_system.column_type import ColumnType
-from src.united_system.utils.dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from united_system._dataframe.united_dataframe import UnitedDataframe
+from united_system._dataframe.column_type import ColumnType
+from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
 
 
 class TestNonUnitedArrays:
@@ -26,7 +28,7 @@ class TestNonUnitedArrays:
         print("\n🧪 Testing dataframe creation with different array types...")
         
         # Test all array types through dataframe creation
-        test_cases = [
+        test_cases: list[tuple[str, list[Any], ColumnType]] = [
             ("StringArray", ["hello", "world", "test"], ColumnType.STRING),
             ("FloatArray", [1.1, 2.2, 3.3], ColumnType.FLOAT_64),
             ("IntArray", [10, 20, 30], ColumnType.INTEGER_64),
@@ -40,7 +42,7 @@ class TestNonUnitedArrays:
             
             try:
                 # Create dataframe - this should work
-                df = UnitedDataframe.create_dataframe_from_data(
+                df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
                     arrays={TestColumnKey("test"): data},
                     column_types={TestColumnKey("test"): col_type},
                     column_units_or_dimensions={TestColumnKey("test"): None},
@@ -83,24 +85,24 @@ class TestNonUnitedArrays:
         print("\n📊 Testing dataframe operations without array extraction...")
         
         # Create a mixed-type dataframe
-        arrays = {
+        arrays: dict[TestColumnKey, list[Any]] = {
             TestColumnKey("names"): ["Alice", "Bob", "Charlie"],
             TestColumnKey("scores"): [85.5, 92.3, 78.1],
             TestColumnKey("count"): [10, 15, 12],
             TestColumnKey("active"): [True, False, True],
             TestColumnKey("timestamps"): [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')]
         }
-        column_types = {
+        column_types: dict[TestColumnKey, ColumnType] = {
             TestColumnKey("names"): ColumnType.STRING,
             TestColumnKey("scores"): ColumnType.FLOAT_64,
             TestColumnKey("count"): ColumnType.INTEGER_64,
             TestColumnKey("active"): ColumnType.BOOL,
             TestColumnKey("timestamps"): ColumnType.TIMESTAMP
         }
-        column_units = {key: None for key in arrays.keys()}
+        column_units: dict[TestColumnKey, Unit|Dimension|None] = {key: None for key in arrays.keys()}
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
+            arrays=arrays, # type: ignore
             column_types=column_types,
             column_units_or_dimensions=column_units,
             internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
@@ -149,7 +151,7 @@ class TestNonUnitedArrays:
         print("\n🔍 Testing array type inference...")
         
         # Test type inference without extraction
-        inference_tests = [
+        inference_tests: list[tuple[str, list[Any], ColumnType, str]] = [
             ("strings", ["a", "b", "c"], ColumnType.STRING, "StringArray"),
             ("floats", [1.1, 2.2, 3.3], ColumnType.FLOAT_64, "FloatArray"),
             ("integers", [1, 2, 3], ColumnType.INTEGER_64, "IntArray"),
@@ -159,7 +161,7 @@ class TestNonUnitedArrays:
         ]
         
         for name, data, expected_type, expected_array in inference_tests:
-            df = UnitedDataframe.create_dataframe_from_data(
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
                 arrays={TestColumnKey("col"): data},
                 column_types={TestColumnKey("col"): expected_type},
                 column_units_or_dimensions={TestColumnKey("col"): None},
@@ -195,8 +197,8 @@ class TestNonUnitedArrays:
         # Show the exact error
         print("\n🔬 Demonstrating the exact error:")
         try:
-            from src.united_system.string_array import StringArray
-            arr = StringArray(np.array(['test']))
+            from united_system._arrays.string_array import StringArray
+            StringArray(np.array(['test']))
         except Exception as e:
             print(f"  Error Type: {type(e).__name__}")
             print(f"  Error Message: {e}")

@@ -10,24 +10,20 @@ This test suite systematically tests UnitedDataframe CRUD operations including:
 - Metadata access (units, column types, column information)
 """
 
-import tempfile
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from typing import Any
 
 from tests.test_dataframe import TestColumnKey
-from src.united_system.united_dataframe import UnitedDataframe
-from src.united_system.column_type import ColumnType
-from src.united_system.unit import Unit
-from src.united_system.real_united_array import RealUnitedArray
-from src.united_system.int_array import IntArray
-from src.united_system.string_array import StringArray
-from src.united_system.bool_array import BoolArray
-from src.united_system.complex_array import ComplexArray
-from src.united_system.timestamp_array import TimestampArray
-from src.united_system.real_united_scalar import RealUnitedScalar
-from src.united_system.utils.dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from united_system._dataframe.united_dataframe import UnitedDataframe
+from united_system._dataframe.column_type import ColumnType
+from united_system._units_and_dimension.unit import Unit
+from united_system._arrays.real_united_array import RealUnitedArray
+from united_system._arrays.int_array import IntArray
+from united_system._arrays.string_array import StringArray
+from united_system._arrays.complex_array import ComplexArray
+from united_system._scalars.real_united_scalar import RealUnitedScalar
+from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
 
 
 class TestUnitedDataframeOperations:
@@ -57,7 +53,7 @@ class TestUnitedDataframeOperations:
             TestColumnKey("count"): None
         }
         
-        df = UnitedDataframe.create_dataframe_from_data(
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe.create_dataframe_from_data(
             arrays=arrays,
             column_types=column_types,
             column_units_or_dimensions=column_units
