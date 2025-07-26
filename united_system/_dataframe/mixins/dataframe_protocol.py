@@ -15,18 +15,18 @@ from readerwriterlock import rwlock
 import h5py
 
 # Runtime imports needed for TypeVar definitions and protocol class
-from ..column_key import ColumnKey
-from ..column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, LOWLEVEL_TYPE, NUMERIC_SCALAR_TYPE
+from ..._dataframe.column_key import ColumnKey
+from ..._dataframe.column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, LOWLEVEL_TYPE, NUMERIC_SCALAR_TYPE
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
-from united_system._units_and_dimension.unit import Unit
-from united_system._units_and_dimension.dimension import Dimension
+from ..._units_and_dimension.unit import Unit
+from ..._units_and_dimension.dimension import Dimension
 from ..grouping._groups import Groups
-from united_system._arrays.bool_array import BoolArray
+from ..._arrays.bool_array import BoolArray
 from ..accessors._row_accessor import RowAccessor
 from ..accessors._column_accessor import ColumnAccessor
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 CK = TypeVar("CK", bound=Union[ColumnKey, str])
 CK_CF = TypeVar("CK_CF", bound=Union[ColumnKey, str])

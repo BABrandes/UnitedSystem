@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 import pandas as pd
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType, ARRAY_TYPE
+from ..._dataframe.column_type import ColumnType, ARRAY_TYPE
 from ..accessors._column_accessor import ColumnAccessor
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class ColumnAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

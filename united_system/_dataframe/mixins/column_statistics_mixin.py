@@ -9,13 +9,13 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import TYPE_CHECKING, overload, TypeVar, Any
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
+from ..._dataframe.column_type import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
 
 NST = TypeVar("NST", bound=NUMERIC_SCALAR_TYPE)
 ST = TypeVar("ST", bound=SCALAR_TYPE)
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

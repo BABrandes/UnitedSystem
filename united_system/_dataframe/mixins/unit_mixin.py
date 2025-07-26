@@ -9,10 +9,10 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 from typing import TYPE_CHECKING
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from united_system._units_and_dimension.unit import Unit
+from ..._units_and_dimension.unit import Unit
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class UnitMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

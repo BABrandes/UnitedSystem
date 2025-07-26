@@ -11,12 +11,12 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_key import ColumnKey
-from ..column_type import LOWLEVEL_TYPE
-from united_system._arrays.bool_array import BoolArray
+from ..._dataframe.column_key import ColumnKey
+from ..._dataframe.column_type import LOWLEVEL_TYPE
+from ..._arrays.bool_array import BoolArray
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
     from ..accessors._row_accessor import RowAccessor # type: ignore
     from ..accessors._column_accessor import ColumnAccessor # type: ignore
 

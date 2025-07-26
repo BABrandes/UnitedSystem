@@ -9,14 +9,14 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import Iterator, TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from united_system._units_and_dimension.unit import Unit
-from united_system._units_and_dimension.dimension import Dimension
-from ..column_type import ColumnType
+from ..._units_and_dimension.unit import Unit
+from ..._units_and_dimension.dimension import Dimension
+from ..._dataframe.column_type import ColumnType
 
 if TYPE_CHECKING:
     from ..accessors._row_accessor import RowAccessor # type: ignore
     from ..accessors._column_accessor import ColumnAccessor # type: ignore
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class IterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

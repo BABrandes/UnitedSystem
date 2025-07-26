@@ -6,7 +6,7 @@ from .protocol import RealUnitedScalarProtocol
 if TYPE_CHECKING:
     from ...._units_and_dimension.unit import Unit
     from ...._units_and_dimension.dimension import Dimension
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
 
 class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """String formatting and representation for RealUnitedScalar."""

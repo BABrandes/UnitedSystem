@@ -5,7 +5,7 @@ import h5py
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
     from ...._units_and_dimension.unit import Unit
     from ...._units_and_dimension.dimension import Dimension
 
@@ -30,7 +30,7 @@ class SerializationMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """Create from dictionary (JSON deserialization)."""
         from ...._units_and_dimension.unit import Unit
         from ...._units_and_dimension.dimension import Dimension
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
 
         dimension = Dimension.from_json(data["dimension"])
         display_unit: Optional[Unit] = Unit.from_json(data["display_unit"]) if data["display_unit"] is not None else None
@@ -57,7 +57,7 @@ class SerializationMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """Load from HDF5 group."""
         from ...._units_and_dimension.unit import Unit
         from ...._units_and_dimension.dimension import Dimension
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         
         canonical_value: float = float(hdf5_group["canonical_value"][()]) # type: ignore   
         dimension: Dimension = Dimension.from_hdf5(hdf5_group["dimension"]) # type: ignore

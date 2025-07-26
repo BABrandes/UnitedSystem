@@ -6,7 +6,7 @@ import numpy as np
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
     from ...._units_and_dimension.unit import Unit
     from ...._units_and_dimension.dimension import Dimension
 
@@ -74,7 +74,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def clamp(self, min_val: "RealUnitedScalar|float", max_val: "RealUnitedScalar|float") -> "RealUnitedScalar":
         """Clamp the scalar to a range."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         
         # Handle float inputs by converting to canonical values
         if hasattr(min_val, 'canonical_value') and hasattr(min_val, 'dimension'):
@@ -99,7 +99,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def min(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the minimum of this scalar and another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
@@ -110,7 +110,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     
     def max(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the maximum of this scalar and another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot compare {self} and {other} because they have incompatible dimensions.")
         
@@ -122,7 +122,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     @classmethod
     def sum(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
         """Sum a list of scalars."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not values:
             raise ValueError("Cannot sum an empty list")
         
@@ -141,7 +141,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     @classmethod
     def mean(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
         """Calculate the mean of a list of scalars."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not values:
             raise ValueError("Cannot calculate mean of an empty list")
         

@@ -101,7 +101,7 @@ class NamedQuantity(Enum):
     @property
     def unit_element(self) -> Optional["UnitElement"]:
         if not hasattr(self, '_unit_element'):
-            from united_system._units_and_dimension.unit_element import UnitElement
+            from .unit_element import UnitElement
             unit_element_str = self.value[0]  # First element is the unit symbol string
             # Check if this quantity has tags and if it's marked as single element
             has_single_element_tag = (len(self.value) >= 3 and 

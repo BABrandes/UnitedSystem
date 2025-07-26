@@ -9,13 +9,13 @@ Now inherits from UnitedDataframeProtocol for full IDE support and type checking
 
 from typing import TYPE_CHECKING, TypeVar, Optional
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType, ARRAY_TYPE
-from united_system._units_and_dimension.unit import Unit
+from ..._dataframe.column_type import ColumnType, ARRAY_TYPE
+from ..._units_and_dimension.unit import Unit
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

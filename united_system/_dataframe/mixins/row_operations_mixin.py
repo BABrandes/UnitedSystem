@@ -10,13 +10,13 @@ import pandas as pd
 from typing import Any, Dict, TYPE_CHECKING
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import ColumnType
-from united_system._units_and_dimension.unit import Unit
-from united_system._scalars.united_scalar import UnitedScalar
-from united_system._arrays.base_array import PT_TYPE
+from ..._dataframe.column_type import ColumnType
+from ..._units_and_dimension.unit import Unit
+from ..._scalars.united_scalar import UnitedScalar
+from ..._arrays.base_array import PT_TYPE
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

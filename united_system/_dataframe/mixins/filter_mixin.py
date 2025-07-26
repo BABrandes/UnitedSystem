@@ -9,10 +9,10 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import Any, Callable, TYPE_CHECKING
 from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE
-from united_system._arrays.bool_array import BoolArray
+from ..._arrays.bool_array import BoolArray
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

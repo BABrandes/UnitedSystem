@@ -6,7 +6,7 @@ from .protocol import RealUnitedScalarProtocol
 if TYPE_CHECKING:
     from ...._units_and_dimension.unit import Unit
     from ...._units_and_dimension.dimension import Dimension
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
 
 class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Comparison operations for RealUnitedScalar."""
@@ -20,7 +20,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __eq__(self, other: object) -> bool:
         """Check if two scalars are equal."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -29,7 +29,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __ne__(self, other: object) -> bool:
         """Check if two scalars are not equal."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return True
         if self.dimension != other.dimension:
@@ -38,7 +38,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __lt__(self, other: object) -> bool:
         """Check if this scalar is less than another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -47,7 +47,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __le__(self, other: object) -> bool:
         """Check if this scalar is less than or equal to another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -56,7 +56,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __gt__(self, other: object) -> bool:
         """Check if this scalar is greater than another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
@@ -65,7 +65,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __ge__(self, other: object) -> bool:
         """Check if this scalar is greater than or equal to another."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:

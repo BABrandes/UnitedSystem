@@ -10,7 +10,7 @@ from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
     from ...._units_and_dimension.dimension import Dimension
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
 
 class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Arithmetic operations for RealUnitedScalar."""
@@ -33,7 +33,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot add {self} and {other} because they have incompatible dimensions.")
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value + other.canonical_value, self.dimension, self._display_unit)
 
     def __radd__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
@@ -41,7 +41,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot add {other} and {self} because they have incompatible dimensions.")
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(other.canonical_value + self.canonical_value, other.dimension, other.unit)
 
     # Subtraction # -------------------------------------
@@ -51,7 +51,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot subtract {other} from {self} because they have incompatible dimensions.")
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value - other.canonical_value, self.dimension, self._display_unit)
 
     def __rsub__(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
@@ -59,7 +59,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.dimension != other.dimension:
             raise ValueError(f"Cannot subtract {self} from {other} because they have incompatible dimensions.")
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(other.canonical_value - self.canonical_value, other.dimension, other.unit)
 
     # Multiplication # -----------------------------------
@@ -82,37 +82,37 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
         # Check for NaN
         if math.isnan(self.canonical_value) or math.isnan(value): # type: ignore
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
         
         # Multiplication
         match math.isfinite(self.canonical_value), math.isfinite(value): # type: ignore
             case True, True:
                 # Both finite - normal multiplication
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(self.canonical_value * value, new_dimension, None) # type: ignore
             case True, False:
                 # Other is infinite
                 if self.canonical_value == 0:
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 sign = 1 if self.canonical_value > 0 else -1
                 inf_sign = 1 if value > 0 else -1
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(float('inf') * sign * inf_sign, new_dimension, None) # type: ignore
             case False, True:
                 # Self is infinite
                 if other == 0:
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 sign = 1 if value > 0 else -1
                 inf_sign = 1 if self.canonical_value > 0 else -1
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(float('inf') * sign * inf_sign, new_dimension, None) # type: ignore
             case False, False:
                 # Both infinite
                 sign = 1 if (self.canonical_value > 0 and value > 0) or (self.canonical_value < 0 and value < 0) else -1
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(float('inf') * sign, new_dimension, None) # type: ignore
             case _:
                 raise ValueError(f"Cannot multiply {self} and {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
@@ -146,36 +146,36 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
         # Check for NaN
         if math.isnan(self.canonical_value) or math.isnan(value): # type: ignore
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
         
         # Division
         match math.isfinite(self.canonical_value), math.isfinite(value): # type: ignore
             case True, True: # (x / y)
                 # Both finite - normal division
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(self.canonical_value / value, new_dimension, None) # type: ignore
             case True, False: # (x / inf)
                 # Other is infinite
                 if self.canonical_value == 0:
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 else:
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(0, new_dimension, None) # type: ignore
             case False, True: # (inf / x)
                 # Self is infinite
                 if other == 0: # inf/0 = NaN
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 else: # inf/x = inf
                     sign = 1 if value > 0 else -1
                     inf_sign = 1 if self.canonical_value > 0 else -1
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(float('inf') * sign * inf_sign, new_dimension, None) # type: ignore
             case False, False: # (inf / inf)
                 # Both infinite
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
             case _:
                 raise ValueError(f"Cannot divide {self} by {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
@@ -197,36 +197,36 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
         # Check for NaN
         if math.isnan(self.canonical_value) or math.isnan(value): # type: ignore
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
         
         # Division
         match math.isfinite(value), math.isfinite(self.canonical_value): # type: ignore
             case True, True: # (y / x)
                 # Both finite - normal division
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(value / self.canonical_value, new_dimension, None) # type: ignore
             case True, False: # (y / inf)
                 # Other is infinite
                 if self.canonical_value == 0: # 0/inf = NaN
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 else: # y/inf = 0
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(0, new_dimension, None) # type: ignore
             case False, True: # (inf / x)
                 # Self is infinite
                 if other == 0: # inf/0 = NaN
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
                 else: # inf/x = inf
                     sign = 1 if value > 0 else -1
                     inf_sign = 1 if self.canonical_value > 0 else -1
-                    from .....real_united_scalar import RealUnitedScalar
+                    from ...._scalars.real_united_scalar import RealUnitedScalar
                     return RealUnitedScalar(float('inf') * sign * inf_sign, new_dimension, None) # type: ignore
             case False, False: # (inf / inf)
                 # Both infinite
-                from .....real_united_scalar import RealUnitedScalar
+                from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
             case _:
                 raise ValueError(f"Cannot divide {other} by {self} because: {math.isfinite(value)} and {math.isfinite(self.canonical_value)} are not finite") # type: ignore
@@ -237,24 +237,24 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """Raise scalar to a power."""
         
         if math.isnan(exponent):
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar.create_from_canonical_value(math.nan, self.dimension ** exponent, None)
         
         if exponent == 0:
             # Any number to the power of 0 is 1 (dimensionless)
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar.create_from_canonical_value(1.0, Dimension.dimensionless_dimension(), None)
         
         if exponent == 1:
             # Return a copy of self
-            from .....real_united_scalar import RealUnitedScalar
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, self._display_unit)
         
         # For other exponents, calculate the result
         new_value = self.canonical_value ** exponent
         new_dimension = self.dimension ** exponent
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(new_value, new_dimension, None)
     
     def __rpow__(self, other: float|int) -> "RealUnitedScalar":
@@ -303,7 +303,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             #E.g. 5 ^(3 m/s) is not allowed
             raise ValueError(f"Cannot raise {self} to the power of {other} because it has dimension {self.dimension}")
         
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
 
         if math.isnan(other) or math.isnan(self.canonical_value):
             return RealUnitedScalar(math.nan)
@@ -356,14 +356,14 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __neg__(self) -> "RealUnitedScalar":
         """Negate the scalar."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(-self.canonical_value, self.dimension, self._display_unit)
     
     # Absolute value # ------------------------------------
 
     def __abs__(self) -> "RealUnitedScalar":
         """Return the absolute value of the scalar."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(abs(self.canonical_value), self.dimension, self._display_unit)
     
 ########################################################
@@ -402,7 +402,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             else:
                 canonical_value = math.log(self.canonical_value, base)
 
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(canonical_value, dimension, display_unit) # type: ignore
     
     def ln(self) -> "RealUnitedScalar":

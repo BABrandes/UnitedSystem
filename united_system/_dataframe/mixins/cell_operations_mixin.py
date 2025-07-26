@@ -9,11 +9,11 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ..._dataframe.column_type import SCALAR_TYPE, LOWLEVEL_TYPE
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 ST = TypeVar("ST", bound=SCALAR_TYPE)
 LT = TypeVar("LT", bound=LOWLEVEL_TYPE)

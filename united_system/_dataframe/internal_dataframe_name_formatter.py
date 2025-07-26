@@ -1,6 +1,6 @@
 from typing import Protocol, Callable, Optional
 from .._units_and_dimension.unit import Unit
-from .column_key import ColumnKey
+from .._dataframe.column_key import ColumnKey
 
 class InternalDataFrameColumnNameFormatter(Protocol):
     def create_internal_dataframe_column_name(self, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:

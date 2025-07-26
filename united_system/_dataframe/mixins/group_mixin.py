@@ -10,11 +10,11 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 from typing import List, Callable, Union, Optional, TYPE_CHECKING
 from collections.abc import Sequence
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..column_type import SCALAR_TYPE
+from ..._dataframe.column_type import SCALAR_TYPE
 from ..grouping._groups import Groups
 
 if TYPE_CHECKING:
-    from ....united_dataframe import UnitedDataframe
+    from ..._dataframe.united_dataframe import UnitedDataframe
 
 class GroupbyMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     """

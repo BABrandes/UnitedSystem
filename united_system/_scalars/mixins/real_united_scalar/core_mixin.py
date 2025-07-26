@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from .....real_united_scalar import RealUnitedScalar
+    from ...._scalars.real_united_scalar import RealUnitedScalar
     from ...._units_and_dimension.unit import Unit
     from ...._units_and_dimension.dimension import Dimension
 
@@ -33,11 +33,11 @@ class RealUnitedScalarCore(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def abs(self) -> "RealUnitedScalar":
         """Return the absolute value of this scalar."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         display_unit: Optional["Unit"] = self._display_unit
         return RealUnitedScalar(abs(self.canonical_value), self.dimension, display_unit)
 
     def __reduce__(self):
         """Custom serialization for multiprocessing."""
-        from .....real_united_scalar import RealUnitedScalar
+        from ...._scalars.real_united_scalar import RealUnitedScalar
         return (RealUnitedScalar, (self.canonical_value, self.dimension, self._display_unit)) 
