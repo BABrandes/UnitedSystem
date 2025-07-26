@@ -167,7 +167,7 @@ class RealUnitedScalar(
             raise ValueError(f"The display unit {self._display_unit} is not compatible with the canonical dimension {self.dimension}.")
 
     @property
-    def display_unit(self) -> Unit:
+    def unit(self) -> Unit:
         if self._display_unit is None:
             object.__setattr__(self, "_display_unit", self.dimension.canonical_unit)
         if self._display_unit is None:
@@ -175,11 +175,5 @@ class RealUnitedScalar(
         return self._display_unit
     
     @property
-    def active_unit(self) -> Unit:
-        if self._display_unit is None:
-            return self.dimension.canonical_unit
-        return self._display_unit
-    
-    @property
     def active_float(self) -> float:
-        return self.canonical_value * self.active_unit.factor + self.active_unit.offset
+        return self.canonical_value * self.unit.factor + self.unit.offset

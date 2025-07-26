@@ -24,7 +24,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value == other.canonical_value # type: ignore
 
     def __ne__(self, other: object) -> bool:
@@ -33,7 +33,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return True
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value != other.canonical_value # type: ignore
 
     def __lt__(self, other: object) -> bool:
@@ -42,7 +42,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value < other.canonical_value # type: ignore
 
     def __le__(self, other: object) -> bool:
@@ -51,7 +51,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value <= other.canonical_value # type: ignore
 
     def __gt__(self, other: object) -> bool:
@@ -60,7 +60,7 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value > other.canonical_value # type: ignore
 
     def __ge__(self, other: object) -> bool:
@@ -69,5 +69,5 @@ class ComparisonMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not isinstance(other, RealUnitedScalar):
             return False
         if self.dimension != other.dimension:
-            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.display_unit}")
+            raise ValueError(f"Cannot compare dimensions of different types: {self._display_unit} and {other.unit}")
         return self.canonical_value >= other.canonical_value # type: ignore

@@ -76,7 +76,7 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
 
     def get_scalar_from_value(self, value: float) -> RealUnitedScalar:
         """Create a RealUnitedScalar from a primitive value with this array's dimension and display unit."""
-        canonical_value: float = self.display_unit.to_canonical_value(value) # type: ignore
+        canonical_value: float = self.unit.to_canonical_value(value) # type: ignore
         return RealUnitedScalar.create_from_canonical_value(canonical_value, self.dimension, self._display_unit)
     
     def get_numpy_array(self, slice: slice|None = None) -> np.ndarray:
@@ -86,9 +86,9 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         If no slice is provided, the array is returned as a copy of the original array.
         """
         if slice is None:
-            return self.display_unit.from_canonical_value(self.canonical_np_array) # type: ignore
+            return self.unit.from_canonical_value(self.canonical_np_array) # type: ignore
         else:
-            return self.display_unit.from_canonical_value(self.canonical_np_array[slice]) # type: ignore
+            return self.unit.from_canonical_value(self.canonical_np_array[slice]) # type: ignore
     
     @property
     def shape(self) -> tuple[int, ...]:
@@ -104,11 +104,6 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
     def ndim(self) -> int:
         """Get the number of dimensions of the array."""
         return self.canonical_np_array.ndim
-    
-    @property
-    def active_unit(self) -> Unit:
-        """Get the active unit of the array."""
-        return self.display_unit
     
     @property
     def active_dimension(self) -> Dimension:

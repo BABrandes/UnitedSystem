@@ -36,12 +36,8 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
         raise NotImplementedError("ComplexUnitedScalar.to_hdf5 is not implemented")
     
     @property
-    def display_unit(self) -> Unit:
+    def unit(self) -> Unit:
         raise NotImplementedError("ComplexUnitedScalar.display_unit is not implemented")
-    
-    @property
-    def active_unit(self) -> Unit:
-        raise NotImplementedError("ComplexUnitedScalar.active_unit is not implemented")
 
     @property
     def active_complex(self) -> complex:

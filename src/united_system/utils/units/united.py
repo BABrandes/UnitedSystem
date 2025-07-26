@@ -12,12 +12,4 @@ class United(Protocol):
 
     @property
     @abstractmethod
-    def display_unit(self) -> Optional[Unit]: ...
-
-    @property
-    @abstractmethod
-    def active_unit(self) -> Unit:
-        """
-        The active unit is the unit that is currently being used to display the value or if the display unit is not set, the canonical unit of the set dimension.
-        """
-        ...
+    def unit(self) -> Unit: ...

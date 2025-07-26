@@ -320,9 +320,9 @@ class TestUnitedDataframeOperations:
         print(f"✅ Text cell [0]: {actual_text}")
         
         length_value = df.cell_get_value(1, TestColumnKey("length"))
-        assert length_value.value_in_display_unit() == 2.5
-        assert str(length_value.active_unit) == "m"
-        print(f"✅ Length cell [1]: {length_value.value_in_display_unit()} {length_value.active_unit}")
+        assert length_value.value() == 2.5
+        assert str(length_value.unit) == "m"
+        print(f"✅ Length cell [1]: {length_value.value()} {length_value.unit}")
         
         count_value = df.cell_get_value(2, TestColumnKey("count"))
         actual_count = count_value.get_value() if hasattr(count_value, 'get_value') else count_value
@@ -353,7 +353,7 @@ class TestUnitedDataframeOperations:
         
         # Verify change
         updated_length = df.cell_get_value(1, TestColumnKey("length"))
-        assert updated_length.value_in_display_unit() == 4.5
+        assert updated_length.value() == 4.5
         print("✅ Updated length cell successfully")
         
         # Set integer value
@@ -438,8 +438,8 @@ class TestUnitedDataframeOperations:
         real_array = df.column_get_as_array(TestColumnKey("reals"))
         assert isinstance(real_array, RealUnitedArray)
         assert real_array.canonical_np_array.tolist() == [1.1, 2.2, 3.3, 4.4]
-        assert str(real_array.active_unit) == "kg"
-        print(f"✅ Real array: {real_array.canonical_np_array.tolist()} {real_array.active_unit}")
+        assert str(real_array.unit) == "kg"
+        print(f"✅ Real array: {real_array.canonical_np_array.tolist()} {real_array.unit}")
         
         int_array = df.column_get_as_array(TestColumnKey("integers"))
         assert isinstance(int_array, IntArray)

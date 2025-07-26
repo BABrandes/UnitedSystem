@@ -106,7 +106,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.canonical_value <= other.canonical_value:
             return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, self._display_unit)
         else:
-            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.display_unit)
+            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.unit)
     
     def max(self, other: "RealUnitedScalar") -> "RealUnitedScalar":
         """Return the maximum of this scalar and another."""
@@ -117,7 +117,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self.canonical_value >= other.canonical_value:
             return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, self._display_unit)
         else:
-            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.display_unit)
+            return RealUnitedScalar.create_from_canonical_value(other.canonical_value, other.dimension, other.unit)
 
     @classmethod
     def sum(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
@@ -136,7 +136,7 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         total_canonical = sum(v.canonical_value for v in values)
         
         # Return with first value's dimension and display unit
-        return RealUnitedScalar.create_from_canonical_value(total_canonical, values[0].dimension, values[0].display_unit)
+        return RealUnitedScalar.create_from_canonical_value(total_canonical, values[0].dimension, values[0].unit)
     
     @classmethod
     def mean(cls, values: list["RealUnitedScalar"]) -> "RealUnitedScalar":
@@ -155,4 +155,4 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         total_canonical = sum(v.canonical_value for v in values)
         
         # Return with first value's dimension and display unit
-        return RealUnitedScalar.create_from_canonical_value(total_canonical / len(values), values[0].dimension, values[0].display_unit) 
+        return RealUnitedScalar.create_from_canonical_value(total_canonical / len(values), values[0].dimension, values[0].unit) 

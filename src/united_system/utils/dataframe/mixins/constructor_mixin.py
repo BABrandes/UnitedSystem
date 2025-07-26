@@ -132,7 +132,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if isinstance(array_or_list, ARRAY_TYPE):
                 final_column_types[column_key] = ColumnType.infer_approbiate_column_type(type(array_or_list)) # type: ignore
                 if isinstance(array_or_list, United):
-                    column_units[column_key] = array_or_list.active_unit
+                    column_units[column_key] = array_or_list.unit
                 else:
                     column_units[column_key] = None
             elif column_key in column_types:

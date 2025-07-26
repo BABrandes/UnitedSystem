@@ -94,19 +94,19 @@ class TestRealUnitedScalarCore:
         # Should return canonical unit
         assert scalar.display_unit == dimension.canonical_unit
     
-    def test_active_unit_property(self):
-        """Test active_unit property."""
+    def test_unit_property(self):
+        """Test unit property."""
         unit = Unit("kg")
         scalar = RealUnitedScalar(5.0, unit)
         
-        assert scalar.active_unit == unit
+        assert scalar.unit == unit
     
-    def test_active_unit_property_none(self):
-        """Test active_unit property when display_unit is None."""
+    def test_unit_property_none(self):
+        """Test unit property when display_unit is None."""
         dimension = Dimension("M")
         scalar = RealUnitedScalar(5.0, dimension)
         
-        assert scalar.active_unit == dimension.canonical_unit
+        assert scalar.unit == dimension.canonical_unit
     
     def test_active_float_property(self):
         """Test active_float property."""
@@ -304,18 +304,18 @@ class TestRealUnitedScalarConversion:
         value = self.scalar.value_in_canonical_unit()
         assert value == 1.0  # 1 kg in canonical units (kg)
     
-    def test_value_in_display_unit(self):
+    def test_value(self):
         """Test getting value in display unit."""
-        value = self.scalar.value_in_display_unit()
+        value = self.scalar.value()
         assert value == 1.0  # 1 kg in display unit (kg)
     
-    def test_value_in_display_unit_no_display_unit(self):
+    def test_value_no_display_unit(self):
         """Test getting value in display unit when no display unit is set."""
         # Create scalar without display unit
         scalar_no_display = RealUnitedScalar(1.0, self.mass_dim)
         
         with pytest.raises(ValueError, match="No display unit set"):
-            scalar_no_display.value_in_display_unit()
+            scalar_no_display.value()
     
     def test_float_in_unit(self):
         """Test float_in_unit method."""

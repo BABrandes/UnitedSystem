@@ -42,7 +42,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             raise ValueError(f"Cannot add {other} and {self} because they have incompatible dimensions.")
         
         from .....real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(other.canonical_value + self.canonical_value, other.dimension, other.display_unit)
+        return RealUnitedScalar.create_from_canonical_value(other.canonical_value + self.canonical_value, other.dimension, other.unit)
 
     # Subtraction # -------------------------------------
 
@@ -60,7 +60,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             raise ValueError(f"Cannot subtract {self} from {other} because they have incompatible dimensions.")
         
         from .....real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(other.canonical_value - self.canonical_value, other.dimension, other.display_unit)
+        return RealUnitedScalar.create_from_canonical_value(other.canonical_value - self.canonical_value, other.dimension, other.unit)
 
     # Multiplication # -----------------------------------
 

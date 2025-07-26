@@ -111,14 +111,23 @@ class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], United, Generic[UST
         ...
 
     def value_in_unit(self, unit: Unit) -> PT:
+        """
+        Get the scalar value as a float in the given unit.
+        """
         if not unit.compatible_to(self.dimension): # type: ignore
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return unit.from_canonical_value(self.canonical_value) # type: ignore
     
     def value_in_canonical_unit(self) -> PT:
+        """
+        Get the scalar value as a float in the canonical unit of the scalar.
+        """
         return self.value_in_unit(self.dimension.canonical_unit)
     
-    def value_in_display_unit(self) -> PT:
+    def value(self) -> PT:
+        """
+        Get the scalar value as a float in the unit of the scalar.
+        """
         if self._display_unit is None:
             raise ValueError("This scalar has no display unit")
         return self.value_in_unit(self._display_unit) # type: ignore

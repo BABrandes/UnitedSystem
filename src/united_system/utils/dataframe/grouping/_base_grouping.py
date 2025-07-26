@@ -197,7 +197,7 @@ class BaseGrouping(Generic[CK]):
         # Get unit
         unit: Unit|None = None
         if isinstance(result, UnitedScalar):
-            unit = cast(Unit, result.active_unit) # type: ignore
+            unit = cast(Unit, result.unit) # type: ignore
 
         # Get internal dataframe column name
         internal_dataframe_column_name: str = self._dataframe.get_internal_dataframe_column_name(column_key)
@@ -585,7 +585,7 @@ class BaseGrouping(Generic[CK]):
                     
                     # Get unit if result is a UnitedScalar
                     if isinstance(result, UnitedScalar):
-                        result_column_unit = result.active_unit # type: ignore
+                        result_column_unit = result.unit # type: ignore
                     else:
                         result_column_unit = None
                     

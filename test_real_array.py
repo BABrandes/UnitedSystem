@@ -30,7 +30,7 @@ def test_real_array():
     print(f"Distances shape: {distances.shape}")
     print(f"Distances size: {distances.size}")
     print(f"Distances dimension: {distances.dimension}")
-    print(f"Distances display unit: {distances.display_unit}")
+    print(f"Distances unit: {distances.unit}")
     print(f"Distances values: {distances.values}")
     print(f"Distances canonical values: {distances.canonical_values}")
     

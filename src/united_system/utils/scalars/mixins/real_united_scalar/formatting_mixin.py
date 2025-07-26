@@ -60,7 +60,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """
         from .....unit import Unit
         if unit is None:
-            _unit: "Unit" = self.active_unit.reduced
+            _unit: "Unit" = self.unit.reduced
         elif isinstance(unit, str):
             _unit: "Unit" = Unit(unit)
         else:

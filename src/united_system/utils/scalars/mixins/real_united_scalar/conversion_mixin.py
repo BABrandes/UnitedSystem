@@ -30,7 +30,7 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """
         return self.canonical_value
 
-    def value_in_display_unit(self) -> float:
+    def value(self) -> float:
         """
         Get the scalar value in display units.
         
@@ -42,10 +42,10 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             
         Example:
             >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> scalar.value_in_display_unit()
+            >>> scalar.value()
             1.0
             >>> scalar_no_display = RealUnitedScalar.create_from_canonical_value(1.0, mass_dim)
-            >>> scalar_no_display.value_in_display_unit()  # Raises ValueError
+            >>> scalar_no_display.value()  # Raises ValueError
         """
         if self._display_unit is None:
             raise ValueError("No display unit set")

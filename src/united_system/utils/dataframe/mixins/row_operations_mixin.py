@@ -90,9 +90,9 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 if column_type.has_unit and value is not None:
                     if not isinstance(value, UnitedScalar):
                         raise ValueError(f"Value '{value}' in column '{column_key}' is not a UnitedScalar.")
-                    if value.active_unit != column_unit:
+                    if value.unit != column_unit:
                         raise ValueError(
-                            f"Value '{value}' has unit {value.active_unit}, "
+                            f"Value '{value}' has unit {value.unit}, "
                             f"but expected {column_unit} for column '{column_key}'."
                         )
                 converted_column.append(column_type.get_value_for_dataframe(value, column_unit))

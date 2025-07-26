@@ -68,19 +68,14 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return cls(canonical_np_array, dimension, display_unit) # type: ignore
     
     @property
-    def display_unit(self) -> Unit:
+    def unit(self) -> Unit:
         if self._display_unit is None:
             object.__setattr__(self, "_display_unit", self.dimension.canonical_unit)
         if self._display_unit is None:
             raise AssertionError("Display unit is None")
         return self._display_unit
     
-    @property
-    def active_unit(self) -> Unit:
-        if self._display_unit is None:
-            return self.dimension.canonical_unit
-        else:
-            return self._display_unit
+
 
     def set_display_unit(self, display_unit: Unit) -> None:
         if display_unit.compatible_to(self.dimension):
@@ -98,7 +93,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
 
     def get_value(self, index: int) -> PT:
         value: PT = self.canonical_np_array[index]
-        converted_value: PT = self.display_unit.from_canonical_value(value)  # type: ignore
+        converted_value: PT = self.unit.from_canonical_value(value)  # type: ignore
         return converted_value # type: ignore
     
     def get_scalar(self, index: int) -> UST:
@@ -122,7 +117,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         else:
             canonical_np_array: np.ndarray = self.canonical_np_array[slice]
         if target_unit is None:
-            return self.display_unit.from_canonical_value(canonical_np_array)
+            return self.unit.from_canonical_value(canonical_np_array)
         else:
             return target_unit.from_canonical_value(canonical_np_array)
     
@@ -147,7 +142,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         else:
             canonical_np_array: np.ndarray = self.canonical_np_array[slice]
         if target_unit is None:
-            return pd.Series(self.display_unit.from_canonical_value(canonical_np_array), dtype=dtype)
+            return pd.Series(self.unit.from_canonical_value(canonical_np_array), dtype=dtype)
         else:
             return pd.Series(target_unit.from_canonical_value(canonical_np_array), dtype=dtype)
     
