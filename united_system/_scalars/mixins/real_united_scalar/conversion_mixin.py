@@ -51,7 +51,7 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             raise ValueError("No display unit set")
         return self._display_unit.from_canonical_value(self.canonical_value)
 
-    def to_canonical_unit(self) -> "RealUnitedScalar":
+    def scalar_in_canonical_unit(self) -> "RealUnitedScalar":
         """
         Convert to canonical unit representation.
         
@@ -60,7 +60,7 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             
         Example:
             >>> scalar = RealUnitedScalar(1000.0, Unit.parse_string("g"))
-            >>> result = scalar.to_canonical_unit()
+            >>> result = scalar.scalar_in_canonical_unit()
             >>> result.canonical_value
             1.0
             >>> result._display_unit
@@ -70,37 +70,14 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         canonical_unit = self.dimension.canonical_unit
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, canonical_unit)
 
-    def to_canonical(self, with_display_unit: bool = False) -> "RealUnitedScalar":
-        """
-        Return a new scalar with no display unit (canonical).
-        
-        Args:
-            with_display_unit: If True, set display unit to canonical unit
-            
-        Returns:
-            A new RealUnitedScalar with or without display unit
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> result = scalar.to_canonical()
-            >>> result._display_unit is None
-            True
-            >>> result_with_unit = scalar.to_canonical(with_display_unit=True)
-            >>> result_with_unit._display_unit
-            Unit("kg")
-        """
-        from united_system._scalars.real_united_scalar import RealUnitedScalar
-        display_unit = self.dimension.canonical_unit if with_display_unit else None
-        return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, display_unit)
-
-    def to_unit(self, unit: "Unit") -> "RealUnitedScalar":
+    def scalar_in_unit(self, unit: "Unit") -> "RealUnitedScalar":
         """Return a new scalar with the specified unit as display unit."""
         from united_system._scalars.real_united_scalar import RealUnitedScalar
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, unit)
 
-    def float_in_unit(self, unit: "Unit") -> float:
+    def value_in_unit(self, unit: "Unit") -> float:
         """
         Convert the scalar to a float value in the specified unit.
         
@@ -115,48 +92,9 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             
         Example:
             >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> scalar.float_in_unit(Unit.parse_string("g"))
+            >>> scalar.value_in_unit(Unit.parse_string("g"))
             1000.0
         """
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return unit.from_canonical_value(self.canonical_value)
-
-    def canonical_float(self) -> float:
-        """
-        Get the scalar value as a float in canonical units.
-        
-        Returns:
-            The scalar value as a float in canonical units
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1000.0, Unit.parse_string("g"))
-            >>> scalar.canonical_float()
-            1.0  # Returns value in kg (canonical unit for mass)
-        """
-        return self.canonical_value
-
-    def display_float(self) -> float:
-        """
-        Get the scalar value as a float in display units.
-        
-        Returns:
-            The scalar value as a float in display units
-            
-        Raises:
-            ValueError: If no display unit is set
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> scalar.display_float()
-            1.0
-            >>> scalar_no_display = RealUnitedScalar.create_from_canonical_value(1.0, mass_dim)
-            >>> scalar_no_display.display_float()  # Raises ValueError
-        """
-        if self._display_unit is None:
-            raise ValueError("No display unit set")
-        return self._display_unit.from_canonical_value(self.canonical_value)
-
-    def in_unit(self, unit: "Unit") -> "RealUnitedScalar":
-        """Alias for to_unit method."""
-        return self.to_unit(unit)
