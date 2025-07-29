@@ -136,10 +136,26 @@ class RealUnitedScalar(
                     display_unit = None
                     dimension = Dimension.dimensionless_dimension()
             else:
+
+                # Parse the first argument.
                 if isinstance(value, str):
-                    _value: float = str_to_float(value)
+                    value = value.strip()
+                    value_and_unit = value.split(" ")
+                    if len(value_and_unit) == 1:
+                        _value: float = str_to_float(value_and_unit[0])
+                    elif len(value_and_unit) == 2:
+                        _value: float = str_to_float(value_and_unit[0])
+                        display_unit = Unit(value[1])
+                    else:
+                        raise ValueError(f"Invalid value: {value}")
                 else:
                     _value: float = float(value)
+
+                # If a display unit was found in the first argument, unit_or_dimension must be None.
+                if display_unit is not None and unit_or_dimension is not None: # type: ignore
+                    raise ValueError("The constructor is not designed to be used with two units or a unit and a dimension.")
+
+                # Parse the second argument.
                 if isinstance(unit_or_dimension, str):
                     display_unit = Unit(unit_or_dimension)
                     canonical_value = display_unit.to_canonical_value(_value)
@@ -173,7 +189,3 @@ class RealUnitedScalar(
         if self._display_unit is None:
             raise ValueError("Display unit is None")
         return self._display_unit
-    
-    @property
-    def active_float(self) -> float:
-        return self.canonical_value * self.unit.factor + self.unit.offset
