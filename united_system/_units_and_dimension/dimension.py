@@ -1054,6 +1054,37 @@ class Dimension:
         return True
     
 ################################################################################
+# Compatibility
+################################################################################
+
+    def compatible_to(self, *others: "Dimension | Unit") -> bool:
+        """
+        Check if the dimension is compatible with other dimensions.
+        Two dimensions are compatible if they have the same subscripts
+        and the same proper exponents.
+
+        Args:
+            *others: Other dimensions to check compatibility with
+        
+        """
+        for other in others:
+            if isinstance(other, Unit):
+                other = other.dimension
+            if self._proper_exponents.keys() != other._proper_exponents.keys():
+                return False
+            for subscript in self._proper_exponents.keys():
+                subscript: str = subscript # type: ignore
+                if self._proper_exponents[subscript] != other._proper_exponents[subscript]:
+                    return False
+            if self._log_dimensions.keys() != other._log_dimensions.keys():
+                return False
+            for log_dimension in self._log_dimensions.keys():
+                log_dimension: "Dimension" = log_dimension # type: ignore
+                if self._log_dimensions[log_dimension] != other._log_dimensions[log_dimension]:
+                    return False
+        return True
+    
+################################################################################
 # String representation
 ################################################################################
 
