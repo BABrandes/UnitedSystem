@@ -72,7 +72,7 @@ class RealUnitedScalar(
     _display_unit: Optional[Unit] = field(default=None, repr=False, compare=False, hash=False)
 
     @overload
-    def __init__(self, value: str, unit_or_dimension: Unit|None = None) -> None:
+    def __init__(self, value: str) -> None:
         """
         Initialize the scalar from a string which must contain a value and may contain a unit.
         "1 cm" -> {0.01, L, cm}
@@ -83,13 +83,21 @@ class RealUnitedScalar(
         """
         ...
     @overload
-    def __init__(self, value: float|int, unit_or_dimension: Unit|str|None = None) -> None:
+    def __init__(self, value: float|int) -> None:
         """
         Initialize the scalar from a float.
         -3.0 -> {-3.0, , ""}
         4.0 -> {4.0, , ""}
         """
         ...
+    @overload
+    def __init__(self, value: float|int|str, unit_or_dimension: Unit|str) -> None:
+        """
+        Initialize the scalar from a float and a unit.
+        -3.0, m -> {-3.0, L, m}
+        4.0, m/s -> {4.0, L/T, m/s}
+        """
+        ...    
     @overload
     def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedQuantity) -> None:
         """
