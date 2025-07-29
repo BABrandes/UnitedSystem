@@ -1,6 +1,5 @@
 from .base_united_array import BaseUnitedArray
 from .._scalars.real_united_scalar import RealUnitedScalar
-from .._units_and_dimension.dimension import Dimension
 from dataclasses import dataclass
 import numpy as np
 
@@ -43,11 +42,6 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
     def ndim(self) -> int:
         """Get the number of dimensions of the array."""
         return self.canonical_np_array.ndim
-    
-    @property
-    def active_dimension(self) -> Dimension:
-        """Get the active dimension of the array."""
-        return self.dimension
     
     @staticmethod
     def _check_numpy_type(array: np.ndarray) -> bool:
