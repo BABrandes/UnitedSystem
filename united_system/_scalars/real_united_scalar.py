@@ -99,7 +99,7 @@ class RealUnitedScalar(
         """
         ...    
     @overload
-    def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedQuantity) -> None:
+    def __init__(self, value: float|int, unit_or_dimension: Dimension|NamedQuantity|None) -> None:
         """
         Initialize the scalar from a float (as canonical value) and a dimension.
         -3.0, L -> {-3.0, m}

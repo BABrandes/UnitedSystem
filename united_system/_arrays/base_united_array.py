@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 import h5py
 import pandas as pd
 from pandas._typing import Dtype
+from .._units_and_dimension.named_quantity import NamedQuantity
 
 UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any]")
 UST = TypeVar("UST", bound=UnitedScalar[Any, Any])
@@ -44,16 +45,38 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
     dimension: Dimension
     _display_unit: Optional[Unit]
 
-    def __init__(self, canonical_np_array: np.ndarray, dimension: Dimension, display_unit: Optional[Unit] = None):
+    def __init__(self, np_array: np.ndarray, dimension_or_unit: Optional[Dimension|NamedQuantity|Unit], unit: Optional[Unit] = None):
 
         # Check the dimension and display unit are compatible
-        if display_unit is not None and not display_unit.compatible_to(dimension):
-            raise ValueError(f"The display unit {display_unit} is not compatible with the dimension {dimension}.")
+        if unit is not None:
+            if dimension_or_unit is None:
+                dimension_or_unit = unit.dimension
+            elif isinstance(dimension_or_unit, NamedQuantity):
+                if not unit.compatible_to(dimension_or_unit.dimension):
+                    raise ValueError(f"The display unit {unit} is not compatible with the dimension {dimension_or_unit.dimension}.")
+            elif isinstance(dimension_or_unit, Unit):
+                raise ValueError("One cannot provide two units to the constructor.")
+            else:
+                if not unit.compatible_to(dimension_or_unit):
+                    raise ValueError(f"The display unit {unit} is not compatible with the dimension {dimension_or_unit}.")
+            canonical_np_array = unit.to_canonical_value(np_array)
+
+        if dimension_or_unit is None:
+            dimension = Dimension.dimensionless_dimension()
+            canonical_np_array = np_array
+        elif isinstance(dimension_or_unit, NamedQuantity):
+            dimension = dimension_or_unit.dimension
+            canonical_np_array = np_array
+        elif isinstance(dimension_or_unit, Unit):
+            dimension = dimension_or_unit.dimension
+            canonical_np_array = dimension_or_unit.to_canonical_value(np_array)
+        else:
+            dimension = dimension_or_unit
+            canonical_np_array = np_array
         
         super().__init__(canonical_np_array)
-
         object.__setattr__(self, "dimension", dimension)
-        object.__setattr__(self, "_display_unit", display_unit)
+        object.__setattr__(self, "_display_unit", unit)
 
     @classmethod
     def create(cls, canonical_np_array: np.ndarray, dimension_or_display_unit: Union[Dimension, Unit]) -> UAT:
