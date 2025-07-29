@@ -1,5 +1,5 @@
 from typing import Optional, TYPE_CHECKING
-from enum import Enum
+from enum import Enum, EnumMeta
 from .proper_exponents import ProperExponents   
 
 if TYPE_CHECKING:
@@ -200,7 +200,8 @@ class NamedQuantity(Enum):
                 return named_quantity
         return None
     
-NamedDimension = Enum("NamedDimension", {member.name: member.dimension for member in NamedQuantity})
+class NamedDimension(Enum, metaclass=EnumMeta):
+    locals().update({member.name: member.dimension for member in NamedQuantity})
 
 SI_BASE_QUANTITIES: set[NamedQuantity] = set()
 SI_DERIVED_QUANTITIES: set[NamedQuantity] = set()
