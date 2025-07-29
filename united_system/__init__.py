@@ -18,7 +18,7 @@ from ._arrays.complex_array import ComplexArray
 from ._arrays.float_array import FloatArray
 from ._dataframe.column_key import ColumnKey
 from ._dataframe.column_type import ColumnType, ARRAY_TYPE, LOWLEVEL_TYPE, SCALAR_TYPE
-from ._units_and_dimension.named_quantity import NamedDimension
+from ._units_and_dimension.named_quantity import NamedQuantity
 
 __all__ = [
     'RealUnitedScalar',
@@ -26,7 +26,7 @@ __all__ = [
     'Dimension',
     'Unit',
     'UnitedDataframe',
-    'NamedDimension',
+    'NamedQuantity',
     'IntArray',
     'StringArray',
     'TimestampArray',

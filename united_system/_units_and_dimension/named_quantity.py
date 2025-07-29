@@ -199,15 +199,6 @@ class NamedQuantity(Enum):
             if named_quantity.dimension == dimension:
                 return named_quantity
         return None
-    
-class NamedDimension(Enum):
-    """Auto-derived enum from NamedQuantity mapping names to their Dimension instances."""
-    pass
-
-for member in NamedQuantity:
-    setattr(NamedDimension, member.name, member.dimension)
-    NamedDimension.__members__[member.name] = member.dimension # type: ignore
-    getattr(NamedDimension, member.name).__doc__ = member.__doc__
 
 SI_BASE_QUANTITIES: set[NamedQuantity] = set()
 SI_DERIVED_QUANTITIES: set[NamedQuantity] = set()
