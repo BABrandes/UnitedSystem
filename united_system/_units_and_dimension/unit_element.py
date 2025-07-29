@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Literal, Tuple
-from .utils import PREFIX_PAIRS
+from typing import Literal, Optional, Tuple
 import re
 
 from .unit_symbol import UnitSymbol, LogDimensionSymbol
+from .unit_prefixes import UnitPrefix
 
 _CACHE__SIMPLE_UNIT_ELEMENT: dict[str, "UnitElement"] = {}
 
@@ -20,25 +20,21 @@ class UnitElement:
     It serves as a building block for units.
 
     Examples:
-    - "m" -> SimpleUnitElement("", UnitSymbol.METER, 1)
-    - "km" -> SimpleUnitElement("k", UnitSymbol.METER, 1)
+    - "m" -> SimpleUnitElement(UnitPrefix.METER, UnitSymbol.METER, 1)
+    - "km" -> SimpleUnitElement(UnitPrefix.KILO, UnitSymbol.METER, 1)
     - "s" -> SimpleUnitElement("", UnitSymbol.SECOND, -1)
-    - "nV^4" -> SimpleUnitElement("n", UnitSymbol.VOLT, 4)
+    - "nV^4" -> SimpleUnitElement(UnitPrefix.NANO, UnitSymbol.VOLT, 4)
     """
 
-    prefix: str
+    prefix: Optional[UnitPrefix]
     unit_symbol: UnitSymbol|LogDimensionSymbol
     exponent: float
 
     @property
     def canonical_factor(self) -> float:
-        if self.prefix == "":
-            prefix_factor: float = 1.0
-        elif self.prefix in PREFIX_PAIRS:
-            prefix_factor: float = PREFIX_PAIRS[self.prefix]
-        else:
-            raise ValueError(f"Invalid prefix: {self.prefix}")
-        return (self.unit_symbol.value.factor * prefix_factor) ** self.exponent
+        if self.prefix is None:
+            return self.unit_symbol.value.factor
+        return self.prefix.factor * self.unit_symbol.value.factor
     
 ########################################################
 # Properties
@@ -124,10 +120,15 @@ class UnitElement:
                 else:
                     exponent_str = "^" + exponent_str
                 
-        if self.exponent < 0 and as_fraction:
-            return f"{self.prefix}{symbol_str}{exponent_str}", "denominator"
+        if self.prefix is None:
+            prefix_str = ""
         else:
-            return f"{self.prefix}{symbol_str}{exponent_str}", "nominator"
+            prefix_str = self.prefix.prefix_string
+
+        if self.exponent < 0 and as_fraction:
+            return f"{prefix_str}{symbol_str}{exponent_str}", "denominator"
+        else:
+            return f"{prefix_str}{symbol_str}{exponent_str}", "nominator"
 
 ########################################################
 # Parsing
@@ -186,18 +187,18 @@ class UnitElement:
         try:
             from .unit_symbol import UnitSymbol
             unit_symbol = UnitSymbol.from_symbol(unit_part)
-            simple_unit_element: UnitElement = UnitElement("", unit_symbol, exponent)
+            simple_unit_element: UnitElement = UnitElement(None, unit_symbol, exponent)
             _CACHE__SIMPLE_UNIT_ELEMENT[cache_key] = simple_unit_element
             return simple_unit_element
         except ValueError:
             pass
         
         # Try with prefixes (longest first to prioritize "da" over "d", etc.)
-        for prefix in sorted(PREFIX_PAIRS.keys(), key=len, reverse=True):
-            if unit_part.startswith(prefix):
+        for prefix in sorted(UnitPrefix, key=lambda x: len(x.prefix_string), reverse=True):
+            if unit_part.startswith(prefix.prefix_string):
                 try:
                     from .unit_symbol import UnitSymbol
-                    unit_symbol = UnitSymbol.from_symbol(unit_part[len(prefix):])
+                    unit_symbol = UnitSymbol.from_symbol(unit_part[len(prefix.prefix_string):])
                     simple_unit_element: UnitElement = UnitElement(prefix, unit_symbol, exponent)
                     _CACHE__SIMPLE_UNIT_ELEMENT[cache_key] = simple_unit_element
                     return simple_unit_element

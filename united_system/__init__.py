@@ -17,8 +17,10 @@ from ._arrays.bool_array import BoolArray
 from ._arrays.complex_array import ComplexArray
 from ._arrays.float_array import FloatArray
 from ._dataframe.column_key import ColumnKey as DataframeColumnKey
-from ._dataframe.column_type import ColumnType as DataframeColumnType, ARRAY_TYPE, LOWLEVEL_TYPE, SCALAR_TYPE
+from ._dataframe.column_type import ColumnType as DataframeColumnType
 from ._units_and_dimension.named_quantity import NamedQuantity
+from ._units_and_dimension.unit_symbol import UnitSymbol
+from ._units_and_dimension.unit_prefixes import UnitPrefix
 
 __all__ = [
     'RealUnitedScalar',
@@ -35,9 +37,8 @@ __all__ = [
     'FloatArray',
     'DataframeColumnKey',
     'DataframeColumnType',
-    'ARRAY_TYPE',
-    'LOWLEVEL_TYPE',
-    'SCALAR_TYPE',
+    'UnitSymbol',
+    'UnitPrefix',
 ]
 __version__ = '0.1.0'
 __author__ = 'Benedikt Axel Brandes'

@@ -49,7 +49,7 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any
+from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any, cast
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from h5py import Group
@@ -59,6 +59,7 @@ from .named_quantity import NamedQuantity
 from .unit_element import UnitElement
 from .dimension import Dimension
 from .unit_symbol import UnitSymbol
+from .unit_prefixes import UnitPrefix
 from .utils import seperate_string
 
 if TYPE_CHECKING:
@@ -479,12 +480,12 @@ class Unit:
         new_unit_elements: dict[str, List[UnitElement]] = {}
         
         # Collect all elements from both units
-        all_elements: dict[Tuple[str, UnitSymbol, str], UnitElement] = {}
+        all_elements: dict[Tuple[str, UnitSymbol, Optional[UnitPrefix]], UnitElement] = {}
         for subscript, elements in self._unit_elements.items():
             for element in elements:
                 if not isinstance(element.unit_symbol, UnitSymbol):
                     raise ValueError(f"Invalid unit symbol: {element.unit_symbol}")
-                key: Tuple[str, UnitSymbol, str] = (subscript, element.unit_symbol, element.prefix)
+                key: Tuple[str, UnitSymbol, Optional[UnitPrefix]] = (subscript, element.unit_symbol, element.prefix)
                 if key in all_elements:
                     # Combine exponents
                     combined_exponent: float = all_elements[key].exponent + element.exponent
@@ -496,7 +497,7 @@ class Unit:
             for element in elements:
                 if not isinstance(element.unit_symbol, UnitSymbol):
                     raise ValueError(f"Invalid unit symbol: {element.unit_symbol}")
-                key: Tuple[str, UnitSymbol, str] = (subscript, element.unit_symbol, element.prefix)
+                key: Tuple[str, UnitSymbol, Optional[UnitPrefix]] = (subscript, element.unit_symbol, element.prefix)
                 if key in all_elements:
                     # Combine exponents
                     combined_exponent = all_elements[key].exponent + element.exponent
@@ -604,7 +605,7 @@ class Unit:
         """
         # Create a new unit with this unit's dimension in the log component
         from .unit_symbol import LOG_UNIT_SYMBOLS
-        log_unit_element = UnitElement("", LOG_UNIT_SYMBOLS.BASE_10, 1.0)
+        log_unit_element = UnitElement(None, LOG_UNIT_SYMBOLS.BASE_10, 1.0)
         log_units = [(log_unit_element, self.dimension)]
         
         return self._construct(MappingProxyType({}), log_units)
@@ -644,7 +645,7 @@ class Unit:
                 # For now, let's create a unit with the dimension as the inner dimension of a log unit
                 # This is a temporary approach - we need a better way to convert Dimension to Unit
                 from .unit_symbol import LOG_UNIT_SYMBOLS
-                log_unit_element = UnitElement("", LOG_UNIT_SYMBOLS.BASE_10, 1.0)
+                log_unit_element = UnitElement(None, LOG_UNIT_SYMBOLS.BASE_10, 1.0)
                 # Create a unit with the inner dimension as a regular unit element
                 # This is not quite right - we need to think about this differently
                 return Unit._construct(MappingProxyType({}), [(log_unit_element, inner_dimension)])
@@ -855,12 +856,14 @@ class Unit:
                         log_start = part.find(log_symbol)
                         if log_start > 0:
                             # There's a prefix before the log symbol
-                            prefix = part[:log_start]
+                            prefix_string: str = part[:log_start]
                             log_part = part[log_start:]
                         else:
                             # No prefix
-                            prefix = ""
+                            prefix_string: str = ""
                             log_part = part
+
+                        prefix: Optional[UnitPrefix] = UnitPrefix.get_prefix(prefix_string)
                         
                         if log_part.startswith(f"{log_symbol}("):
                             # Find the closing parenthesis
@@ -1336,11 +1339,11 @@ class Unit:
                 return unit_elements
             
             # Group elements by their unit symbol and prefix
-            grouped_elements: dict[tuple[UnitSymbol, str], UnitElement] = {}
+            grouped_elements: dict[tuple[UnitSymbol, Optional[UnitPrefix]], UnitElement] = {}
             for element in unit_elements:
                 if not isinstance(element.unit_symbol, UnitSymbol):
                     raise AssertionError("Unit symbol is not a UnitSymbol")
-                key: tuple[UnitSymbol, str] = (element.unit_symbol, element.prefix)
+                key: tuple[UnitSymbol, Optional[UnitPrefix]] = (element.unit_symbol, element.prefix)
                 if key in grouped_elements:
                     # Combine exponents
                     combined_exponent: float = grouped_elements[key].exponent + element.exponent
@@ -1388,6 +1391,43 @@ class Unit:
         
         return Unit._construct(MappingProxyType(new_unit_elements), new_log_units)
     
+    @overload
+    @staticmethod
+    def get_unit_options(symbols_and_prefixes: dict[UnitSymbol, Sequence[UnitPrefix]]) -> list["Unit"]:
+        """
+        Get all possible units for a given set of symbols and prefixes.
+        """
+        ...
+
+    @overload
+    @staticmethod
+    def get_unit_options(symbols_and_prefixes: dict[str, dict[UnitSymbol, Sequence[UnitPrefix]]]) -> list["Unit"]:
+        """
+        Get all possible units for a given set of symbols and prefixes for a given subscript.
+        """
+        ...
+
+    @staticmethod
+    def get_unit_options(symbols_and_prefixes: dict[str, dict[UnitSymbol, Sequence[UnitPrefix]]]|dict[UnitSymbol, Sequence[UnitPrefix]]) -> list["Unit"]:
+        """
+        Get all possible units for a given set of symbols and prefixes.
+        """
+
+        def create_unit_list(subscript: str, symbols_and_prefixes: dict[UnitSymbol, Sequence[UnitPrefix]]) -> list["Unit"]:
+            raise NotImplementedError("Not implemented")
+
+        unit_list: list["Unit"] = []
+        if len(symbols_and_prefixes) > 0:
+            first_element: Any = next(iter(symbols_and_prefixes.values()))
+            if isinstance(first_element, str):
+                s_and_p_dict: dict[str, dict[UnitSymbol, Sequence[UnitPrefix]]] = cast(dict[str, dict[UnitSymbol, Sequence[UnitPrefix]]], symbols_and_prefixes)
+                for subscript, symbols_and_prefixes in s_and_p_dict.items():
+                    unit_list.extend(create_unit_list(subscript, symbols_and_prefixes))
+            else:
+                s_and_p: dict[UnitSymbol, Sequence[UnitPrefix]] = cast(dict[UnitSymbol, Sequence[UnitPrefix]], symbols_and_prefixes)
+                unit_list = create_unit_list("", s_and_p)
+        return unit_list
+
 ########################################################
 # Preset units
 ########################################################
