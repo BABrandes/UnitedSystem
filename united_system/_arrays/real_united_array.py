@@ -49,3 +49,8 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         """Get the active dimension of the array."""
         return self.dimension
     
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
+        """Check if the array has a valid real dtype."""
+        return array.dtype.kind in ['i', 'f']  # Real numbers
+    

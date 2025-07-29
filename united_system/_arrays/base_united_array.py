@@ -149,7 +149,6 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return self._display_unit
     
 
-
     def set_display_unit(self, display_unit: Unit) -> None:
         if display_unit.compatible_to(self.dimension):
             raise ValueError(f"The display unit {display_unit} is not compatible with the canonical dimension {self.dimension}.")
