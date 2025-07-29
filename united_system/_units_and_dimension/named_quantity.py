@@ -38,6 +38,7 @@ class NamedQuantity(Enum):
     
     # -------------------- Dimensions with Canonical SI Derived Units --------------------
 
+    # Single element SI derived units
     FORCE =                     ("N",       ProperExponents(mass=1, length=1, time=-2),             {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Mass per length per time squared
     """Dimension: M*L/T^2; Canonical unit: N = newton"""
     ENERGY =                    ("J",       ProperExponents(mass=1, length=2, time=-2),             {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Work    
@@ -67,7 +68,7 @@ class NamedQuantity(Enum):
     FREQUENCY =                 ("Hz",      ProperExponents(time=-1),                               {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # 1 per time
     """Dimension: T^-1; Canonical unit: Hz = hertz"""
     
-    # Additional SI derived units
+    # Multi-element SI derived units
     ELECTRIC_FIELD =            ("V/m",     ProperExponents(mass=1, length=1, time=-3, current=-1), {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Voltage per length
     """Dimension: M*L/T^3*I^-1; Canonical unit: V/m = volt per meter"""
     ELECTRIC_DISPLACEMENT =     ("C/m^2",   ProperExponents(current=1, time=1, length=-2),          {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per area
@@ -104,9 +105,10 @@ class NamedQuantity(Enum):
     """Dimension: M^-1*L^-3*T^3*I^2; Canonical unit: S/m = siemens per meter"""
     RESISTIVITY =                ("Ω*m",     ProperExponents(mass=1, length=3, time=-3, current=-2), {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY,}) # Resistance per length
     """Dimension: M*L^3/T^3*I^-2; Canonical unit: Ω*m = ohm meter"""
+    MOLAR_CONCENTRATION =       ("mol/m^3", ProperExponents(amount=1, length=-3),                  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Amount of substance per volume
+    """Dimension: N/L^3; Canonical unit: mol/m^3 = mole per cubic meter"""
 
-    # -------------------- Dimensions with Composed SI Units --------------------
-
+    # Altercations of multi-element SI derived units
     VOLTAGE_SCAN_RATE =         ("V/s",     ProperExponents(length=1, time=-1),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Voltage per time
     """Dimension: M*L/T^3*I^-1; Canonical unit: V/s = volt per second"""
     CURRENT_DENSITY =           ("A/m^2",   ProperExponents(current=1, length=-2),                  {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Current per area
@@ -115,24 +117,6 @@ class NamedQuantity(Enum):
     """Dimension: T*I/L^2; Canonical unit: C/m^2 = coulomb per square meter"""
     CAPACITANCE_DENSITY =       ("F/m^2",   ProperExponents(mass=-1, length=-2, time=4, current=2), {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per voltage per area
     """Dimension: M^-1*L^-2*T^4*I^2; Canonical unit: F/m^2 = farad per square meter"""
-    
-    # -------------------- Dimensions with Non-SI Canonical Units --------------------
-
-    ANGLE =                     ("rad",     ProperExponents(angle=1),                               {QuantityTag.BASE_QUANTITY, QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Angle
-    """Dimension: 1; Canonical unit: rad = radian"""
-    ACTIVITY =                  ("Bq",      ProperExponents(time=-1),                               {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # 1 per time
-    """Dimension: T^-1; Canonical unit: Bq = becquerel"""
-    DOSE_EQUIVALENT =           ("Sv",      ProperExponents(mass=1, length=2, time=-2),             {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Energy per mass per area per time squared
-    """Dimension: M*L^2/T^-2; Canonical unit: Sv = sievert"""
-    DOSE_ABSORTED =             ("Gy",      ProperExponents(mass=1, length=2, time=-2),             {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Energy per mass per area
-    """Dimension: M*L^2/T^-2; Canonical unit: Gy = gray"""
-    LOGLEVEL =                  ("Np",      ProperExponents(),                                      {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Log level
-    """Dimension: 1; Canonical unit: Np = neper"""
-    FRACTION =                  ("",        ProperExponents(),                                      {QuantityTag.NON_SI_QUANTITY}) # Fraction
-    """Dimension: 1; Canonical unit: 1 = 1"""
-    
-    # -------------------- Dimensions with Non-SI Non-canonical Units --------------------
-    
     AREA = ("m^2", ProperExponents(length=2)) # Length squared
     """Dimension: L^2; Canonical unit: m^2 = square meter"""
     VOLUME = ("m^3", ProperExponents(length=3)) # Length cubed
@@ -149,6 +133,21 @@ class NamedQuantity(Enum):
     """Dimension: L^2/T; Canonical unit: m^2/s = square meter per second"""
     DYNAMIC_VISCOSITY = ("Pa*s", ProperExponents(mass=1, length=-1, time=-1)) # Mass per length per time
     """Dimension: M/L*T; Canonical unit: Pa*s = pascal second"""
+    
+    # -------------------- Dimensions with Non-SI Canonical Units --------------------
+
+    ANGLE =                     ("rad",     ProperExponents(angle=1),                               {QuantityTag.BASE_QUANTITY, QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Angle
+    """Dimension: 1; Canonical unit: rad = radian"""
+    ACTIVITY =                  ("Bq",      ProperExponents(time=-1),                               {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # 1 per time
+    """Dimension: T^-1; Canonical unit: Bq = becquerel"""
+    DOSE_EQUIVALENT =           ("Sv",      ProperExponents(mass=1, length=2, time=-2),             {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Energy per mass per area per time squared
+    """Dimension: M*L^2/T^-2; Canonical unit: Sv = sievert"""
+    DOSE_ABSORTED =             ("Gy",      ProperExponents(mass=1, length=2, time=-2),             {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Energy per mass per area
+    """Dimension: M*L^2/T^-2; Canonical unit: Gy = gray"""
+    LOGLEVEL =                  ("Np",      ProperExponents(),                                      {QuantityTag.NON_SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY}) # Log level
+    """Dimension: 1; Canonical unit: Np = neper"""
+    FRACTION =                  ("",        ProperExponents(),                                      {QuantityTag.NON_SI_QUANTITY}) # Fraction
+    """Dimension: 1; Canonical unit: 1 = 1"""
 
     @property
     def dimension(self) -> "Dimension":
@@ -200,6 +199,8 @@ class NamedQuantity(Enum):
             if named_quantity.dimension == dimension:
                 return named_quantity
         return None
+    
+NamedDimension = Enum("NamedDimension", {member.name: member.dimension for member in NamedQuantity})
 
 SI_BASE_QUANTITIES: set[NamedQuantity] = set()
 SI_DERIVED_QUANTITIES: set[NamedQuantity] = set()
