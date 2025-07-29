@@ -16,7 +16,7 @@ from ._arrays.timestamp_array import TimestampArray
 from ._arrays.bool_array import BoolArray
 from ._arrays.complex_array import ComplexArray
 from ._arrays.float_array import FloatArray
-from ._dataframe.column_key import ColumnKey
+from ._dataframe.column_key import ColumnKey as DataframeColumnKey
 from ._dataframe.column_type import ColumnType, ARRAY_TYPE, LOWLEVEL_TYPE, SCALAR_TYPE
 from ._units_and_dimension.named_quantity import NamedQuantity
 
@@ -33,7 +33,7 @@ __all__ = [
     'BoolArray',
     'ComplexArray',
     'FloatArray',
-    'ColumnKey',
+    'DataframeColumnKey',
     'ColumnType',
     'ARRAY_TYPE',
     'LOWLEVEL_TYPE',
