@@ -1,5 +1,5 @@
 from typing import Optional, TYPE_CHECKING
-from enum import Enum, EnumMeta
+from enum import Enum
 from .proper_exponents import ProperExponents   
 
 if TYPE_CHECKING:
@@ -200,8 +200,14 @@ class NamedQuantity(Enum):
                 return named_quantity
         return None
     
-class NamedDimension(Enum, metaclass=EnumMeta):
-    locals().update({member.name: member.dimension for member in NamedQuantity})
+class NamedDimension(Enum):
+    """Auto-derived enum from NamedQuantity mapping names to their Dimension instances."""
+    pass
+
+for member in NamedQuantity:
+    setattr(NamedDimension, member.name, member.dimension)
+    NamedDimension.__members__[member.name] = member.dimension # type: ignore
+    getattr(NamedDimension, member.name).__doc__ = member.__doc__
 
 SI_BASE_QUANTITIES: set[NamedQuantity] = set()
 SI_DERIVED_QUANTITIES: set[NamedQuantity] = set()
