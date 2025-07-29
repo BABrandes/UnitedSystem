@@ -1,6 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
-from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional
+from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, Sequence
 from .._units_and_dimension.dimension import Dimension
 from .._units_and_dimension.unit import Unit
 from .._scalars.united_scalar import UnitedScalar
@@ -45,10 +45,60 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
     dimension: Dimension
     _display_unit: Optional[Unit]
 
-    def __init__(self, np_array: np.ndarray, dimension_or_unit: Optional[Dimension|NamedQuantity|Unit], unit: Optional[Unit] = None):
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Unit) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: str) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension, display_unit: Unit) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension, display_unit: str) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: str, display_unit: str) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity, display_unit: Unit) -> None: # type: ignore
+        ...
+    @overload
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity, display_unit: str) -> None: # type: ignore
+        ...
+
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, dimension_or_unit: Optional[Dimension|NamedQuantity|str|Unit], unit: Optional[Unit|str] = None): # type: ignore
+
+        if isinstance(array, np.ndarray):
+            np_array = array
+        elif isinstance(array, pd.Series):
+            np_array = array.to_numpy() # type: ignore
+        else:
+            np_array = np.array(array)
+
+        if not type(self)._check_numpy_type(np_array):
+            raise ValueError(f"The array is not the correct numpy array. It is of type {type(np_array)}.")
+        
+        # If a string is provided, it is assumed to be a dimension or unit depending on the context
+        if isinstance(dimension_or_unit, str):
+            if unit is not None:
+                dimension_or_unit = Dimension(dimension_or_unit)
+            else:
+                dimension_or_unit = Unit(dimension_or_unit)
 
         # Check the dimension and display unit are compatible
         if unit is not None:
+            if isinstance(unit, str):
+                unit = Unit(unit)
             if dimension_or_unit is None:
                 dimension_or_unit = unit.dimension
             elif isinstance(dimension_or_unit, NamedQuantity):
@@ -125,7 +175,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
             
     def get_array(self, slice: slice) -> "BaseUnitedArray[UAT, UST, PT]":
         canonical_np_array: np.ndarray = self.canonical_np_array[slice]
-        return type(self)(canonical_np_array, self.dimension, self._display_unit)
+        return type(self)(canonical_np_array, self.dimension, self._display_unit) # type: ignore
     
     def get_as_numpy_array(self, target_unit: Unit|None, slice: slice|None = None) -> np.ndarray:
         """

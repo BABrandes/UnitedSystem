@@ -6,6 +6,7 @@ import numpy as np
 class IntArray(NonUnitedArray[int, "IntArray"]):
     """Array of integers."""
     
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid integer dtype."""
         return array.dtype.kind == 'i'  # Signed integer

@@ -91,3 +91,8 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
     @classmethod
     def from_hdf5(cls, hdf5_group: h5py.Group) -> AT:
         return cls(canonical_np_array=hdf5_group["canonical_np_array"][()]) # type: ignore
+    
+    @staticmethod
+    @abstractmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
+        ...

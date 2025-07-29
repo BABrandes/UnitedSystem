@@ -17,6 +17,7 @@ class BoolArray(NonUnitedArray[bool, "BoolArray"]):
     def __invert__(self) -> "BoolArray":
         return BoolArray(~self.canonical_np_array)
     
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid boolean dtype."""
         return array.dtype.kind == 'b'  # Boolean

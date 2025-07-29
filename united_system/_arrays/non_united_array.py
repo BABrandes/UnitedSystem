@@ -3,7 +3,6 @@ from .base_array import BaseArray, PT_TYPE
 import numpy as np
 from pandas._typing import Dtype
 import pandas as pd
-from abc import abstractmethod
 
 PT = TypeVar("PT", bound=PT_TYPE)
 AT = TypeVar("AT", bound="NonUnitedArray[PT_TYPE, Any]")
@@ -92,10 +91,6 @@ class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
 
     def get_array(self, slice: slice) -> AT:  # type: ignore
         return type(self)(self.canonical_np_array[slice])  # type: ignore
-    
-    @abstractmethod
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
-        raise NotImplementedError("Subclasses must implement this method")
     
 class NonUnitedArrayIterator(Iterator[PT]):
     """Iterator for NonUnitedArray that maintains separate state."""

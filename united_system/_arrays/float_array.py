@@ -6,6 +6,7 @@ import numpy as np
 class FloatArray(NonUnitedArray[float, "FloatArray"]):
     """Array of floats."""
     
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid float dtype."""
         return array.dtype.kind == 'f'  # Floating point

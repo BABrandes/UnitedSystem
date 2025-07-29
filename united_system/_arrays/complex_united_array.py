@@ -14,12 +14,6 @@ class ComplexUnitedArray(BaseUnitedArray["ComplexUnitedArray", ComplexUnitedScal
     dimension: Dimension
     _display_unit: Optional[Unit]
 
-    def __init__(self, canonical_np_array: np.ndarray, dimension: Dimension, display_unit: Optional[Unit] = None):
-        super().__init__(canonical_np_array, dimension, display_unit)
-
-        object.__setattr__(self, "dimension", dimension)
-        object.__setattr__(self, "_display_unit", display_unit)
-        
     def get_as_scalar(self, index: int) -> ComplexUnitedScalar:
         """Get a single element as a ComplexUnitedScalar."""
         canonical_value = self.canonical_np_array[index]
@@ -36,3 +30,8 @@ class ComplexUnitedArray(BaseUnitedArray["ComplexUnitedArray", ComplexUnitedScal
             canonical_value=canonical_value,
             dimension=self.dimension,
             display_unit=self._display_unit)
+    
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
+        """Check if the array has a valid complex dtype."""
+        return array.dtype.kind == 'c'  # Complex numbers

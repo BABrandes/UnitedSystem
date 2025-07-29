@@ -7,6 +7,7 @@ import numpy as np
 class TimestampArray(NonUnitedArray[Timestamp, "TimestampArray"]):
     pass
     
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid timestamp dtype."""
         return array.dtype.kind == 'O' or array.dtype.kind == 'M'  # Object or datetime64

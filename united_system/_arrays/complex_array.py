@@ -6,6 +6,7 @@ import numpy as np
 class ComplexArray(NonUnitedArray[complex, "ComplexArray"]):
     """Array of complex numbers."""
     
-    def _check_numpy_type(self, array: np.ndarray) -> bool:
+    @staticmethod
+    def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid complex dtype."""
         return array.dtype.kind == 'c'  # Complex numbers

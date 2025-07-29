@@ -140,3 +140,17 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
             if arg.dimension != self.dimension:
                 return False
         return True
+    
+    def scalar_in_canonical_unit(self) -> "ComplexUnitedScalar":
+        return ComplexUnitedScalar(
+            self.canonical_value,
+            self.dimension,
+            self.dimension.canonical_unit)
+    
+    def scalar_in_unit(self, unit: Unit) -> "ComplexUnitedScalar":
+        if not unit.compatible_to(self.dimension):
+            raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
+        return ComplexUnitedScalar(
+            self.canonical_value,
+            self.dimension,
+            unit)

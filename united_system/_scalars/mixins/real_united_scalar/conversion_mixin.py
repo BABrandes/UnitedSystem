@@ -32,12 +32,17 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             Unit("kg")  # Canonical unit for mass
         """
         from united_system._scalars.real_united_scalar import RealUnitedScalar
-        canonical_unit = self.dimension.canonical_unit
-        return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, canonical_unit)
+        return RealUnitedScalar(
+            self.canonical_value,
+            self.dimension,
+            self.dimension.canonical_unit)
 
     def scalar_in_unit(self, unit: "Unit") -> "RealUnitedScalar":
         """Return a new scalar with the specified unit as display unit."""
         from united_system._scalars.real_united_scalar import RealUnitedScalar
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
-        return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, unit)
+        return RealUnitedScalar(
+            self.canonical_value,
+            self.dimension,
+            unit)
