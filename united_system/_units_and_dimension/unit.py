@@ -658,7 +658,7 @@ class Unit:
     # Compatibility and comparison
 ########################################################
 
-    def compatible_to(self, other: Union["Unit", Dimension | United]) -> bool:
+    def compatible_to(self, other: Union["Unit", Dimension, "United"]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         
