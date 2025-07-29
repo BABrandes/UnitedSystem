@@ -16,41 +16,6 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     dimension: "Dimension"
     _display_unit: Optional["Unit"]
 
-    def value_in_canonical_unit(self) -> float:
-        """
-        Get the scalar value in canonical units.
-        
-        Returns:
-            The scalar value as a float in canonical units
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1000.0, Unit.parse_string("g"))
-            >>> scalar.value_in_canonical_unit()
-            1.0  # Returns value in kg (canonical unit for mass)
-        """
-        return self.canonical_value
-
-    def value(self) -> float:
-        """
-        Get the scalar value in display units.
-        
-        Returns:
-            The scalar value as a float in display units
-            
-        Raises:
-            ValueError: If no display unit is set
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> scalar.value()
-            1.0
-            >>> scalar_no_display = RealUnitedScalar.create_from_canonical_value(1.0, mass_dim)
-            >>> scalar_no_display.value()  # Raises ValueError
-        """
-        if self._display_unit is None:
-            raise ValueError("No display unit set")
-        return self._display_unit.from_canonical_value(self.canonical_value)
-
     def scalar_in_canonical_unit(self) -> "RealUnitedScalar":
         """
         Convert to canonical unit representation.
@@ -76,25 +41,3 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
         return RealUnitedScalar.create_from_canonical_value(self.canonical_value, self.dimension, unit)
-
-    def value_in_unit(self, unit: "Unit") -> float:
-        """
-        Convert the scalar to a float value in the specified unit.
-        
-        Args:
-            unit: The unit to convert to
-            
-        Returns:
-            The scalar value as a float in the specified unit
-            
-        Raises:
-            ValueError: If the unit is not compatible with the scalar's dimension
-            
-        Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
-            >>> scalar.value_in_unit(Unit.parse_string("g"))
-            1000.0
-        """
-        if not unit.compatible_to(self.dimension):
-            raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
-        return unit.from_canonical_value(self.canonical_value)

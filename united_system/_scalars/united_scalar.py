@@ -131,3 +131,15 @@ class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], United, Generic[UST
         if self._display_unit is None:
             raise ValueError("This scalar has no display unit")
         return self.value_in_unit(self._display_unit) # type: ignore
+    
+    @abstractmethod
+    def scalar_in_canonical_unit(self) -> UST:
+        """
+        Convert the scalar to a canonical unit representation.
+        """
+    
+    @abstractmethod
+    def scalar_in_unit(self, unit: Unit) -> UST:
+        """
+        Convert the scalar to a unit representation.
+        """
