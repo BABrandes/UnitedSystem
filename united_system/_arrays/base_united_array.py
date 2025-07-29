@@ -49,31 +49,31 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
     def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Unit) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[Unit]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: str) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[str]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[Dimension]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[NamedQuantity]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension, display_unit: Unit) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[Dimension], display_unit: Optional[Unit]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Dimension, display_unit: str) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[Dimension], display_unit: Optional[str]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: str, display_unit: str) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[str], display_unit: Optional[str]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity, display_unit: Unit) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[NamedQuantity], display_unit: Optional[Unit]) -> None: # type: ignore
         ...
     @overload
-    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: NamedQuantity, display_unit: str) -> None: # type: ignore
+    def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, unit_or_dimension: Optional[NamedQuantity], display_unit: Optional[str]) -> None: # type: ignore
         ...
 
     def __init__(self, array: np.ndarray|Sequence[PT]|pd.Series, dimension_or_unit: Optional[Dimension|NamedQuantity|str|Unit], unit: Optional[Unit|str] = None): # type: ignore
