@@ -54,6 +54,7 @@ from .dimension_symbol import DimensionSymbol, BASE_DIMENSION_SYMBOLS
 if TYPE_CHECKING:
     from .unit import Unit
     from .named_quantity import NamedQuantity
+    from .united import United
 
 EPSILON: float = 1e-12
 
@@ -1057,7 +1058,7 @@ class Dimension:
 # Compatibility
 ################################################################################
 
-    def compatible_to(self, *others: "Dimension | Unit") -> bool:
+    def compatible_to(self, *others: "Dimension | Unit | United") -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
@@ -1069,6 +1070,8 @@ class Dimension:
         """
         for other in others:
             if isinstance(other, Unit):
+                other = other.dimension
+            if isinstance(other, United):
                 other = other.dimension
             if self._proper_exponents.keys() != other._proper_exponents.keys():
                 return False

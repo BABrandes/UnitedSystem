@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from .._arrays.real_united_array import RealUnitedArray
     from .._scalars.complex_united_scalar import ComplexUnitedScalar
     from .._arrays.complex_united_array import ComplexUnitedArray
+    from .united import United
 
 EPSILON: float = 1e-12
 
@@ -656,7 +657,7 @@ class Unit:
     # Compatibility and comparison
 ########################################################
 
-    def compatible_to(self, other: Union["Unit", Dimension]) -> bool:
+    def compatible_to(self, other: Union["Unit", Dimension | United]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         
@@ -666,10 +667,7 @@ class Unit:
         Returns:
             True if compatible, False otherwise
         """
-        if isinstance(other, Unit):
-            return self.dimension == other.dimension
-        else:
-            return self.dimension == other
+        return self.dimension.compatible_to(other)
 
     @staticmethod
     def is_valid_for_addition(unit_1: "Unit", unit_2: "Unit") -> bool:
