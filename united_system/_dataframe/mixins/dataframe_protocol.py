@@ -6,7 +6,7 @@ solving the "blind mixins" problem where mixins can't see what methods
 and attributes are available.
 """
 
-from typing import Generic, Dict, List, Any, Optional, TypeVar, Union, Sequence, Iterator, Tuple, Callable, overload
+from typing import Generic, Dict, List, Any, Optional, TypeVar, Union, Sequence, Iterator, Tuple, Callable, overload, Iterable
 from typing import TYPE_CHECKING
 from pathlib import Path
 import pandas as pd
@@ -160,6 +160,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
     def get_internal_dataframe_column_names(self, column_key: CK|Sequence[CK]|None = None) -> list[str]: ...
     @property
     def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter: ...
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, str]|Iterable[CK] = {}) -> pd.DataFrame: ...
 
     # Itermixins
 

@@ -4,7 +4,7 @@ Core functionality mixin for UnitedDataframe.
 Contains basic properties, initialization helpers, and core utility methods.
 """
 
-from typing import Any, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, cast
 from collections.abc import Sequence
 import pandas as pd
 import numpy as np
@@ -325,3 +325,45 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
         with self._rlock:
             return self._create_with_replaced_dataframe(self._internal_dataframe.tail(n))
+        
+    @overload
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, str] = {}) -> pd.DataFrame:
+        ...
+    @overload
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: Iterable[CK] = ()) -> pd.DataFrame:
+        ...
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, str]|Iterable[CK] = {}) -> pd.DataFrame:
+        """
+        Return a pandas dataframe with the specified column keys. The target column names can be provided as a dictionary.
+
+        Args:
+            deepcopy (bool): Whether to make a deep copy of the dataframe (recommended).
+            column_keys (Dict[CK, str]|Iterable[CK]): A dictionary of column keys to column names or an iterable of column keys.
+
+        Returns:
+            pd.DataFrame: A pandas dataframe with the specified column keys.
+        """
+        with self._rlock:
+
+            if next(iter(column_keys), None) is None:
+                return self._internal_dataframe.copy() if deepcopy else self._internal_dataframe
+            else:
+                if isinstance(column_keys, dict):
+                    internal_column_names_to_extract: list[str] = []
+                    rename_dict: dict[str, str] = {}
+                    for column_key, target_column_name in column_keys.items(): # type: ignore
+                        target_column_name: str = cast(str, target_column_name)
+                        if not self._colkey_exists(column_key):
+                            raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+                        internal_column_name: str = self._get_internal_dataframe_column_name(column_key)
+                        internal_column_names_to_extract.append(internal_column_name)
+                        rename_dict[internal_column_name] = target_column_name
+                    return self._internal_dataframe[internal_column_names_to_extract].copy(deep=deepcopy).rename(columns=rename_dict)
+                else:
+                    internal_column_names_to_extract: list[str] = []
+                    for column_key in column_keys:
+                        if not self._colkey_exists(column_key):
+                            raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+                        internal_column_name: str = self._get_internal_dataframe_column_name(column_key)
+                        internal_column_names_to_extract.append(internal_column_name)
+                    return self._internal_dataframe[internal_column_names_to_extract].copy(deep=deepcopy)
