@@ -1391,6 +1391,22 @@ class Unit:
         
         return Unit._construct(MappingProxyType(new_unit_elements), new_log_units)
     
+    @staticmethod
+    def extract(obj: Any) -> Optional["Unit"]:
+        """
+        Extract a unit from an object.
+        """
+        if isinstance(obj, Unit):
+            return obj
+        elif isinstance(obj, Dimension):
+            return obj.canonical_unit
+        elif isinstance(obj, United):
+            return obj.unit
+        elif isinstance(obj, NamedQuantity):
+            return obj.unit
+        else:
+            return None
+    
     @overload
     @staticmethod
     def get_unit_options(symbols_and_prefixes: dict[UnitSymbol, Sequence[UnitPrefix]]) -> list["Unit"]:

@@ -3,7 +3,7 @@ from typing import Literal, Optional, Tuple
 import re
 
 from .unit_symbol import UnitSymbol, LogDimensionSymbol
-from .unit_prefixes import UnitPrefix
+from .unit_prefix import UnitPrefix
 
 _CACHE__SIMPLE_UNIT_ELEMENT: dict[str, "UnitElement"] = {}
 

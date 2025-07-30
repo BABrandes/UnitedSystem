@@ -1370,6 +1370,7 @@ class Dimension:
             from .unit import Unit
             from .unit_element import UnitElement
             from .unit_symbol import BASE_10_LOG_UNIT_SYMBOL
+            from .dimension_symbol import BASE_DIMENSION_SYMBOLS
             
             # Create unit elements from the dimension's proper exponents
             unit_elements: dict[str, tuple[UnitElement, ...]] = {}
@@ -1385,7 +1386,7 @@ class Dimension:
             log_unit_elements: list[tuple[UnitElement, "Dimension"]] = []
             for log_dimension, log_exponent in self._log_dimensions.items():
                 if abs(log_exponent) > EPSILON:
-                    unit_element: UnitElement = UnitElement(prefix="", unit_symbol=BASE_10_LOG_UNIT_SYMBOL, exponent=log_exponent)
+                    unit_element: UnitElement = UnitElement(prefix=None, unit_symbol=BASE_10_LOG_UNIT_SYMBOL, exponent=log_exponent)
                     log_unit_elements.append((unit_element, log_dimension))
 
             unreduced_canonical_unit: Unit = Unit._construct(unit_elements, log_unit_elements) # type: ignore
@@ -1516,6 +1517,22 @@ class Dimension:
             Dimension.clear_cache()
         """
         cls._CACHE.clear()
+
+    @staticmethod
+    def extract(obj: Any) -> Optional["Dimension"]:
+        """
+        Extract a dimension from an object.
+        """
+        if isinstance(obj, Dimension):
+            return obj
+        elif isinstance(obj, Unit):
+            return obj.dimension
+        elif isinstance(obj, United):
+            return obj.dimension
+        elif isinstance(obj, NamedQuantity):
+            return obj.dimension
+        else:
+            return None
 
 # Predefined dimension constants
 DIMENSIONLESS_DIMENSION: "Dimension"    = Dimension._construct({}, {}) # type: ignore

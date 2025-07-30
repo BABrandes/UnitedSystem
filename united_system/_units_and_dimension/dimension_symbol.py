@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional
 
 from .named_quantity import NamedQuantity
+from .unit_prefix import UnitPrefix
 from .unit_symbol import UnitSymbol
 
 class DimensionSymbol(Enum):
@@ -27,12 +28,12 @@ class DimensionSymbol(Enum):
         return self.value[2]
     
     @property
-    def base_unit_prefix(self) -> str:
+    def base_unit_prefix(self) -> Optional[UnitPrefix]:
         if not hasattr(self, "_base_unit_prefix"):
             from .unit_element import UnitElement
             unit_element: Optional[UnitElement] = self.named_quantity.unit_element
             if unit_element is not None:
-                self._base_unit_prefix: str = unit_element.prefix
+                self._base_unit_prefix: Optional[UnitPrefix] = unit_element.prefix
             else:
                 raise AssertionError("Named quantity has no unit element.")
         return self._base_unit_prefix
