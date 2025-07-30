@@ -21,6 +21,7 @@ from ._dataframe.column_type import ColumnType as DataframeColumnType
 from ._units_and_dimension.named_quantity import NamedQuantity
 from ._units_and_dimension.unit_symbol import UnitSymbol
 from ._units_and_dimension.unit_prefix import UnitPrefix
+from ._units_and_dimension.united import United as HasUnit
 
 __all__ = [
     'RealUnitedScalar',
@@ -39,6 +40,7 @@ __all__ = [
     'DataframeColumnType',
     'UnitSymbol',
     'UnitPrefix',
+    'HasUnit',
 ]
 __version__ = '0.1.0'
 __author__ = 'Benedikt Axel Brandes'
