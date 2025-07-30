@@ -7,18 +7,20 @@ including creating empty dataframes, from arrays, and other construction pattern
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Dict, List, TYPE_CHECKING, Union, cast, Tuple, Optional
+from typing import TYPE_CHECKING, Union, cast, Tuple, Optional, Any
 from collections.abc import Sequence
 import pandas as pd
+import numpy as np
 from pandas._typing import Dtype
 
 from .dataframe_protocol import CK, UnitedDataframeProtocol
 from ..._dataframe.column_type import ColumnType
 from ..._units_and_dimension.dimension import Dimension
 from ..._units_and_dimension.unit import Unit
-from ..._units_and_dimension.united import United
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._dataframe.column_type import ARRAY_TYPE, LOWLEVEL_TYPE
+from ..._arrays.base_united_array import BaseUnitedArray
+from ..._scalars.united_scalar import UnitedScalar
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -47,6 +49,16 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a pandas DataFrame.
+
+        Args:
+            dataframe (pd.DataFrame): The pandas DataFrame to create the UnitedDataframe from.
+            columns (dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]]): The columns to create the UnitedDataframe from. The column key is the key of the column in the UnitedDataframe, the tuple is the source column name, the column type, and the column unit.
+            internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): The internal dataframe column name formatter.
+            deepcopy (bool): Whether to deepcopy the dataframe.
+            read_only (bool): Whether the UnitedDataframe should be read-only.
+
+        Returns:
+            UnitedDataframe: The UnitedDataframe created from the pandas DataFrame.
         """
 
         # Generate the column keys, source column names, column types, and column units
@@ -98,19 +110,19 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @classmethod
     def create_empty(
         cls,
-        column_keys: List[CK],
-        column_types: Dict[CK, ColumnType],
-        column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]],
+        column_keys: list[CK],
+        column_types: dict[CK, ColumnType],
+        column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter
     ) -> "UnitedDataframe[CK]":
         """
         Create an empty UnitedDataframe with the specified structure.
         
         Args:
-            column_keys (List[CK]): List of column keys
-            column_types (Dict[CK, ColumnType]): Column type mapping
-            column_units_or_dimensions (Dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
-            internal_dataframe_name_formatter (InternalDataFrameNameFormatter[CK]): Name formatter object
+            column_keys (list[CK]): List of column keys
+            column_types (dict[CK, ColumnType]): Column type mapping
+            column_units_or_dimensions (dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
+            internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter object
             
         Returns:
             UnitedDataframe: Empty dataframe with specified structure
@@ -163,104 +175,141 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @classmethod
     def create_from_data(
         cls,
-        arrays: Dict[CK, Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]]],
-        column_types: Dict[CK, ColumnType],
-        column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]],
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter()
+        columns: dict[CK,
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE]],
+        ],
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
+        read_only: bool = False
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a dictionary of arrays.
         
         Args:
-            arrays (Dict[CK, BaseArray]): Dictionary mapping column keys to arrays
-            column_types (Dict[CK, ColumnType]): Column type mapping
-            column_units_or_dimensions (Dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
-            internal_dataframe_name_formatter (Callable[[CK], str]): Name formatter function
+            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
+            internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter function
+            read_only (bool): Whether the UnitedDataframe should be read-only.
             
         Returns:
             UnitedDataframe: New dataframe with data from arrays
         """
         # Step 1: Create the column keys
-        column_keys: list[CK] = list(arrays.keys())
+        column_keys: list[CK] = list(columns.keys())
 
         # Step 2: Determine the column units and types from the arrays or, if a list is given, from column_types and column_units_or_dimensions dictionaries
         column_units: dict[CK, Unit | None] = {}
-        final_column_types: dict[CK, ColumnType] = {}
-        for column_key in column_keys:
-            array_or_list: Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]] = arrays[column_key]
-            if isinstance(array_or_list, ARRAY_TYPE):
-                final_column_types[column_key] = ColumnType.infer_approbiate_column_type(type(array_or_list)) # type: ignore
-                if isinstance(array_or_list, United):
-                    column_units[column_key] = array_or_list.unit
-                else:
-                    column_units[column_key] = None
-            elif column_key in column_types:
-                final_column_types[column_key] = column_types[column_key]
-                column_units_or_dimension: Unit | Dimension | None = column_units_or_dimensions[column_key]
-                if isinstance(column_units_or_dimension, Unit):
-                    column_units[column_key] = column_units_or_dimension
-                elif isinstance(column_units_or_dimension, Dimension):
-                    column_units[column_key] = column_units_or_dimension.canonical_unit
-                else:
-                    column_units[column_key] = None
+        column_types: dict[CK, ColumnType] = {}
+        column_values: dict[CK, Union[np.ndarray, pd.Series[Any]]] = {}
+        def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
+            unit: Optional[Unit] = column_units[column_key]
+            if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
+                if not column_types[column_key].check_compatibility(array_or_list_or_numpy_array_or_pandas_series, unit):
+                    raise ValueError(f"Array {array_or_list_or_numpy_array_or_pandas_series} is not compatible with column unit {unit}")
+                return array_or_list_or_numpy_array_or_pandas_series.get_as_numpy_array(target_unit=unit)
             else:
-                raise ValueError(f"Column key {column_key} not found in arrays or column_types dictionary")
+                # Non-UnitedArray
+                return array_or_list_or_numpy_array_or_pandas_series.canonical_np_array
+        def get_numpy_from_list_of_scalars(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: list[LOWLEVEL_TYPE]) -> np.ndarray:
+            list_of_values: list[Any] = []
+            for item in array_or_list_or_numpy_array_or_pandas_series:
+                if isinstance(item, UnitedScalar):
+                    # UnitedScalar
+                    scalar: UnitedScalar[Any, Any] = cast(UnitedScalar[Any, Any], item)
+                    if not column_types[column_key].check_compatibility(scalar, column_units[column_key]):
+                        raise ValueError(f"List item {item} is not compatible with column unit {column_units[column_key]}")
+                    if column_units[column_key] is not None:
+                        list_of_values.append(column_units[column_key].from_canonical_value(scalar.canonical_value)) # type: ignore
+                    else:
+                        list_of_values.append(scalar.canonical_value)
+                else:
+                    # Non-UnitedScalar
+                    list_of_values.append(item)
+            return np.array(list_of_values)
+        for column_key, value in columns.items():
+            if isinstance(value, tuple):
+                # Tuple value
+                tuple_value: Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]] = value # type: ignore
+                if len(tuple_value) == 3:
+                    column_types[column_key] = tuple_value[0]
+                    if isinstance(tuple_value[1], Unit):
+                        column_units[column_key] = tuple_value[1]
+                    elif isinstance(tuple_value[1], Dimension):
+                        column_units[column_key] = tuple_value[1].canonical_unit
+                    else:
+                        column_units[column_key] = None
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[2]
+                elif len(tuple_value) == 2:
+                    column_types[column_key] = tuple_value[0]
+                    column_units[column_key] = None
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[1]
+                else:
+                    raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
+                
+                if isinstance(array_or_list_or_numpy_array_or_pandas_series, ARRAY_TYPE):
+                    column_values[column_key] = get_numpy_from_array(column_key, array_or_list_or_numpy_array_or_pandas_series)
+                elif isinstance(array_or_list_or_numpy_array_or_pandas_series, list):
+                    column_values[column_key] = get_numpy_from_list_of_scalars(column_key, array_or_list_or_numpy_array_or_pandas_series)
+                elif isinstance(array_or_list_or_numpy_array_or_pandas_series, np.ndarray):
+                    # NumpyArray
+                    column_values[column_key] = array_or_list_or_numpy_array_or_pandas_series
+                elif isinstance(array_or_list_or_numpy_array_or_pandas_series, pd.Series): # type: ignore
+                    # PandasSeries
+                    column_values[column_key] = array_or_list_or_numpy_array_or_pandas_series
+                else:
+                    raise ValueError(f"Invalid array or list or numpy array or pandas series for column key {column_key}: {array_or_list_or_numpy_array_or_pandas_series}")
 
-        # Step 3: Check that all column keys are present in all dictionaries
-        if set(column_keys) != set(final_column_types.keys()):
-            raise ValueError("Column keys must be present in the column_types dictionary")
-        if set(column_keys) != set(column_units.keys()):
-            raise ValueError("Column keys must be present in the units_or_dimensions dictionary")
-        
-        # Step 4: Check that the column types are compatible with the column units
+            else:
+                # Non-Tuple value
+                if isinstance(value, ARRAY_TYPE):
+                    column_types[column_key] = ColumnType.infer_approbiate_column_type(type(value)) # type: ignore
+                    if isinstance(value, BaseUnitedArray):
+                        column_units[column_key] = value.unit
+                    else:
+                        column_units[column_key] = None
+                    column_values[column_key] = get_numpy_from_array(column_key, value)
+                elif isinstance(value, list):
+                    list_of_scalars: list[LOWLEVEL_TYPE] = value
+                    if len(list_of_scalars) == 0:
+                        raise ValueError(f"List {value} is empty")
+                    column_types[column_key] = ColumnType.infer_approbiate_column_type(type(list_of_scalars[0])) # type: ignore
+                    if isinstance(list_of_scalars[0], UnitedScalar):
+                        united_scalar: UnitedScalar[Any, Any] = cast(UnitedScalar[Any, Any], list_of_scalars[0])
+                        column_units[column_key] = united_scalar.unit
+                    else:
+                        column_units[column_key] = None
+                    column_values[column_key] = get_numpy_from_list_of_scalars(column_key, value)
+                else:
+                    raise ValueError(f"Invalid array or list or numpy array or pandas series for column key {column_key}: {value}")
+                
+        # Step 3: Check that all column values have the same length
+        length: int = 0
         for column_key in column_keys:
-            column_type: ColumnType = final_column_types[column_key]
-            column_unit: Unit | None = column_units[column_key]
-            if column_type.has_unit == column_unit is not None:
-                raise ValueError(f"Column type {column_type} is not compatible with column unit {column_unit}")
+            if length == 0:
+                length = len(column_values[column_key])
+            elif len(column_values[column_key]) != length:
+                raise ValueError(f"Column {column_key} has a different length than column {column_keys[0]}")
             
-        # Step 5: Check that all arrays and list have the same length
-        length: int = len(next(iter(arrays.values())))
-        for column_key in column_keys:
-            array_or_list: Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]] = arrays[column_key]
-            if isinstance(array_or_list, ARRAY_TYPE):
-                if len(array_or_list) != length:
-                    raise ValueError(f"Array or list {array_or_list} has length {len(array_or_list)}, but {length} is expected")
-
-        # Step 6: Create empty pandas dataframe with proper column names
+        # Step 4: Create empty pandas dataframe with proper column names
         internal_column_strings: dict[CK, str] = {}
         for column_key in column_keys:
             internal_column_strings[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
         dataframe: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()), index=range(length))
 
-        # Step 6: Set the column types
+        # Step 5: Set the column types
         for column_key in column_keys:
-            if not column_key in final_column_types:
-                raise ValueError(f"Column key {column_key} not found in column_types dictionary")
-            dtype: Dtype = final_column_types[column_key].value.dataframe_storage_type
+            dtype: Dtype = column_types[column_key].value.dataframe_storage_type
             dataframe[internal_column_strings[column_key]] = pd.Series(dtype=dtype)
 
-        # Step 7: Fill the dataframe with the data
+        # Step 6: Fill the dataframe with the data
         for column_key in column_keys:
-            array_or_list: Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]] = arrays[column_key]
-            dataframe_storage_type: Dtype = final_column_types[column_key].value.dataframe_storage_type
-            unit: Unit | None = column_units[column_key]
-            if isinstance(array_or_list, ARRAY_TYPE):
-                if isinstance(array_or_list, United):
-                    pandas_series: pd.Series = array_or_list.get_pandas_series(dtype=dataframe_storage_type, target_unit=unit) # type: ignore
-                else:
-                    pandas_series: pd.Series = array_or_list.get_pandas_series(dtype=dataframe_storage_type) # type: ignore
-            elif isinstance(arrays[column_key], list):
-                pandas_series: pd.Series = pd.Series(array_or_list, dtype=dataframe_storage_type) # type: ignore
-            else:
-                raise ValueError(f"Array or list {arrays[column_key]} is not a valid array or list")
-            dataframe[internal_column_strings[column_key]] = pandas_series
+            dataframe[internal_column_strings[column_key]] = column_values[column_key]
         
-        # Step 8: Create UnitedDataframe instance
+        # Step 7: Create UnitedDataframe instance
         return cls._construct( # type: ignore
             dataframe=dataframe,
             column_keys=column_keys,
-            column_types=final_column_types,
+            column_types=column_types,
             column_units=column_units,
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
             read_only= False,
@@ -277,6 +326,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     ) -> "UnitedDataframe[CK]":
         
         """
+        DEPRECATED: Use create_from_dataframe instead.
         Create a UnitedDataframe from a pandas DataFrame.
         
         Args:
@@ -320,21 +370,22 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         cls,
         pandas_dataframe: pd.DataFrame,
         column_key_mapping: dict[str, CK],
-        column_types: Dict[CK, ColumnType],
-        column_units_or_dimensions: Dict[CK, Union[Unit, Dimension, None]],
+        column_types: dict[CK, ColumnType],
+        column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
         deep_copy: bool
     ) -> "UnitedDataframe[CK]":
         
         """
+        DEPRECATED: Use create_from_dataframe instead.
         Create a UnitedDataframe from a pandas DataFrame.
         
         Args:
-            df (pd.DataFrame): Source pandas DataFrame
-            column_key_mapping (bidict[str, CK]): Mapping from pandas column names to UnitedDataframe column keys
-            column_types (Dict[CK, ColumnType]): Column type mapping
-            column_units_or_dimensions (Dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
-            internal_dataframe_column_name_formatter (Callable[[CK], str]): Name formatter function
+            pandas_dataframe (pd.DataFrame): Source pandas DataFrame
+            column_key_mapping (dict[str, CK]): Mapping from pandas column names to UnitedDataframe column keys
+            column_types (dict[CK, ColumnType]): Column type mapping
+            column_units_or_dimensions (dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
+            internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter function
             
         Returns:
             UnitedDataframe: New dataframe with data from pandas DataFrame

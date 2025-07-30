@@ -1075,8 +1075,13 @@ class Dimension:
         for other in others:
             if isinstance(other, Unit):
                 other = other.dimension
-            if isinstance(other, United):
+            elif isinstance(other, United):
                 other = other.dimension
+            elif isinstance(other, "Dimension"): # type: ignore
+                pass
+            else:
+                raise ValueError(f"Invalid dimension: {other}")
+            
             if self._proper_exponents.keys() != other._proper_exponents.keys():
                 return False
             for subscript in self._proper_exponents.keys():

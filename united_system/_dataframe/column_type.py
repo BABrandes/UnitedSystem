@@ -6,6 +6,7 @@ import pandas as pd
 from pandas._typing import Dtype
 from pandas import Timestamp
 import numpy as np
+from typing import Optional
 
 from .._units_and_dimension.unit import Unit
 from .._scalars.real_united_scalar import RealUnitedScalar
@@ -20,6 +21,7 @@ from .._arrays.bool_array import BoolArray
 from .._arrays.timestamp_array import TimestampArray
 from .._scalars.base_scalar import BaseScalar
 from .._units_and_dimension.united import United
+from .._arrays.base_array import BaseArray
 
 LOWLEVEL_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 PANDAS_SERIES_TYPE: TypeAlias = float|int|complex|bool|str|Timestamp
@@ -647,21 +649,29 @@ class ColumnType(Enum):
     # ------------ Check the compatibility of a scalar or array with the column type ------------
 
     @overload
-    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE) -> bool: ...
+    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE, unit: Optional[Unit]=None) -> bool: ...
     @overload
-    def check_compatibility(self, scalar_or_array_value: ARRAY_TYPE) -> bool: ...
-    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE | ARRAY_TYPE) -> bool:
+    def check_compatibility(self, scalar_or_array_value: ARRAY_TYPE, unit: Optional[Unit]=None) -> bool: ...
+    @overload
+    def check_compatibility(self, scalar_or_array_value: BaseArray[Any, Any, Any]) -> bool: ...
+    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE | ARRAY_TYPE|BaseArray[Any, Any, Any], unit: Optional[Unit]=None) -> bool:
         if self.has_unit:
             if not isinstance(scalar_or_array_value, United):
                 return False
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
                 if isinstance(scalar_or_array_value, RealUnitedScalar) or isinstance(scalar_or_array_value, RealUnitedArray):
+                    if unit is not None:
+                        if not scalar_or_array_value.unit.compatible_to(unit):
+                            return False
                     return True
                 else:
                     return False
             case ColumnType.COMPLEX_NUMBER_128:
                 if isinstance(scalar_or_array_value, ComplexUnitedScalar) or isinstance(scalar_or_array_value, ComplexUnitedArray):
+                    if unit is not None:
+                        if not scalar_or_array_value.unit.compatible_to(unit):
+                            return False
                     return True
                 else:
                     return False
