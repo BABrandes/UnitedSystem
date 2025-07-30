@@ -24,7 +24,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             String representation with 3 decimal places and trailing zeros.
             
         Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> scalar = RealUnitedScalar(1.0, Unit("kg"))
             >>> str(scalar)
             '1.000 kg'
         """
@@ -50,7 +50,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             ValueError: If the unit is not compatible with the scalar's dimension.
             
         Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> scalar = RealUnitedScalar(1.0, Unit("kg"))
             >>> scalar.format("g", max_decimals=2, trailing_zeros=True)
             '1000.00 g'
             >>> scalar.format(max_decimals=1)
@@ -84,10 +84,10 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             Simple string representation with natural formatting.
             
         Example:
-            >>> scalar = RealUnitedScalar(1.0, Unit.parse_string("kg"))
+            >>> scalar = RealUnitedScalar(1.0, Unit("kg"))
             >>> scalar.simple_str()
             '1 kg'
-            >>> scalar = RealUnitedScalar(1.5, Unit.parse_string("kg"))
+            >>> scalar = RealUnitedScalar(1.5, Unit("kg"))
             >>> scalar.simple_str()
             '1.5 kg'
         """

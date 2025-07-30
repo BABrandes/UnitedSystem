@@ -51,16 +51,16 @@ class RealUnitedScalar(
     **Examples:**
     ```python
     # Create from value and unit
-    length = RealUnitedScalar.create_from_value_and_unit(5.0, SimpleUnit.parse_string("m"))
+    length = RealUnitedScalar.create_from_value_and_unit(5.0, Unit("m"))
     
     # Parse from string
     voltage = RealUnitedScalar.parse_string("12 V")
     
     # Arithmetic operations
-    total_length = length + RealUnitedScalar.create_from_value_and_unit(3.0, SimpleUnit.parse_string("m"))
+    total_length = length + RealUnitedScalar.create_from_value_and_unit(3.0, Unit("m"))
     
     # Unit conversions
-    length_in_km = length.in_unit(SimpleUnit.parse_string("km"))
+    length_in_km = length.in_unit(Unit("km"))
     
     # Formatting
     print(f"Length: {length.format('km', decimals=3)}")

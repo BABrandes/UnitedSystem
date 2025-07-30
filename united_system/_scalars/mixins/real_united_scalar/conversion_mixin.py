@@ -24,7 +24,7 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             A new RealUnitedScalar with the canonical unit as display unit
             
         Example:
-            >>> scalar = RealUnitedScalar(1000.0, Unit.parse_string("g"))
+            >>> scalar = RealUnitedScalar(1000.0, Unit("g"))
             >>> result = scalar.scalar_in_canonical_unit()
             >>> result.canonical_value
             1.0

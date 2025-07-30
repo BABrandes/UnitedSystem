@@ -24,7 +24,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             A new RealUnitedScalar with the specified value and unit
             
         Example:
-            >>> kg_unit = Unit.parse_string("kg")
+            >>> kg_unit = Unit("kg")
             >>> scalar = RealUnitedScalar.create_from_value_and_unit(5.0, kg_unit)
             >>> scalar.canonical_value
             5.0
@@ -55,7 +55,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             >>> scalar._display_unit is None
             True
             
-            >>> kg_unit = Unit.parse_string("kg")
+            >>> kg_unit = Unit("kg")
             >>> scalar_with_display = RealUnitedScalar.create_from_canonical_value(1.0, mass_dim, kg_unit)
             >>> scalar_with_display._display_unit
             Unit("kg")

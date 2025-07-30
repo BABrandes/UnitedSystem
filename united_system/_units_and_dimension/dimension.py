@@ -1068,6 +1068,10 @@ class Dimension:
             *others: Other dimensions to check compatibility with
         
         """
+        # Import here to avoid circular import
+        from .unit import Unit
+        from .united import United
+        
         for other in others:
             if isinstance(other, Unit):
                 other = other.dimension
@@ -1523,6 +1527,11 @@ class Dimension:
         """
         Extract a dimension from an object.
         """
+        # Import here to avoid circular import
+        from .unit import Unit
+        from .united import United
+        from .named_quantity import NamedQuantity
+        
         if isinstance(obj, Dimension):
             return obj
         elif isinstance(obj, Unit):
