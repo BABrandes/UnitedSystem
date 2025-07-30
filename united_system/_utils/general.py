@@ -119,7 +119,7 @@ def segment_numpy_arrays_by_key_array(key_array: np.ndarray, *data_arrays: np.nd
     - key_array: a 1D numpy array of labels, whose contiguous values define segment boundaries.
 
     Returns:
-    - A list of tuples, each containing one segment from each data array (in the same order).
+    - A list of tuples, each containing one segment from each data array, including the key array as the first element (in the same order).
     """
     if not all(len(arr) == len(key_array) for arr in data_arrays):
         raise ValueError("All input arrays must have the same length as the key_array")
@@ -130,7 +130,7 @@ def segment_numpy_arrays_by_key_array(key_array: np.ndarray, *data_arrays: np.nd
 
     segments: list[tuple[np.ndarray, ...]] = []
     for start, end in zip(segment_indices[:-1], segment_indices[1:]):
-        segment = tuple(arr[start:end] for arr in data_arrays)
+        segment = (key_array[start:end],) + tuple(arr[start:end] for arr in data_arrays)
         segments.append(segment)
 
     return segments

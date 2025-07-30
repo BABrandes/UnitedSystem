@@ -106,7 +106,7 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
             *arrays: The arrays to segment.
 
         Returns:
-            A list of tuples, each containing one segment from each array (in the same order).
+            A list of tuples, each containing one segment from each array, including the key array as the first element (in the same order).
         """
 
         from .._utils.general import segment_numpy_arrays_by_key_array
