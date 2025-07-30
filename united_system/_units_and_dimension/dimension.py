@@ -1547,6 +1547,16 @@ class Dimension:
             return obj.dimension
         else:
             return None
+        
+    @classmethod
+    def check_dimensions(cls, dictionary: dict[United, "Dimension"]) -> bool:
+        """
+        Check if the dimensions of the United objects in the dictionary are compatible.
+        """
+        for united in dictionary.keys():
+            if not united.dimension.compatible_to(dictionary[united]):
+                return False
+        return True
 
 # Predefined dimension constants
 DIMENSIONLESS_DIMENSION: "Dimension"    = Dimension._construct({}, {}) # type: ignore
