@@ -7,7 +7,7 @@ including creating empty dataframes, from arrays, and other construction pattern
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Dict, List, TYPE_CHECKING, Union, cast
+from typing import Dict, List, TYPE_CHECKING, Union, cast, Tuple, Optional
 from collections.abc import Sequence
 import pandas as pd
 from pandas._typing import Dtype
@@ -37,7 +37,66 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     # ----------- Class Factory Methods ------------
 
     @classmethod
-    def create_empty_dataframe(
+    def create_from_dataframe(
+        cls,
+        dataframe: pd.DataFrame,
+        columns: dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]],
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
+        deepcopy: bool = True,
+        read_only: bool = False
+    ) -> "UnitedDataframe[CK]":
+        """
+        Create a UnitedDataframe from a pandas DataFrame.
+        """
+
+        # Generate the column keys, source column names, column types, and column units
+        column_keys: list[CK] = list(columns.keys())
+        source_column_names: dict[CK, str] = {}
+        column_types: dict[CK, ColumnType] = {}
+        column_units: dict[CK, Optional[Unit]] = {}
+        for column_key, value in columns.items():
+            if len(value) == 3:
+                column_types[column_key] = value[0]
+                source_column_names[column_key] = value[1]
+                if isinstance(value[2], Unit):
+                    column_units[column_key] = value[2]
+                elif isinstance(value[2], Dimension):
+                    column_units[column_key] = value[2].canonical_unit
+                else:
+                    column_units[column_key] = None
+            elif len(value) == 2:
+                column_types[column_key] = value[0]
+                source_column_names[column_key] = value[1]
+                column_units[column_key] = None
+            else:
+                raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
+            
+        # Copy the dataframe
+        dataframe = dataframe[source_column_names.values()].copy(deep=deepcopy)
+
+        # Rename the columns
+        target_column_names: list[str] = []
+        for index, column_key in enumerate(column_keys):
+            if not source_column_names[column_key] in dataframe.columns:
+                raise ValueError(f"Source column name {source_column_names[column_key]} not found in dataframe")
+            target_column_names.append(internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key]))
+            dataframe.rename(columns={source_column_names[column_key]: target_column_names[index]}, inplace=True)
+
+        # Rearrange the columns
+        dataframe = dataframe[target_column_names]
+
+        # Create the UnitedDataframe
+        return UnitedDataframe[CK]._construct( # type: ignore
+            dataframe=dataframe,
+            column_keys=column_keys,
+            column_types=column_types,
+            column_units=column_units,
+            internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
+            read_only=read_only,
+        )
+    
+    @classmethod
+    def create_empty(
         cls,
         column_keys: List[CK],
         column_types: Dict[CK, ColumnType],
@@ -102,7 +161,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         )
 
     @classmethod
-    def create_dataframe_from_data(
+    def create_from_data(
         cls,
         arrays: Dict[CK, Union[ARRAY_TYPE, List[LOWLEVEL_TYPE]]],
         column_types: Dict[CK, ColumnType],
@@ -210,7 +269,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         )
 
     @classmethod
-    def create_dataframe_from_pandas_with_correct_column_names(
+    def create_from_pandas_with_correct_column_names(
         cls,
         pandas_dataframe: pd.DataFrame,
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
@@ -257,7 +316,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         )
     
     @classmethod
-    def create_dataframe_from_pandas_with_incorrect_column_names(
+    def create_from_pandas_with_incorrect_column_names(
         cls,
         pandas_dataframe: pd.DataFrame,
         column_key_mapping: dict[str, CK],
@@ -422,7 +481,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]] = {}
             for column_key in self._column_keys:
                 column_units_or_dimensions[column_key] = self._column_units[column_key]
-            return self.create_empty_dataframe(
+            return self.create_empty(
                 column_keys=self._column_keys,
                 column_types=self._column_types,
                 column_units_or_dimensions=column_units_or_dimensions,

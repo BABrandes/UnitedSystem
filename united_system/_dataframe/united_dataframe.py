@@ -142,7 +142,7 @@ class UnitedDataframe(
         # If column_keys are provided, create an empty dataframe with those columns
         if _column_keys:
             column_units_or_dimensions: dict[CK, Optional[Unit | Dimension]] = {key: _column_units.get(key) for key in column_keys}
-            return cls.create_empty_dataframe(
+            return cls.create_empty(
                 column_keys=list(_column_keys),
                 column_types=_column_types,
                 column_units_or_dimensions=column_units_or_dimensions,
@@ -181,7 +181,9 @@ class UnitedDataframe(
             rename_dataframe_columns: bool = False
     ) -> "UnitedDataframe[CK]":
         """
-        Initialize derived data structures and set up thread safety.
+        INTERNAL: Initialize derived data structures and set up thread safety.
+
+        The dataframe must match the expected column keys, types, and units.
         """
 
         if len(dataframe.columns) != len(column_keys):
