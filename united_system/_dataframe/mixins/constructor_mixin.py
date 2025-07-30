@@ -184,7 +184,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
         """
-        Create a UnitedDataframe from a dictionary of arrays.
+        Create a UnitedDataframe from a dictionary of information and values.
 
         columns: Variant 1) dict[CK, {ColumnType, Unit|Dimension|None, column_values}]
         columns: Variant 2) dict[CK, {ColumnType, column_values}]
