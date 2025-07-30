@@ -59,7 +59,7 @@ from .named_quantity import NamedQuantity
 from .unit_element import UnitElement
 from .dimension import Dimension
 from .unit_symbol import UnitSymbol
-from .unit_prefixes import UnitPrefix
+from .unit_prefix import UnitPrefix
 from .utils import seperate_string
 
 if TYPE_CHECKING:

@@ -20,7 +20,7 @@ from ._dataframe.column_key import ColumnKey as DataframeColumnKey
 from ._dataframe.column_type import ColumnType as DataframeColumnType
 from ._units_and_dimension.named_quantity import NamedQuantity
 from ._units_and_dimension.unit_symbol import UnitSymbol
-from ._units_and_dimension.unit_prefixes import UnitPrefix
+from ._units_and_dimension.unit_prefix import UnitPrefix
 
 __all__ = [
     'RealUnitedScalar',
