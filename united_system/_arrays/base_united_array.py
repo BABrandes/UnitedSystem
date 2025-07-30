@@ -604,3 +604,18 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
             values_str = f"{first_three}, ..., {last_three}"
         
         return f"[{values_str}] {unit_str}"
+    
+    @classmethod
+    def concatenate_arrays(cls, *arrays: UAT) -> UAT:
+        """
+        Concatenate multiple arrays into a single array.
+        """
+
+        if len(arrays) == 0:
+            return cls(canonical_np_array=np.array([]), dimension=arrays[0].dimension, display_unit=arrays[0]._display_unit) # type: ignore
+
+        # Check if all arrays have the same dimension
+        if not Dimension.compatible_to(arrays[0].dimension, *[array.dimension for array in arrays]):
+            raise ValueError("All arrays must have the same dimension")
+        
+        return cls(canonical_np_array=np.concatenate([array.canonical_np_array for array in arrays]), dimension=arrays[0].dimension, display_unit=arrays[0]._display_unit) # type: ignore

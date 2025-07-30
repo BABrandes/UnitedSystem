@@ -92,6 +92,13 @@ class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
     def get_array(self, slice: slice) -> AT:  # type: ignore
         return type(self)(self.canonical_np_array[slice])  # type: ignore
     
+    @classmethod
+    def concatenate_arrays(cls, *arrays: AT) -> AT:
+        """
+        Concatenate multiple arrays into a single array.
+        """
+        return cls(canonical_np_array=np.concatenate([array.canonical_np_array for array in arrays])) # type: ignore
+    
 class NonUnitedArrayIterator(Iterator[PT]):
     """Iterator for NonUnitedArray that maintains separate state."""
     

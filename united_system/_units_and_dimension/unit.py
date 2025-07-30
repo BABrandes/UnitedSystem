@@ -659,17 +659,17 @@ class Unit:
     # Compatibility and comparison
 ########################################################
 
-    def compatible_to(self, other: Union["Unit", Dimension, "United"]) -> bool:
+    def compatible_to(self, *others: Union["Unit", Dimension, "United"]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         
         Args:
-            other: The unit or dimension to check compatibility with
+            *others: The units or dimensions to check compatibility with
         
         Returns:
             True if compatible, False otherwise
         """
-        return self.dimension.compatible_to(other)
+        return self.dimension.compatible_to(*others)
     
     def effectively_equal_to(self, other: "Unit") -> bool:
         """

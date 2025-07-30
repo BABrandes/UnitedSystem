@@ -122,7 +122,11 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
                     segment_arrays.append(array.__new__(array.__class__, numpy_array)) # type: ignore
             results_segments.append(tuple(segment_arrays)) # type: ignore
         return results_segments
-
-
-
-
+    
+    @classmethod
+    @abstractmethod
+    def concatenate_arrays(cls, *arrays: AT) -> AT:
+        """
+        Concatenate multiple arrays into a single array.
+        """
+        ...
