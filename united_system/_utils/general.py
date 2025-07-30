@@ -98,7 +98,7 @@ def str_to_float(value: str, decimal_separator: Decimal_Seperator_Keys|None = No
         if target_locale:
             locale.setlocale(locale.LC_NUMERIC, target_locale)
         else:
-            raise LoggedException(f"No locale found for string: {value}")
+            raise ValueError(f"No locale found for string: {value}")
 
         #Convert the string to a float
         return locale.atof(value)
@@ -109,3 +109,28 @@ def str_to_float(value: str, decimal_separator: Decimal_Seperator_Keys|None = No
         #Reset the locale to the original locale
         if current_locale is not None:
             locale.setlocale(locale.LC_NUMERIC, current_locale)
+
+def segment_numpy_arrays_by_key_array(key_array: np.ndarray, *data_arrays: np.ndarray) -> list[tuple[np.ndarray, ...]]:
+    """
+    Splits multiple data arrays into segments, based on contiguous blocks of the same value in key_array.
+
+    Parameters:
+    - *data_arrays: multiple numpy arrays of the same length as key_array.
+    - key_array: a 1D numpy array of labels, whose contiguous values define segment boundaries.
+
+    Returns:
+    - A list of tuples, each containing one segment from each data array (in the same order).
+    """
+    if not all(len(arr) == len(key_array) for arr in data_arrays):
+        raise ValueError("All input arrays must have the same length as the key_array")
+
+    # Find start and end indices of each segment
+    change_indices = np.flatnonzero(np.diff(key_array)) + 1
+    segment_indices = np.concatenate(([0], change_indices, [len(key_array)]))
+
+    segments: list[tuple[np.ndarray, ...]] = []
+    for start, end in zip(segment_indices[:-1], segment_indices[1:]):
+        segment = tuple(arr[start:end] for arr in data_arrays)
+        segments.append(segment)
+
+    return segments

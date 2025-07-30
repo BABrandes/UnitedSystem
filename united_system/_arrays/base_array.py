@@ -7,6 +7,7 @@ import h5py
 from numpy.typing import NDArray    
 from pandas._typing import Dtype
 import pandas as pd
+from .._arrays.base_united_array import BaseUnitedArray
 
 PT_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 
@@ -96,3 +97,32 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
     @abstractmethod
     def _check_numpy_type(array: np.ndarray) -> bool:
         ...
+
+    def segment_other_arrays(self, *arrays: "BaseArray[Any, Any, Any]") -> list[tuple["BaseArray[Any, Any, Any]", ...]]:
+        """
+        Use this array as a key array to segment other arrays.
+
+        Args:
+            *arrays: The arrays to segment.
+
+        Returns:
+            A list of tuples, each containing one segment from each array (in the same order).
+        """
+
+        from .._utils.general import segment_numpy_arrays_by_key_array
+
+        segments: list[tuple[np.ndarray, ...]] = segment_numpy_arrays_by_key_array(self.canonical_np_array, *[array.canonical_np_array for array in arrays])
+        results_segments: list[tuple["BaseArray[Any, Any, Any]", ...]] = []
+        for segment in segments:
+            segment_arrays: list["BaseArray[Any, Any, Any]"] = []
+            for numpy_array, array in zip(segment, arrays):
+                if isinstance(array, BaseUnitedArray):
+                    segment_arrays.append(array.__new__(array.__class__, numpy_array, unit=array.unit)) # type: ignore
+                else:
+                    segment_arrays.append(array.__new__(array.__class__, numpy_array)) # type: ignore
+            results_segments.append(tuple(segment_arrays)) # type: ignore
+        return results_segments
+
+
+
+

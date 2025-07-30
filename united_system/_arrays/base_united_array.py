@@ -516,7 +516,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return self.get_scalar_from_value(max)
     
     def var(self) -> PT:
-        var: PT = np.var(self.get_as_numpy_array(target_unit=self.unit)) # type: ignore
+        var: PT = np.var(self.canonical_np_array) # type: ignore
         return var
     
     def var_canonical(self) -> PT:
