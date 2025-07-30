@@ -185,6 +185,16 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a dictionary of arrays.
+
+        columns: Variant 1) dict[CK, {ColumnType, Unit|Dimension|None, column_values}]
+        columns: Variant 2) dict[CK, {ColumnType, column_values}]
+        columns: Variant 3) dict[CK, ARRAY|list[SCALAR]]
+
+        column_values can be: 
+        - ARRAY_TYPE
+        - list[LOWLEVEL_TYPE]
+        - np.ndarray
+        - pd.Series[Any]
         
         Args:
             columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
