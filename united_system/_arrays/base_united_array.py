@@ -437,7 +437,15 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return len(self.canonical_np_array)
     
     def sum(self) -> PT:
+        sum: PT = np.sum(self.get_as_numpy_array(target_unit=self.unit))
+        return sum
+    
+    def sum_canonical(self) -> PT:
         sum: PT = np.sum(self.canonical_np_array)
+        return sum
+    
+    def sum_in_unit(self, unit: Unit) -> PT:
+        sum: PT = np.sum(self.get_as_numpy_array(target_unit=unit))
         return sum
     
     def sum_as_scalar(self) -> UST:
@@ -445,7 +453,15 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return self.get_scalar_from_value(sum)
 
     def mean(self) -> PT:
+        mean: PT = np.mean(self.get_as_numpy_array(target_unit=self.unit)) # type: ignore
+        return mean
+    
+    def mean_canonical(self) -> PT:
         mean: PT = np.mean(self.canonical_np_array) # type: ignore
+        return mean
+    
+    def mean_in_unit(self, unit: Unit) -> PT:
+        mean: PT = np.mean(self.get_as_numpy_array(target_unit=unit)) # type: ignore
         return mean
     
     def mean_as_scalar(self) -> UST:
@@ -453,7 +469,15 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return self.get_scalar_from_value(mean)
     
     def std(self) -> PT:
+        std: PT = np.std(self.get_as_numpy_array(target_unit=self.unit)) # type: ignore
+        return std
+    
+    def std_canonical(self) -> PT:
         std: PT = np.std(self.canonical_np_array) # type: ignore
+        return std
+    
+    def std_in_unit(self, unit: Unit) -> PT:
+        std: PT = np.std(self.get_as_numpy_array(target_unit=unit)) # type: ignore
         return std
     
     def std_as_scalar(self) -> UST:
@@ -461,9 +485,16 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         return self.get_scalar_from_value(std)
     
     def min(self) -> PT:
+        min: PT = np.min(self.get_as_numpy_array(target_unit=self.unit))
+        return min
+    
+    def min_canonical(self) -> PT:
         min: PT = np.min(self.canonical_np_array)
         return min
     
+    def min_in_unit(self, unit: Unit) -> PT:
+        min: PT = np.min(self.get_as_numpy_array(target_unit=unit))
+        return min
     def min_as_scalar(self) -> UST:
         min: PT = np.min(self.canonical_np_array)
         return self.get_scalar_from_value(min)
@@ -472,12 +503,28 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT
         max: PT = np.max(self.canonical_np_array)
         return max
     
+    def max_canonical(self) -> PT:
+        max: PT = np.max(self.canonical_np_array)
+        return max
+    
+    def max_in_unit(self, unit: Unit) -> PT:
+        max: PT = np.max(self.get_as_numpy_array(target_unit=unit))
+        return max
+    
     def max_as_scalar(self) -> UST:
         max: PT = np.max(self.canonical_np_array)
         return self.get_scalar_from_value(max)
     
     def var(self) -> PT:
+        var: PT = np.var(self.get_as_numpy_array(target_unit=self.unit)) # type: ignore
+        return var
+    
+    def var_canonical(self) -> PT:
         var: PT = np.var(self.canonical_np_array) # type: ignore
+        return var
+    
+    def var_in_unit(self, unit: Unit) -> PT:
+        var: PT = np.var(self.get_as_numpy_array(target_unit=unit)) # type: ignore
         return var
     
     def var_as_scalar(self) -> UST:
