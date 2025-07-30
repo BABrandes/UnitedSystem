@@ -5,7 +5,7 @@ This is the primary class that users will interact with. It inherits from all
 the mixins to provide a complete dataframe implementation with units support.
 """
 
-from typing import Generic, Dict, Optional, Type
+from typing import Generic, Optional, Type, Tuple, overload
 from collections.abc import Sequence
 from types import TracebackType
 import pandas as pd
@@ -63,9 +63,9 @@ class UnitedDataframe(
 
     def __init__(
             self,
-            column_keys: Sequence[CK] = [],
-            column_types: Dict[CK, ColumnType] = {},
-            column_units: Dict[CK, Optional[Unit]] = {},
+            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType] = [],
+            column_types: Optional[dict[CK, ColumnType]] = None,
+            column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
             read_only: bool = False,
     ) -> None:
@@ -74,34 +74,96 @@ class UnitedDataframe(
         """
         pass
 
+    @overload
     def __new__(
             cls,
-            column_keys: Sequence[CK] = [],
-            column_types: Dict[CK, ColumnType] = {},
-            column_units: Dict[CK, Optional[Unit]] = {},
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType],
+            column_types: None = None,
+            column_units: None = None,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        ...
+
+    @overload
+    def __new__(
+            cls,
+            column_keys: Sequence[CK],
+            column_types: dict[CK, ColumnType],
+            column_units: dict[CK, Optional[Unit|Dimension]],
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
+            read_only: bool,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        ...
+        
+    def __new__(
+            cls,
+            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType] = [],
+            column_types: Optional[dict[CK, ColumnType]] = None,
+            column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
         Create a new UnitedDataframe instance.
         """
-        
+
+        _column_types: dict[CK, ColumnType] = {}
+        _column_units: dict[CK, Optional[Unit|Dimension]] = {}
+        if isinstance(column_keys, dict):
+            _column_keys: Sequence[CK] = list(column_keys.keys())
+            if not column_types == None or not column_units == None:
+                raise ValueError("If column_keys is a dict, column_types and column_units must be None.")
+            for key, value in column_keys.items():
+                if isinstance(value, tuple):
+                    _column_type: ColumnType = value[0]
+                    _column_unit: Optional[Unit|Dimension] = value[1]
+                else:
+                    _column_type: ColumnType = value
+                    _column_unit: Optional[Unit|Dimension] = None
+                _column_types[key] = _column_type
+                _column_units[key] = _column_unit
+        else:
+            _column_keys: Sequence[CK] = column_keys
+            if column_types == None:
+                raise ValueError("If column_keys is a sequence, column_types must be provided.")
+            if column_units == None:
+                for key in _column_keys:
+                    _column_units[key] = None
+            else:
+                _column_units: dict[CK, Optional[Unit|Dimension]] = column_units
+
         # If column_keys are provided, create an empty dataframe with those columns
-        if column_keys:
-            column_units_or_dimensions: dict[CK, Optional[Unit | Dimension]] = {key: column_units.get(key) for key in column_keys}
+        if _column_keys:
+            column_units_or_dimensions: dict[CK, Optional[Unit | Dimension]] = {key: _column_units.get(key) for key in column_keys}
             return cls.create_empty_dataframe(
-                column_keys=list(column_keys),
-                column_types=column_types,
+                column_keys=list(_column_keys),
+                column_types=_column_types,
                 column_units_or_dimensions=column_units_or_dimensions,
                 internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter
             )
         else:
             # Empty dataframe case
+            units_for_dataframe: dict[CK, Optional[Unit]] = {}
+            for key, value in _column_units.items():
+                if isinstance(value, Unit):
+                    units_for_dataframe[key] = value
+                elif isinstance(value, Dimension):
+                    units_for_dataframe[key] = value.canonical_unit
+                else:
+                    units_for_dataframe[key] = None
+
             return cls._construct(
                 dataframe=pd.DataFrame(),
-                column_keys=column_keys,
-                column_types=column_types,
-                column_units=column_units,
+                column_keys=_column_keys,
+                column_types=_column_types,
+                column_units=units_for_dataframe,
                 internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
                 read_only=read_only,
             )
@@ -111,8 +173,8 @@ class UnitedDataframe(
             cls,
             dataframe: pd.DataFrame,
             column_keys: Sequence[CK],
-            column_types: Dict[CK, ColumnType],
-            column_units: Dict[CK, Optional[Unit]],
+            column_types: dict[CK, ColumnType],
+            column_units: dict[CK, Optional[Unit]],
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
             read_only: bool = False,
             copy_dataframe: bool = False,
@@ -129,7 +191,7 @@ class UnitedDataframe(
         if len(column_keys) != len(column_units):
             raise ValueError(f"Number of column keys ({len(column_keys)}) does not match number of column units ({len(column_units)}).")
         
-        dataframe_column_names: Dict[CK, str] = {}
+        dataframe_column_names: dict[CK, str] = {}
         for column_index, column_key in enumerate(column_keys):
             dataframe_column_names[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
             if dataframe_column_names[column_key] != dataframe.columns[column_index]:
