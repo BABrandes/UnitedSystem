@@ -34,7 +34,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """Return detailed string representation for debugging."""
         return f"RealUnitedScalar(canonical_value={self.canonical_value}, dimension={self.dimension}, display_unit={self._display_unit})"
 
-    def format(self, unit: Union[str, "Unit", None] = None, max_decimals: int = 0, trailing_zeros: bool = False) -> str:
+    def format(self, unit: Union[str, "Unit", None] = None, max_decimals: int = 0, trailing_zeros: bool = False, no_unit: bool = False) -> str:
         """
         Format the scalar as a string with optional unit specification.
         
@@ -42,7 +42,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             unit: Unit to display the value in. If None, uses auto-suggestion.
             max_decimals: Maximum number of decimal places to show.
             trailing_zeros: If True, show trailing zeros up to max_decimals.
-            
+            no_unit: If True, do not show the unit.
         Returns:
             Formatted string representation.
             
@@ -71,7 +71,10 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         # Always show the requested number of decimal places
         value_str = f"{display_value:.{max_decimals}f}" if trailing_zeros else f"{display_value}"
         unit_str = _unit.format_string(as_fraction=False)
-        return f"{value_str} {unit_str}"
+        if no_unit:
+            return value_str
+        else:
+            return f"{value_str} {unit_str}"
 
     def simple_str(self) -> str:
         """
