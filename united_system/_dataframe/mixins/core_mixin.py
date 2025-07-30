@@ -4,7 +4,7 @@ Core functionality mixin for UnitedDataframe.
 Contains basic properties, initialization helpers, and core utility methods.
 """
 
-from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, cast
+from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, Union, cast
 from collections.abc import Sequence
 import pandas as pd
 import numpy as np
@@ -327,7 +327,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return self._create_with_replaced_dataframe(self._internal_dataframe.tail(n))
         
     @overload
-    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, str] = {}) -> pd.DataFrame:
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, Union[str, Unit, tuple[str, Unit], tuple[Unit, str]]] = {}) -> pd.DataFrame:
         ...
     @overload
     def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: Iterable[CK] = ()) -> pd.DataFrame:
@@ -351,14 +351,39 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 if isinstance(column_keys, dict):
                     internal_column_names_to_extract: list[str] = []
                     rename_dict: dict[str, str] = {}
-                    for column_key, target_column_name in column_keys.items(): # type: ignore
-                        target_column_name: str = cast(str, target_column_name)
+                    unit_transformation_dict: dict[str, tuple[Unit, Unit]] = {}
+                    for column_key, target_information in column_keys.items(): # type: ignore
                         if not self._colkey_exists(column_key):
                             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+                        if isinstance(target_information, str):
+                            target_column_name: str = target_information
+                            unit: Optional[Unit] = self._column_units[column_key]
+                        elif isinstance(target_information, Unit):
+                            target_column_name: str = self._get_internal_dataframe_column_name(column_key)
+                            unit: Optional[Unit] = target_information
+                        else:
+                            if isinstance(target_information[0], str) and isinstance(target_information[1], Unit):
+                                target_column_name: str = cast(str, target_information[0])
+                                unit: Optional[Unit] = cast(Unit, target_information[1])
+                            elif isinstance(target_information[0], Unit) and isinstance(target_information[1], str):
+                                target_column_name: str = cast(str, target_information[1])
+                                unit: Optional[Unit] = cast(Unit, target_information[0])
+                            else:
+                                raise ValueError(f"Invalid target information for column key {column_key}: {target_information}")
                         internal_column_name: str = self._get_internal_dataframe_column_name(column_key)
                         internal_column_names_to_extract.append(internal_column_name)
                         rename_dict[internal_column_name] = target_column_name
-                    return self._internal_dataframe[internal_column_names_to_extract].copy(deep=deepcopy).rename(columns=rename_dict)
+                        if unit is not None:
+                            if not self._unit_has(column_key):
+                                raise ValueError(f"Column key {column_key} has no unit, but a target unit was provided.")
+                            unit_transformation_dict[target_column_name] = (self._unit_get(column_key), unit)
+
+                    dataframe_to_return: pd.DataFrame = self._internal_dataframe[internal_column_names_to_extract].copy(deep=deepcopy).rename(columns=rename_dict)
+                    for column_name, (current_unit, target_unit) in unit_transformation_dict.items():
+                        if not Unit.effectively_equal(current_unit, target_unit) and deepcopy == False:
+                            raise ValueError(f"One cannot do a unit conversion without deepcopy=False as this would change the original dataframe.")
+                        dataframe_to_return[column_name] = Unit.convert(dataframe_to_return[column_name], current_unit, target_unit) #type: ignore
+                    return dataframe_to_return
                 else:
                     internal_column_names_to_extract: list[str] = []
                     for column_key in column_keys:

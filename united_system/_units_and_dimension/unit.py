@@ -54,6 +54,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from h5py import Group
 import numpy as np
+import pandas as pd
 
 from .named_quantity import NamedQuantity
 from .unit_element import UnitElement
@@ -669,6 +670,22 @@ class Unit:
             True if compatible, False otherwise
         """
         return self.dimension.compatible_to(other)
+    
+    def effectively_equal_to(self, other: "Unit") -> bool:
+        """
+        Check if this unit is effectively equal to another unit.
+        """
+        return Unit.effectively_equal(self, other)
+    
+    @classmethod
+    def effectively_equal(cls, *units: "Unit") -> bool:
+        """
+        Check if units are effectively equal, meaning that they have the same dimension, factor and offset.
+        """
+        for unit in units:
+            if not unit.effectively_equal(units[0]):
+                return False
+        return True
 
     @staticmethod
     def is_valid_for_addition(unit_1: "Unit", unit_2: "Unit") -> bool:
@@ -1008,7 +1025,13 @@ class Unit:
         Convert a numpy array from this unit to canonical units.
         """
         ...
-    def to_canonical_value(self, value_in_unit: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
+    @overload
+    def to_canonical_value(self, value_in_unit: pd.Series[Any]) -> pd.Series[Any]:
+        """
+        Convert a pandas series from this unit to canonical units.
+        """
+        ...
+    def to_canonical_value(self, value_in_unit: float|int|complex|np.ndarray|pd.Series[Any]) -> float|int|complex|np.ndarray|pd.Series[Any]:
         """
         Convert a value from this unit to canonical units.
         
@@ -1028,6 +1051,8 @@ class Unit:
             return value_in_unit * self.factor + self.offset
         elif isinstance(value_in_unit, np.ndarray): # type: ignore
             return value_in_unit * self.factor + self.offset
+        elif isinstance(value_in_unit, pd.Series): # type: ignore
+            return pd.Series(value_in_unit * self.factor + self.offset) # type: ignore
         else:
             raise ValueError(f"Invalid value type: {type(value_in_unit)}")
     
@@ -1049,7 +1074,13 @@ class Unit:
         Convert a numpy array from canonical units to this unit.
         """
         ...
-    def from_canonical_value(self, canonical_value: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
+    @overload
+    def from_canonical_value(self, canonical_value: pd.Series[Any]) -> pd.Series[Any]:
+        """
+        Convert a pandas series from canonical units to this unit.
+        """
+        ...
+    def from_canonical_value(self, canonical_value: float|int|complex|np.ndarray|pd.Series[Any]) -> float|int|complex|np.ndarray|pd.Series[Any]:
         """
         Convert a value from canonical units to this unit.
         
@@ -1069,11 +1100,13 @@ class Unit:
             return (canonical_value - self.offset) / self.factor
         elif isinstance(canonical_value, np.ndarray): # type: ignore
             return (canonical_value - self.offset) / self.factor
+        elif isinstance(canonical_value, pd.Series): # type: ignore
+            return pd.Series((canonical_value - self.offset) / self.factor) # type: ignore
         else:
             raise ValueError(f"Invalid value type: {type(canonical_value)}")
         
     @classmethod
-    def convert(cls, from_unit: "Unit", to_unit: "Unit", value: float|int|complex|np.ndarray) -> float|int|complex|np.ndarray:
+    def convert(cls, value: float|int|complex|np.ndarray|pd.Series[Any], from_unit: "Unit", to_unit: "Unit") -> float|int|complex|np.ndarray|pd.Series[Any]:
         """
         Create a unit from a canonical value.
         """
