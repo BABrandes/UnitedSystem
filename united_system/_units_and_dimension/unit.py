@@ -49,7 +49,7 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any, cast
+from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any, cast, Literal
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from h5py import Group
@@ -1427,6 +1427,22 @@ class Unit:
                 s_and_p: dict[UnitSymbol, Sequence[UnitPrefix]] = cast(dict[UnitSymbol, Sequence[UnitPrefix]], symbols_and_prefixes)
                 unit_list = create_unit_list("", s_and_p)
         return unit_list
+    
+    @staticmethod
+    def get_simple_units(unit: "Unit", number_of_units: int, unit_order: Literal["by_factor_ascending", "by_factor_descending"]="by_factor_ascending") -> list["Unit"]:
+        """
+        Get a list of simple units for a given unit.
+        """
+
+        def create_unit_list() -> list["Unit"]:
+            raise NotImplementedError("Not implemented")
+
+        units: list[Unit] = create_unit_list()
+        if unit_order in ["by_factor_ascending", "by_factor_descending"]:
+            units = sorted(units, key=lambda x: x.factor)
+            if unit_order == "by_factor_descending":
+                units.reverse()
+        return units
 
 ########################################################
 # Preset units

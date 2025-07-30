@@ -21,6 +21,12 @@ A comprehensive Python library for handling physical units, dimensions, and unit
 pip install united-system
 ```
 
+### From GitHub
+
+```bash
+pip install git+https://github.com/benediktbrandes/united-system.git
+```
+
 ### From source
 
 ```bash
@@ -232,11 +238,28 @@ make html
 
 ## Contributing
 
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information.
+
+### Quick Start for Contributors
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Install development dependencies (`pip install -e ".[dev]"`)
+4. Set up pre-commit hooks (`pre-commit install`)
+5. Make your changes
+6. Run tests (`pytest`)
+7. Commit your changes (`git commit -m 'Add amazing feature'`)
+8. Push to the branch (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
+
+### Development Status
+
+[![CI/CD](https://github.com/benediktbrandes/united-system/workflows/CI/CD/badge.svg)](https://github.com/benediktbrandes/united-system/actions)
+[![Security](https://github.com/benediktbrandes/united-system/workflows/Security/badge.svg)](https://github.com/benediktbrandes/united-system/actions)
+[![Codecov](https://codecov.io/gh/benediktbrandes/united-system/branch/main/graph/badge.svg)](https://codecov.io/gh/benediktbrandes/united-system)
+[![PyPI](https://img.shields.io/pypi/v/united-system.svg)](https://pypi.org/project/united-system/)
+[![Python](https://img.shields.io/pypi/pyversions/united-system.svg)](https://pypi.org/project/united-system/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENCE)
 
 ## License
 
