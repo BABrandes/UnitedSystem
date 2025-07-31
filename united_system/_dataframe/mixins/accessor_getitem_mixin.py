@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_key import ColumnKey
-from ..._dataframe.column_type import LOWLEVEL_TYPE
 from ..._arrays.bool_array import BoolArray
+from ..._utils.general import VALUE_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -70,7 +70,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     ################### Overloads for tuple indexing #########################################################
 
     @overload
-    def __getitem__(self, key: tuple[CK, int]) -> LOWLEVEL_TYPE:
+    def __getitem__(self, key: tuple[CK, int]) -> VALUE_TYPE:
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -83,7 +83,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[int, CK]) -> LOWLEVEL_TYPE:
+    def __getitem__(self, key: tuple[int, CK]) -> VALUE_TYPE:
         """
         Tuple indexing (e.g., df[rows, columns]).
 
@@ -233,7 +233,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         BoolArray,
         np.ndarray,
         ]
-    ) -> Union[LOWLEVEL_TYPE, "ColumnAccessor[CK]", "RowAccessor[CK]", "UnitedDataframe[CK]"]:
+    ) -> Union[VALUE_TYPE, "ColumnAccessor[CK]", "RowAccessor[CK]", "UnitedDataframe[CK]"]:
         """
         Tuple indexing (e.g., df[rows, columns]).
 

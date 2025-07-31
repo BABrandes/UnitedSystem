@@ -42,13 +42,15 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_dataframe(
         cls,
         dataframe: pd.DataFrame,
-        columns: dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]],
+        columns: Optional[dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]]] = None,
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
         deepcopy: bool = True,
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a pandas DataFrame.
+
+        If columns is None, the column keys, source column names, column types, and column units are inferred from the dataframe.
 
         Args:
             dataframe (pd.DataFrame): The pandas DataFrame to create the UnitedDataframe from.
@@ -62,26 +64,35 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
 
         # Generate the column keys, source column names, column types, and column units
-        column_keys: list[CK] = list(columns.keys())
+        column_keys: list[CK] = []
         source_column_names: dict[CK, str] = {}
         column_types: dict[CK, ColumnType] = {}
         column_units: dict[CK, Optional[Unit]] = {}
-        for column_key, value in columns.items():
-            if len(value) == 3:
-                column_types[column_key] = value[0]
-                source_column_names[column_key] = value[1]
-                if isinstance(value[2], Unit):
-                    column_units[column_key] = value[2]
-                elif isinstance(value[2], Dimension):
-                    column_units[column_key] = value[2].canonical_unit
-                else:
+        if columns is None:
+            for column_name in dataframe.columns:
+                _column_key, column_unit = internal_dataframe_column_name_formatter.retrieve_from_internal_dataframe_column_name(column_name)
+                column_key: CK = cast(CK, _column_key) # type: ignore
+                column_types[column_key] = ColumnType.from_dtype(dataframe[column_name].dtype, has_unit=column_unit is not None) # type: ignore
+                source_column_names[column_key] = column_name
+                column_units[column_key] = column_unit
+        else:
+            column_keys = list(columns.keys())
+            for column_key, value in columns.items():
+                if len(value) == 3:
+                    column_types[column_key] = value[0]
+                    source_column_names[column_key] = value[1]
+                    if isinstance(value[2], Unit):
+                        column_units[column_key] = value[2]
+                    elif isinstance(value[2], Dimension):
+                        column_units[column_key] = value[2].canonical_unit
+                    else:
+                        column_units[column_key] = None
+                elif len(value) == 2:
+                    column_types[column_key] = value[0]
+                    source_column_names[column_key] = value[1]
                     column_units[column_key] = None
-            elif len(value) == 2:
-                column_types[column_key] = value[0]
-                source_column_names[column_key] = value[1]
-                column_units[column_key] = None
-            else:
-                raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
+                else:
+                    raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
             
         # Copy the dataframe
         dataframe = dataframe[source_column_names.values()].copy(deep=deepcopy)

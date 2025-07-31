@@ -62,12 +62,8 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         import pandas as pd
 
         df: pd.DataFrame = pd.read_json(data["dataframe"], orient="records") # type: ignore
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_dataframe_from_pandas_with_correct_column_names(
-            pandas_dataframe=df,
-            internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
-            deep_copy=False
-        ) # type: ignore
-        return united_dataframe
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df) # type: ignore
+        return united_dataframe  # type: ignore
 
     # ----------- CSV Serialization ------------
 
@@ -190,12 +186,9 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
         
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_dataframe_from_pandas_with_correct_column_names(
-            pandas_dataframe=df, # type: ignore
-            internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
-            deep_copy=False
-        ) # type: ignore
-        return united_dataframe
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df) # type: ignore
+        return united_dataframe  # type: ignore
+
     # ----------- Pickle Serialization ------------
 
     def to_pickle(self, path: str|None = None) -> None:

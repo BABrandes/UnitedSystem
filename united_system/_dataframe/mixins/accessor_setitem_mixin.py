@@ -46,6 +46,10 @@ class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @overload
     def __setitem__(self, key: tuple[CK, int], value: VALUE_TYPE) -> None: ...
     @overload
+    def __setitem__(self, key: tuple[int, CK], value: SCALAR_TYPE) -> None: ...
+    @overload
+    def __setitem__(self, key: tuple[CK, int], value: SCALAR_TYPE) -> None: ...
+    @overload
     def __setitem__(self, key: tuple[CK, slice], value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
     @overload
     def __setitem__(self, key: tuple[slice, CK], value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
@@ -106,10 +110,20 @@ class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
                     if isinstance(key_0, ColumnKey|str) and isinstance(key_1, int):
                         column_key: CK = key_0 # type: ignore
-                        self._cell_set_value(key_1, column_key, value)
+                        if isinstance(value, SCALAR_TYPE):
+                            self._cell_set_scalar(key_1, column_key, value)
+                        elif isinstance(value, VALUE_TYPE):
+                            raise NotImplementedError("Setting a single cell value is not implemented.")
+                        else:
+                            raise ValueError(f"Invalid value: {value}")
                     elif isinstance(key_0, int) and isinstance(key_1, ColumnKey|str):
                         column_key: CK = key_1 # type: ignore
-                        self._cell_set_value(key_0, column_key, value)
+                        if isinstance(value, SCALAR_TYPE):
+                            self._cell_set_scalar(key_0, column_key, value)
+                        elif isinstance(value, VALUE_TYPE):
+                            raise NotImplementedError("Setting a single cell value is not implemented.")
+                        else:
+                            raise ValueError(f"Invalid value: {value}")
                     elif isinstance(key_0, ColumnKey|str) and isinstance(key_1, slice):
                         raise NotImplementedError("Setting a single cell value is not implemented.")
                     elif isinstance(key_0, slice) and isinstance(key_1, ColumnKey|str):

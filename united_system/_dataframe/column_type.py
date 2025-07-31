@@ -51,7 +51,7 @@ class ColumnType(Enum):
     REAL_NUMBER_64 = ColumnTypeInformation(         has_unit=True,  value_type=float,       scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
     REAL_NUMBER_32 = ColumnTypeInformation(         has_unit=True,  value_type=float,       scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float32Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
     COMPLEX_NUMBER_128 = ColumnTypeInformation(     has_unit=True,  value_type=complex,     scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
-    STRING = ColumnTypeInformation(                 has_unit=False, value_type=str,         scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   numpy_storage_options=[np.str_],                                missing_values_in_dataframe=pd.NA,       precision=None)
+    STRING = ColumnTypeInformation(                 has_unit=False, value_type=str,         scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   numpy_storage_options=[np.str_],                                missing_values_in_dataframe=None,       precision=None)
     INTEGER_64 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int64Dtype(),    numpy_storage_options=[np.int64, np.int32, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=64)
     INTEGER_32 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int32Dtype(),    numpy_storage_options=[np.int32, np.int64, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=32)
     INTEGER_16 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int16Dtype(),    numpy_storage_options=[np.int16, np.int64, np.int32, np.int8],  missing_values_in_dataframe=pd.NA,       precision=16)
@@ -59,7 +59,7 @@ class ColumnType(Enum):
     FLOAT_64 = ColumnTypeInformation(               has_unit=False, value_type=float,       scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
     FLOAT_32 = ColumnTypeInformation(               has_unit=False, value_type=float,       scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
     COMPLEX_128 = ColumnTypeInformation(            has_unit=False, value_type=complex,     scalar_type=complex,                array_type=ComplexArray,        dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
-    BOOL = ColumnTypeInformation(                   has_unit=False, value_type=bool,        scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=pd.NA,       precision=None)
+    BOOL = ColumnTypeInformation(                   has_unit=False, value_type=bool,        scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=None,       precision=None)
     TIMESTAMP = ColumnTypeInformation(              has_unit=False, value_type=Timestamp,   scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_type='datetime64[ns]',   numpy_storage_options=[np.datetime64],                          missing_values_in_dataframe=pd.NaT,      precision=None)
 
     @property
@@ -85,6 +85,14 @@ class ColumnType(Enum):
     @property
     def value_type(self) -> type[VALUE_TYPE]:
         return self.value.value_type
+    
+    @property
+    def can_be_none(self) -> bool:
+        return self.value.missing_values_in_dataframe is not None
+    
+    @property
+    def missing_value(self) -> Any:
+        return self.value.missing_values_in_dataframe
     
     # ------------ Get values for dataframe ------------
 
@@ -152,69 +160,216 @@ class ColumnType(Enum):
                         raise ValueError(f"Unit in dataframe is not allowed for Timestamp.")
                     return Timestamp(value)
 
-    def get_values_for_dataframe(self, values: ARRAY_TYPE, dataframe_unit: Unit|None) -> pd.Series: # type: ignore[no-any-return]
+    def get_pd_series_for_dataframe(self, array: ARRAY_TYPE|np.ndarray|pd.Series[Any], dataframe_unit: Unit|None, array_unit: Unit|None) -> pd.Series: # type: ignore[no-any-return]
         """
         Get the values from an array for the dataframe.
 
         Args:
             values (ARRAY_TYPE): The values to get the values for the dataframe.
             dataframe_unit (Unit|None): The unit in the dataframe. If the column has a unit, this is required.
+            array_unit (Unit|None): The unit in the array. If the array is a BaseArray, this must be None. If the array is a numpy array or series and the column has a unit, it must be provided.
 
         Returns:
             pd.Series: The values for the dataframe.
+
+        Raises:
+            ValueError: If the array is not a valid array or the unit is not provided for a column with a unit.
+            AssertionError: If the unit of the dataframe is not provided for a column with a unit.
         """
 
         dtype: Dtype = self.value.dataframe_storage_type
-        match self:
-            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                if not isinstance(values, RealUnitedArray):
-                    raise ValueError(f"Value {values} is not a RealUnitedArray.")
-                if dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is required for RealUnitedArray.")
-                np_array: np.ndarray = dataframe_unit.from_canonical_value(values.canonical_np_array)
-                return pd.Series(np_array, dtype=dtype)
-            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                if not isinstance(values, FloatArray):
-                    raise ValueError(f"Value {values} is not a FloatArray.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for FloatArray.")
-                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
-            case ColumnType.COMPLEX_NUMBER_128:
-                if not isinstance(values, ComplexUnitedArray):
-                    raise ValueError(f"Value {values} is not a ComplexUnitedArray.")
-                if dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is required for ComplexUnitedArray.")
-                raise NotImplementedError(f"ComplexUnitedArray is not implemented.")
-            case ColumnType.COMPLEX_128:
-                if not isinstance(values, complex):
-                    raise ValueError(f"Value {values} is not a complex.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for complex.")
-                return pd.Series(values, dtype=dtype)
-            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                if not isinstance(values, IntArray):
-                    raise ValueError(f"Value {values} is not an IntArray.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for IntArray.")
-                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
-            case ColumnType.STRING:
-                if not isinstance(values, StringArray):
-                    raise ValueError(f"Value {values} is not a StringArray.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for StringArray.")
-                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
-            case ColumnType.BOOL:
-                if not isinstance(values, BoolArray):
-                    raise ValueError(f"Value {values} is not a BoolArray.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for BoolArray.")
-                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
-            case ColumnType.TIMESTAMP:
-                if not isinstance(values, TimestampArray):
-                    raise ValueError(f"Value {values} is not a TimestampArray.")
-                if not dataframe_unit is None:
-                    raise ValueError(f"Unit in dataframe is not allowed for TimestampArray.")
-                return pd.Series(values, dtype=dtype) # type: ignore[no-any-return]
+
+        if isinstance(array, BaseArray):
+            if array_unit is not None:
+                raise ValueError(f"Unit in array is not allowed for BaseArray. It is already part of the BaseArray.")
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    if not isinstance(array, RealUnitedArray):
+                        raise ValueError(f"Value {array} is not a RealUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for RealUnitedArray.")
+                    np_array: np.ndarray = dataframe_unit.from_canonical_value(array.canonical_np_array)
+                    return pd.Series(np_array, dtype=dtype)
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    if not isinstance(array, FloatArray):
+                        raise ValueError(f"Value {array} is not a FloatArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for FloatArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.COMPLEX_NUMBER_128:
+                    if not isinstance(array, ComplexUnitedArray):
+                        raise ValueError(f"Value {array} is not a ComplexUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for ComplexUnitedArray.")
+                    raise NotImplementedError(f"ComplexUnitedArray is not implemented.")
+                case ColumnType.COMPLEX_128:
+                    if not isinstance(array, complex):
+                        raise ValueError(f"Value {array} is not a complex.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for complex.")
+                    return pd.Series(array, dtype=dtype)
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    if not isinstance(array, IntArray):
+                        raise ValueError(f"Value {array} is not an IntArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for IntArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.STRING:
+                    if not isinstance(array, StringArray):
+                        raise ValueError(f"Value {array} is not a StringArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for StringArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.BOOL:
+                    if not isinstance(array, BoolArray):
+                        raise ValueError(f"Value {array} is not a BoolArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for BoolArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.TIMESTAMP:
+                    if not isinstance(array, TimestampArray):
+                        raise ValueError(f"Value {array} is not a TimestampArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for TimestampArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+        elif isinstance(array, np.ndarray):
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    if not isinstance(array, RealUnitedArray):
+                        raise ValueError(f"Value {array} is not a RealUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for RealUnitedArray.")
+                    if array_unit is None:
+                        raise ValueError(f"Unit of the numpy array is required for RealUnitedArray.")
+                    np_array: np.ndarray = Unit.convert(array, array_unit, dataframe_unit) #type: ignore[reportUnknownReturnType]
+                    return pd.Series(np_array, dtype=dtype)
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    if not isinstance(array, FloatArray):
+                        raise ValueError(f"Value {array} is not a FloatArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for FloatArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for FloatArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.COMPLEX_NUMBER_128:
+                    if not isinstance(array, ComplexUnitedArray):
+                        raise ValueError(f"Value {array} is not a ComplexUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for ComplexUnitedArray.")
+                    if array_unit is None:
+                        raise ValueError(f"Unit of the numpy array is required for ComplexUnitedArray.")
+                    np_array: np.ndarray = Unit.convert(array, array_unit, dataframe_unit) #type: ignore[reportUnknownReturnType]
+                    return pd.Series(np_array, dtype=dtype)
+                case ColumnType.COMPLEX_128:
+                    if not isinstance(array, complex):
+                        raise ValueError(f"Value {array} is not a complex.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for complex.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for complex.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    if not isinstance(array, IntArray):
+                        raise ValueError(f"Value {array} is not an IntArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for IntArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for IntArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.STRING:
+                    if not isinstance(array, StringArray):
+                        raise ValueError(f"Value {array} is not a StringArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for StringArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for StringArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.BOOL:
+                    if not isinstance(array, BoolArray):
+                        raise ValueError(f"Value {array} is not a BoolArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for BoolArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for BoolArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.TIMESTAMP:
+                    if not isinstance(array, TimestampArray):
+                        raise ValueError(f"Value {array} is not a TimestampArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for TimestampArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the numpy array is not allowed for TimestampArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+        elif isinstance(array, pd.Series[Any]): # type: ignore[reportUnknownReturnType]
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    if not isinstance(array, RealUnitedArray):
+                        raise ValueError(f"Value {array} is not a RealUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for RealUnitedArray.")
+                    if array_unit is None:
+                        raise ValueError(f"Unit of the pandas series is required for RealUnitedArray.")
+                    np_array: np.ndarray = Unit.convert(array, array_unit, dataframe_unit) #type: ignore[reportUnknownReturnType]
+                    return pd.Series(np_array, dtype=dtype)
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    if not isinstance(array, FloatArray):
+                        raise ValueError(f"Value {array} is not a FloatArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for FloatArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for FloatArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.COMPLEX_NUMBER_128:
+                    if not isinstance(array, ComplexUnitedArray):
+                        raise ValueError(f"Value {array} is not a ComplexUnitedArray.")
+                    if dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is required for ComplexUnitedArray.")
+                    if array_unit is None:
+                        raise ValueError(f"Unit of the pandas series is required for ComplexUnitedArray.")
+                    np_array: np.ndarray = Unit.convert(array, array_unit, dataframe_unit) #type: ignore[reportUnknownReturnType]
+                    return pd.Series(np_array, dtype=dtype)
+                case ColumnType.COMPLEX_128:
+                    if not isinstance(array, complex):
+                        raise ValueError(f"Value {array} is not a complex.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for complex.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for complex.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    if not isinstance(array, IntArray):
+                        raise ValueError(f"Value {array} is not an IntArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for IntArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for IntArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.STRING:
+                    if not isinstance(array, StringArray):
+                        raise ValueError(f"Value {array} is not a StringArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for StringArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for StringArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.BOOL:
+                    if not isinstance(array, BoolArray):
+                        raise ValueError(f"Value {array} is not a BoolArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for BoolArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for BoolArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+                case ColumnType.TIMESTAMP:
+                    if not isinstance(array, TimestampArray):
+                        raise ValueError(f"Value {array} is not a TimestampArray.")
+                    if not dataframe_unit is None:
+                        raise AssertionError(f"Unit in dataframe is not allowed for TimestampArray.")
+                    if array_unit is not None:
+                        raise ValueError(f"Unit of the pandas series is not allowed for TimestampArray.")
+                    return pd.Series(array, dtype=dtype) # type: ignore[no-any-return]
+        else:
+            raise ValueError(f"Value {array} is not a valid array.")
             
     # ------------ Get values from dataframe ------------
 

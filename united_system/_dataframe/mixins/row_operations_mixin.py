@@ -13,7 +13,7 @@ from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType
 from ..._units_and_dimension.unit import Unit
 from ..._scalars.united_scalar import UnitedScalar
-from ..._arrays.base_array import PT_TYPE
+from ..._utils.general import VALUE_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -54,7 +54,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         empty_rows = pd.DataFrame(index=range(row_index, row_index + number_of_rows), columns=self._internal_dataframe.columns)
         self._internal_dataframe = pd.concat([self._internal_dataframe.iloc[:row_index], empty_rows, self._internal_dataframe.iloc[row_index:]], ignore_index=True)      
 
-    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any]|PT_TYPE|None]]) -> None:
+    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, list[UnitedScalar[Any, Any]|VALUE_TYPE|None]]) -> None:
         """
         Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
 
