@@ -10,3 +10,7 @@ class ComplexArray(NonUnitedArray[complex, "ComplexArray"]):
     def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid complex dtype."""
         return array.dtype.kind == 'c'  # Complex numbers
+    
+    @property
+    def value_type(self) -> type[complex]:
+        return complex

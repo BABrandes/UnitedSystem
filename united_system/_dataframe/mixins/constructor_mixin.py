@@ -18,9 +18,9 @@ from ..._dataframe.column_type import ColumnType
 from ..._units_and_dimension.dimension import Dimension
 from ..._units_and_dimension.unit import Unit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
-from ..._dataframe.column_type import ARRAY_TYPE, LOWLEVEL_TYPE
 from ..._arrays.base_united_array import BaseUnitedArray
 from ..._scalars.united_scalar import UnitedScalar
+from ..._utils.general import VALUE_TYPE, ARRAY_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -176,9 +176,9 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_data(
         cls,
         columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE]],
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],
         ],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         read_only: bool = False
@@ -214,13 +214,13 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
             unit: Optional[Unit] = column_units[column_key]
             if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
-                if not column_types[column_key].check_compatibility(array_or_list_or_numpy_array_or_pandas_series, unit):
+                if not column_types[column_key].check_compatibility(array_or_list_or_numpy_array_or_pandas_series, unit): #type: ignore
                     raise ValueError(f"Array {array_or_list_or_numpy_array_or_pandas_series} is not compatible with column unit {unit}")
                 return array_or_list_or_numpy_array_or_pandas_series.get_as_numpy_array(target_unit=unit)
             else:
                 # Non-UnitedArray
                 return array_or_list_or_numpy_array_or_pandas_series.canonical_np_array
-        def get_numpy_from_list_of_scalars(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: list[LOWLEVEL_TYPE]) -> np.ndarray:
+        def get_numpy_from_list_of_scalars(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: list[VALUE_TYPE]) -> np.ndarray:
             list_of_values: list[Any] = []
             for item in array_or_list_or_numpy_array_or_pandas_series:
                 if isinstance(item, UnitedScalar):
@@ -239,7 +239,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         for column_key, value in columns.items():
             if isinstance(value, tuple):
                 # Tuple value
-                tuple_value: Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]] = value # type: ignore
+                tuple_value: Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]] = value # type: ignore
                 if len(tuple_value) == 3:
                     column_types[column_key] = tuple_value[0]
                     if isinstance(tuple_value[1], Unit):
@@ -248,11 +248,11 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                         column_units[column_key] = tuple_value[1].canonical_unit
                     else:
                         column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[2]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[2]
                 elif len(tuple_value) == 2:
                     column_types[column_key] = tuple_value[0]
                     column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[1]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[1]
                 else:
                     raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
                 
@@ -279,7 +279,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                         column_units[column_key] = None
                     column_values[column_key] = get_numpy_from_array(column_key, value)
                 elif isinstance(value, list):
-                    list_of_scalars: list[LOWLEVEL_TYPE] = value
+                    list_of_scalars: list[VALUE_TYPE] = value
                     if len(list_of_scalars) == 0:
                         raise ValueError(f"List {value} is empty")
                     column_types[column_key] = ColumnType.infer_approbiate_column_type(type(list_of_scalars[0])) # type: ignore

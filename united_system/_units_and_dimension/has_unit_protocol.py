@@ -5,7 +5,7 @@ from .unit import Unit
 from .dimension import Dimension
 
 @runtime_checkable
-class United(Protocol):
+class HasUnit(Protocol):
     """
     A protocol for objects that have a unit.
 

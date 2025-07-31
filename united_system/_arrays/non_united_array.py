@@ -1,11 +1,12 @@
 from typing import Any, TypeVar, Iterator, overload, Generic, Sequence
-from .base_array import BaseArray, PT_TYPE
+from .base_array import BaseArray
 import numpy as np
 from pandas._typing import Dtype
 import pandas as pd
+from .._utils.general import VALUE_TYPE
 
-PT = TypeVar("PT", bound=PT_TYPE)
-AT = TypeVar("AT", bound="NonUnitedArray[PT_TYPE, Any]")
+PT = TypeVar("PT", bound=VALUE_TYPE)
+AT = TypeVar("AT", bound="NonUnitedArray[VALUE_TYPE, Any]")
 
 class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
 
@@ -16,7 +17,7 @@ class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
                 raise ValueError(f"The canonical_np_array is not a 1D array. It is a {self.canonical_np_array.ndim}D array.")
         # If canonical_np_array isn't properly set yet, skip validation (it will happen in __new__)
 
-    def __new__(cls, values: np.ndarray|Sequence[PT_TYPE]) -> AT:
+    def __new__(cls, values: np.ndarray|Sequence[VALUE_TYPE]) -> AT:
         # Create instance using object.__new__ to avoid inheritance issues
         instance: AT = object.__new__(cls) # type: ignore
 
@@ -102,7 +103,7 @@ class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
 class NonUnitedArrayIterator(Iterator[PT]):
     """Iterator for NonUnitedArray that maintains separate state."""
     
-    def __init__(self, array: "NonUnitedArray[PT_TYPE, Any]"):
+    def __init__(self, array: "NonUnitedArray[VALUE_TYPE, Any]"):
         self.array = array
         self.index = 0
     

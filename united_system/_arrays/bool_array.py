@@ -21,3 +21,7 @@ class BoolArray(NonUnitedArray[bool, "BoolArray"]):
     def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid boolean dtype."""
         return array.dtype.kind == 'b'  # Boolean
+    
+    @property
+    def value_type(self) -> type[bool]:
+        return bool

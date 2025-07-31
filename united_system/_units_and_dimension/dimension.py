@@ -50,11 +50,11 @@ from types import MappingProxyType
 from h5py import Group
 from .utils import seperate_string
 from .dimension_symbol import DimensionSymbol, BASE_DIMENSION_SYMBOLS
+from .has_unit_protocol import HasUnit
 
 if TYPE_CHECKING:
     from .unit import Unit
     from .named_quantity import NamedQuantity
-    from .united import United
 
 EPSILON: float = 1e-12
 
@@ -1058,7 +1058,7 @@ class Dimension:
 # Compatibility
 ################################################################################
 
-    def compatible_to(self, *others: "Dimension | Unit | United") -> bool:
+    def compatible_to(self, *others: Union["Dimension", "Unit", HasUnit]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
@@ -1070,12 +1070,11 @@ class Dimension:
         """
         # Import here to avoid circular import
         from .unit import Unit
-        from .united import United
         
         for other in others:
             if isinstance(other, Unit):
                 other = other.dimension
-            elif isinstance(other, United):
+            elif isinstance(other, HasUnit):
                 other = other.dimension
             elif isinstance(other, "Dimension"): # type: ignore
                 pass
@@ -1534,14 +1533,13 @@ class Dimension:
         """
         # Import here to avoid circular import
         from .unit import Unit
-        from .united import United
         from .named_quantity import NamedQuantity
         
         if isinstance(obj, Dimension):
             return obj
         elif isinstance(obj, Unit):
             return obj.dimension
-        elif isinstance(obj, United):
+        elif isinstance(obj, HasUnit):
             return obj.dimension
         elif isinstance(obj, NamedQuantity):
             return obj.dimension
@@ -1549,7 +1547,7 @@ class Dimension:
             return None
         
     @classmethod
-    def check_dimensions(cls, dictionary: dict[United, "Dimension|Unit"]) -> bool:
+    def check_dimensions(cls, dictionary: dict[HasUnit, Union["Dimension", Unit]]) -> bool:
         """
         Check if the dimensions of the United objects in the dictionary are compatible.
         """

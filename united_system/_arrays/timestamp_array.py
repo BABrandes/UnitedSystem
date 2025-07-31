@@ -11,3 +11,7 @@ class TimestampArray(NonUnitedArray[Timestamp, "TimestampArray"]):
     def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid timestamp dtype."""
         return array.dtype.kind == 'O' or array.dtype.kind == 'M'  # Object or datetime64
+    
+    @property
+    def value_type(self) -> type[Timestamp]:
+        return Timestamp

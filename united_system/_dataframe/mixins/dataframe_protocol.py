@@ -16,7 +16,7 @@ import h5py
 
 # Runtime imports needed for TypeVar definitions and protocol class
 from ..._dataframe.column_key import ColumnKey
-from ..._dataframe.column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, LOWLEVEL_TYPE, NUMERIC_SCALAR_TYPE
+from ..._dataframe.column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, NUMERIC_SCALAR_TYPE
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._units_and_dimension.unit import Unit
 from ..._units_and_dimension.dimension import Dimension
@@ -24,6 +24,7 @@ from ..grouping._groups import Groups
 from ..._arrays.bool_array import BoolArray
 from ..accessors._row_accessor import RowAccessor
 from ..accessors._column_accessor import ColumnAccessor
+from ..._utils.general import VALUE_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -90,7 +91,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
 
     # CellOperationsMixin internal methods
     def _cell_get_value(self, row_index: int, column_key: CK) -> SCALAR_TYPE: ...
-    def _cell_get_lowlevel_value(self, row_index: int, column_key: CK) -> LOWLEVEL_TYPE: ...
+    def _cell_get_lowlevel_value(self, row_index: int, column_key: CK) -> VALUE_TYPE: ...
     def _cell_set_value(self, row_index: int, column_key: CK, value: SCALAR_TYPE): ...
     
     # GroupbyMixin internal methods
@@ -295,9 +296,9 @@ class UnitedDataframeProtocol(Generic[CK, T]):
     def create_empty(cls, column_keys: list[CK], column_types: dict[CK, ColumnType], column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter) -> "UnitedDataframe[CK]": ...
     @classmethod
     def create_from_data(cls, columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE]],],
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],],
                     internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False) -> "UnitedDataframe[CK]": ...
     @classmethod
     def create_from_dataframe(cls, dataframe: pd.DataFrame, columns: dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]]) -> "UnitedDataframe[CK]": ...

@@ -62,13 +62,13 @@ from .dimension import Dimension
 from .unit_symbol import UnitSymbol
 from .unit_prefix import UnitPrefix
 from .utils import seperate_string
+from .has_unit_protocol import HasUnit
 
 if TYPE_CHECKING:
     from .._scalars.real_united_scalar import RealUnitedScalar
     from .._arrays.real_united_array import RealUnitedArray
     from .._scalars.complex_united_scalar import ComplexUnitedScalar
     from .._arrays.complex_united_array import ComplexUnitedArray
-    from .united import United
 
 EPSILON: float = 1e-12
 
@@ -659,7 +659,7 @@ class Unit:
     # Compatibility and comparison
 ########################################################
 
-    def compatible_to(self, *others: Union["Unit", Dimension, "United"]) -> bool:
+    def compatible_to(self, *others: Union["Unit", Dimension, HasUnit]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         
@@ -1433,7 +1433,7 @@ class Unit:
             return obj
         elif isinstance(obj, Dimension):
             return obj.canonical_unit
-        elif isinstance(obj, United):
+        elif isinstance(obj, HasUnit):
             return obj.unit
         elif isinstance(obj, NamedQuantity):
             return obj.unit

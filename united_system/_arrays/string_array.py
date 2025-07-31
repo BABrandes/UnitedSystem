@@ -10,3 +10,7 @@ class StringArray(NonUnitedArray[str, "StringArray"]):
     def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid string dtype."""
         return array.dtype.kind == 'U'  # Unicode strings
+    
+    @property
+    def value_type(self) -> type[str]:
+        return str

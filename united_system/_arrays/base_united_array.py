@@ -4,18 +4,19 @@ from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, S
 from .._units_and_dimension.dimension import Dimension
 from .._units_and_dimension.unit import Unit
 from .._scalars.united_scalar import UnitedScalar
-from .._units_and_dimension.united import United
-from .base_array import BaseArray, PT_TYPE
+from .._units_and_dimension.has_unit_protocol import HasUnit
+from .base_array import BaseArray
 from .protocol_numerical_array import ProtocolNumericalArray
 from abc import ABC, abstractmethod
 import h5py
 import pandas as pd
 from pandas._typing import Dtype
 from .._units_and_dimension.named_quantity import NamedQuantity
+from .._utils.general import VALUE_TYPE
 
 UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any]")
 UST = TypeVar("UST", bound=UnitedScalar[Any, Any])
-PT = TypeVar("PT", bound=PT_TYPE)
+PT = TypeVar("PT", bound=VALUE_TYPE)
 
 class ScalarIterator(Iterator[UST], Generic[UST, PT]):
     def __init__(self, array: "BaseUnitedArray[UAT, UST, PT]"):
@@ -36,7 +37,7 @@ class ScalarIterator(Iterator[UST], Generic[UST, PT]):
         return len(self.array)
 
 @dataclass(frozen=True, slots=True, init=False)
-class BaseUnitedArray(BaseArray[PT, UST, UAT], United, ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, PT]):
+class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, PT]):
     
     # Required field from BaseArray inheritance
     canonical_np_array: np.ndarray

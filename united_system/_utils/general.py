@@ -1,9 +1,23 @@
 import numpy as np
-from typing import Protocol, runtime_checkable, Any, Generic, TypeVar
+from typing import Protocol, runtime_checkable, Any, Generic, TypeVar, TypeAlias
 from enum import Enum
 from typing import Callable
 import locale
 import h5py
+from pandas import Timestamp
+from .._scalars.base_scalar import BaseScalar
+from .._arrays.real_united_array import RealUnitedArray
+from .._arrays.complex_united_array import ComplexUnitedArray
+from .._arrays.string_array import StringArray
+from .._arrays.int_array import IntArray
+from .._arrays.float_array import FloatArray
+from .._arrays.bool_array import BoolArray
+from .._arrays.timestamp_array import TimestampArray
+from .._arrays.complex_array import ComplexArray
+
+VALUE_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
+SCALAR_TYPE: TypeAlias = VALUE_TYPE|BaseScalar
+ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
 
 T = TypeVar("T", covariant=True)
 

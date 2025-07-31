@@ -48,3 +48,6 @@ class RealUnitedArray(BaseUnitedArray["RealUnitedArray", RealUnitedScalar, float
         """Check if the array has a valid real dtype."""
         return array.dtype.kind in ['i', 'f']  # Real numbers
     
+    @property
+    def value_type(self) -> type[float]:
+        return float

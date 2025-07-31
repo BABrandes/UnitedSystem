@@ -1,19 +1,17 @@
-from typing import Iterator, Generic, TypeVar, Any, overload, TypeAlias
+from typing import Iterator, Generic, TypeVar, Any, overload
 import numpy as np
 from dataclasses import dataclass
-from pandas import Timestamp
 from abc import ABC, abstractmethod
 import h5py
 from numpy.typing import NDArray    
 from pandas._typing import Dtype
 import pandas as pd
 from .._arrays.base_united_array import BaseUnitedArray
+from .._utils.general import VALUE_TYPE, SCALAR_TYPE
 
-PT_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
-
-PT = TypeVar("PT", bound=PT_TYPE)
-IT = TypeVar("IT")
-AT = TypeVar("AT", bound="BaseArray[PT_TYPE, PT_TYPE, Any]")
+PT = TypeVar("PT", bound=VALUE_TYPE)
+IT = TypeVar("IT", bound=SCALAR_TYPE)
+AT = TypeVar("AT", bound="BaseArray[VALUE_TYPE, SCALAR_TYPE, Any]")
 
 @dataclass(frozen=True, slots=True)
 class BaseArray(ABC, Generic[PT, IT, AT]):
@@ -29,9 +27,40 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
         """Get the size of the array."""
         return self.canonical_np_array.size
     
-    @property 
-    def value_type(self) -> type:
-        """Get the value type of the array."""
+    @property
+    @abstractmethod
+    def value_type(self) -> type[VALUE_TYPE]:
+        """
+        Get the value type of the array:
+        Possible return types:
+        - float
+        - complex
+        - str
+        - bool
+        - int
+        - Timestamp
+        """
+        ...
+    
+    @property
+    def numpy_value_type(self) -> type[Any]:
+        """
+        Get the NumPy scalar type of the array.
+
+        Returns:
+            A NumPy dtype class, such as:
+            - numpy.float32, numpy.float64, numpy.float128
+            - numpy.int8, numpy.int16, numpy.int32, numpy.int64
+            - numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64
+            - numpy.complex64, numpy.complex128, numpy.complex256
+            - numpy.bool_
+            - numpy.str_, numpy.bytes_
+            - pandas.Timestamp (not sure if it actually acts as datetime64[ns])
+
+        Note:
+            The returned type is a NumPy or domain-specific scalar class, 
+            not a native Python type like `float` or `int`.
+        """
         return self.canonical_np_array.dtype.type
 
     @abstractmethod

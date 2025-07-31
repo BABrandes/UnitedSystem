@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from .._utils.general import JSONable, HDF5able
-from .._units_and_dimension.united import United
+from .._units_and_dimension.has_unit_protocol import HasUnit
 from abc import abstractmethod
 from .._units_and_dimension.unit import Unit
 from typing import TypeVar, Generic, TYPE_CHECKING, Any
@@ -14,7 +14,7 @@ PT = TypeVar("PT", bound=float|complex)
 UST = TypeVar("UST", bound="UnitedScalar[Any, Any]")
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], United, Generic[UST, PT]):
+class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], HasUnit, Generic[UST, PT]):
 
     canonical_value: PT
     

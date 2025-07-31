@@ -10,3 +10,7 @@ class FloatArray(NonUnitedArray[float, "FloatArray"]):
     def _check_numpy_type(array: np.ndarray) -> bool:
         """Check if the array has a valid float dtype."""
         return array.dtype.kind == 'f'  # Floating point
+    
+    @property
+    def value_type(self) -> type[float]:
+        return float

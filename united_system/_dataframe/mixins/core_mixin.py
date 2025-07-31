@@ -11,7 +11,7 @@ import numpy as np
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
-from ..._units_and_dimension.united import United
+from ..._units_and_dimension.has_unit_protocol import HasUnit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from ..._units_and_dimension.unit import Unit
 
@@ -189,7 +189,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             unit: Optional[Unit] = self._column_units[column_key]
             if unit is None:
                 return False
-            if not isinstance(value, United):
+            if not isinstance(value, HasUnit):
                 return False
             value_dimension: BaseDimension[Any, Any] = value.dimension # type: ignore
             if not unit.dimension == value_dimension:

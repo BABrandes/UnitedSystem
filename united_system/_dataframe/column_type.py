@@ -19,17 +19,14 @@ from .._arrays.int_array import IntArray
 from .._arrays.float_array import FloatArray
 from .._arrays.bool_array import BoolArray
 from .._arrays.timestamp_array import TimestampArray
-from .._scalars.base_scalar import BaseScalar
-from .._units_and_dimension.united import United
+from .._units_and_dimension.has_unit_protocol import HasUnit
 from .._arrays.base_array import BaseArray
+from .._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE
 
-LOWLEVEL_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 PANDAS_SERIES_TYPE: TypeAlias = float|int|complex|bool|str|Timestamp
-SCALAR_TYPE: TypeAlias = LOWLEVEL_TYPE|BaseScalar|str|bool|int|Timestamp
 NUMERIC_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar|int|float|complex|Timestamp
 NUMERIC_ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|IntArray|FloatArray|TimestampArray
 NUMERIC_TYPE: TypeAlias = NUMERIC_SCALAR_TYPE|NUMERIC_ARRAY_TYPE
-ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
 UNITED_ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray
 UNITED_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar
 NUMPY_STORAGE_TYPE: TypeAlias = np.float64|np.float32|np.float16|np.complex128|np.complex64|np.int64|np.int32|np.int16|np.int8|np.bool_|np.datetime64|np.str_
@@ -38,9 +35,9 @@ class ColumnTypeInformation(NamedTuple):
     """
     Simplified ColumnType metadata containing only the fields that are actually used.
     
-    Removed unused fields: name, python_scalar_type, array_storage_type, non_values_in_scalar
     """
     has_unit: bool
+    value_type: type[VALUE_TYPE]
     scalar_type: type[SCALAR_TYPE]
     array_type: type[ARRAY_TYPE]
     dataframe_storage_type: Dtype
@@ -51,19 +48,19 @@ class ColumnTypeInformation(NamedTuple):
 class ColumnType(Enum):
     value: ColumnTypeInformation # type: ignore[assignment]
 
-    REAL_NUMBER_64 = ColumnTypeInformation(         has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
-    REAL_NUMBER_32 = ColumnTypeInformation(         has_unit=True,  scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float32Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
-    COMPLEX_NUMBER_128 = ColumnTypeInformation(     has_unit=True,  scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
-    STRING = ColumnTypeInformation(                 has_unit=False, scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   numpy_storage_options=[np.str_],                                missing_values_in_dataframe=pd.NA,       precision=None)
-    INTEGER_64 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int64Dtype(),    numpy_storage_options=[np.int64, np.int32, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=64)
-    INTEGER_32 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int32Dtype(),    numpy_storage_options=[np.int32, np.int64, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=32)
-    INTEGER_16 = ColumnTypeInformation(             has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int16Dtype(),    numpy_storage_options=[np.int16, np.int64, np.int32, np.int8],  missing_values_in_dataframe=pd.NA,       precision=16)
-    INTEGER_8 = ColumnTypeInformation(              has_unit=False, scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int8Dtype(),     numpy_storage_options=[np.int8, np.int64, np.int32, np.int16],  missing_values_in_dataframe=pd.NA,       precision=8)
-    FLOAT_64 = ColumnTypeInformation(               has_unit=False, scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
-    FLOAT_32 = ColumnTypeInformation(               has_unit=False, scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
-    COMPLEX_128 = ColumnTypeInformation(            has_unit=False, scalar_type=complex,                array_type=ComplexArray,        dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
-    BOOL = ColumnTypeInformation(                   has_unit=False, scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=pd.NA,       precision=None)
-    TIMESTAMP = ColumnTypeInformation(              has_unit=False, scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_type='datetime64[ns]',   numpy_storage_options=[np.datetime64],                          missing_values_in_dataframe=pd.NaT,      precision=None)
+    REAL_NUMBER_64 = ColumnTypeInformation(         has_unit=True,  value_type=float,       scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
+    REAL_NUMBER_32 = ColumnTypeInformation(         has_unit=True,  value_type=float,       scalar_type=RealUnitedScalar,       array_type=RealUnitedArray,     dataframe_storage_type=pd.Float32Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
+    COMPLEX_NUMBER_128 = ColumnTypeInformation(     has_unit=True,  value_type=complex,     scalar_type=ComplexUnitedScalar,    array_type=ComplexUnitedArray,  dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
+    STRING = ColumnTypeInformation(                 has_unit=False, value_type=str,         scalar_type=str,                    array_type=StringArray,         dataframe_storage_type=pd.StringDtype(),   numpy_storage_options=[np.str_],                                missing_values_in_dataframe=pd.NA,       precision=None)
+    INTEGER_64 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int64Dtype(),    numpy_storage_options=[np.int64, np.int32, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=64)
+    INTEGER_32 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int32Dtype(),    numpy_storage_options=[np.int32, np.int64, np.int16, np.int8],  missing_values_in_dataframe=pd.NA,       precision=32)
+    INTEGER_16 = ColumnTypeInformation(             has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int16Dtype(),    numpy_storage_options=[np.int16, np.int64, np.int32, np.int8],  missing_values_in_dataframe=pd.NA,       precision=16)
+    INTEGER_8 = ColumnTypeInformation(              has_unit=False, value_type=int,         scalar_type=int,                    array_type=IntArray,            dataframe_storage_type=pd.Int8Dtype(),     numpy_storage_options=[np.int8, np.int64, np.int32, np.int16],  missing_values_in_dataframe=pd.NA,       precision=8)
+    FLOAT_64 = ColumnTypeInformation(               has_unit=False, value_type=float,       scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float64, np.float32, np.float16],     missing_values_in_dataframe=pd.NA,       precision=64)
+    FLOAT_32 = ColumnTypeInformation(               has_unit=False, value_type=float,       scalar_type=float,                  array_type=FloatArray,          dataframe_storage_type=pd.Float64Dtype(),  numpy_storage_options=[np.float32, np.float64, np.float16],     missing_values_in_dataframe=pd.NA,       precision=32)
+    COMPLEX_128 = ColumnTypeInformation(            has_unit=False, value_type=complex,     scalar_type=complex,                array_type=ComplexArray,        dataframe_storage_type=np.complex128,      numpy_storage_options=[np.complex128, np.complex64],            missing_values_in_dataframe=math.nan+1j, precision=128)
+    BOOL = ColumnTypeInformation(                   has_unit=False, value_type=bool,        scalar_type=bool,                   array_type=BoolArray,           dataframe_storage_type=pd.BooleanDtype(),  numpy_storage_options=[np.bool_],                               missing_values_in_dataframe=pd.NA,       precision=None)
+    TIMESTAMP = ColumnTypeInformation(              has_unit=False, value_type=Timestamp,   scalar_type=Timestamp,              array_type=TimestampArray,      dataframe_storage_type='datetime64[ns]',   numpy_storage_options=[np.datetime64],                          missing_values_in_dataframe=pd.NaT,      precision=None)
 
     @property
     def has_unit(self) -> bool:
@@ -76,6 +73,18 @@ class ColumnType(Enum):
     @property
     def is_not_numeric(self) -> bool:
         return not self.is_numeric
+    
+    @property
+    def array_type(self) -> type[ARRAY_TYPE]:
+        return self.value.array_type
+    
+    @property
+    def scalar_type(self) -> type[SCALAR_TYPE]:
+        return self.value.scalar_type
+    
+    @property
+    def value_type(self) -> type[VALUE_TYPE]:
+        return self.value.value_type
     
     # ------------ Get values for dataframe ------------
 
@@ -243,7 +252,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return Timestamp(value)
             
-    def get_scalar_value_from_dataframe(self, value: LOWLEVEL_TYPE, unit: Unit|None = None) -> SCALAR_TYPE:
+    def get_scalar_value_from_dataframe(self, value: VALUE_TYPE, unit: Unit|None = None) -> SCALAR_TYPE:
         """
         Get the scalar value from a dataframe.
         """
@@ -615,10 +624,10 @@ class ColumnType(Enum):
 
     @overload
     @classmethod
-    def infer_approbiate_column_type(cls, scalar_or_array_type: type[SCALAR_TYPE], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": ...
+    def infer_approbiate_column_type(cls, scalar_or_array_type: type[ARRAY_TYPE], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": ...
     @overload
     @classmethod
-    def infer_approbiate_column_type(cls, scalar_or_array_type: type[ARRAY_TYPE], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": ...
+    def infer_approbiate_column_type(cls, scalar_or_array_type: type[SCALAR_TYPE], precision: Literal[8, 16, 32, 64, 128, 256]|None=None) -> "ColumnType": ...
     @overload
     @classmethod
     def infer_approbiate_column_type(cls, scalar_or_array_type: pd.Series) -> "ColumnType": ... # type: ignore[reportUnknownReturnType]
@@ -630,9 +639,9 @@ class ColumnType(Enum):
             return cls.from_dtype(dtype) # type: ignore[reportUnknownReturnType]
         else:
             for column_type in cls:
-                if column_type.value.scalar_type == scalar_or_array_type:
+                if issubclass(scalar_or_array_type, column_type.value.array_type):
                     options.append(column_type)
-                if column_type.value.array_type == scalar_or_array_type:
+                if issubclass(scalar_or_array_type, column_type.value.scalar_type):
                     options.append(column_type)
             if len(options) == 0:
                 raise ValueError(f"No column type found for UnitedScalar type {scalar_or_array_type}.")
@@ -649,14 +658,14 @@ class ColumnType(Enum):
     # ------------ Check the compatibility of a scalar or array with the column type ------------
 
     @overload
-    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE, unit: Optional[Unit]=None) -> bool: ...
-    @overload
     def check_compatibility(self, scalar_or_array_value: ARRAY_TYPE, unit: Optional[Unit]=None) -> bool: ...
+    @overload
+    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE, unit: Optional[Unit]=None) -> bool: ...
     @overload
     def check_compatibility(self, scalar_or_array_value: BaseArray[Any, Any, Any]) -> bool: ...
     def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE | ARRAY_TYPE|BaseArray[Any, Any, Any], unit: Optional[Unit]=None) -> bool:
         if self.has_unit:
-            if not isinstance(scalar_or_array_value, United):
+            if not isinstance(scalar_or_array_value, HasUnit):
                 return False
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
