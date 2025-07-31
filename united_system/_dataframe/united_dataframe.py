@@ -63,7 +63,11 @@ class UnitedDataframe(
 
     def __init__(
             self,
-            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType] = {},
+            column_keys: Sequence[CK]|
+            dict[CK, ColumnType]|
+            dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]]|
+            dict[CK, Tuple[ColumnType, Optional[Unit]]]|
+            dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
@@ -146,7 +150,11 @@ class UnitedDataframe(
         
     def __new__(
             cls,
-            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType] = {},
+            column_keys: Sequence[CK]|
+            dict[CK, ColumnType]|
+            dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]]|
+            dict[CK, Tuple[ColumnType, Optional[Unit]]]|
+            dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
