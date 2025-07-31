@@ -77,7 +77,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType] = {},
+            column_keys: dict[CK, ColumnType] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
@@ -91,7 +91,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType] = {},
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
@@ -105,7 +105,21 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType] = {},
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
+            column_types: None = None,
+            column_units: None = None,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        ...
+
+    @overload
+    def __new__(
+            cls,
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
