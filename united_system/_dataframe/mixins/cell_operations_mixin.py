@@ -115,12 +115,20 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         return raw_value
     
     @overload
-    def cell_get_scalars(self, row_indices: list[int], column_key: CK) -> list[SCALAR_TYPE]: ...
+    def cell_get_scalars(self, row_indices: Sequence[int], column_key: CK) -> list[SCALAR_TYPE]: ...
     @overload
-    def cell_get_scalars(self, row_indices: list[int], column_key: CK, expected_type: type[ST]) -> list[ST]: ...
-    def cell_get_scalars(self, row_indices: list[int], column_key: CK, expected_type: type[ST]|None = None) -> list[ST]|list[SCALAR_TYPE]:
+    def cell_get_scalars(self, row_indices: Sequence[int], column_key: CK, expected_type: type[ST]) -> list[ST]: ...
+    def cell_get_scalars(self, row_indices: Sequence[int], column_key: CK, expected_type: type[ST]|None = None) -> list[ST]|list[SCALAR_TYPE]:
         """
         Get multiple cell values from a single column.
+
+        Args:
+            row_indices (Sequence[int]): List of row indices
+            column_key (CK): The column key
+            expected_type (type[ST]|None): The expected type of the scalars
+
+        Returns:
+            list[ST]: List of cell values
         """
 
         with self._rlock:
@@ -313,12 +321,12 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             self._cell_set_value(row_index, column_key, value, unit)
 
-    def cell_set_scalars(self, row_indices: list[int], column_key: CK, scalars: Sequence[SCALAR_TYPE]) -> None:
+    def cell_set_scalars(self, row_indices: Sequence[int], column_key: CK, scalars: Sequence[SCALAR_TYPE]) -> None:
         """
         Set multiple cell values in a single column.
         
         Args:
-            row_indices (list[int]): List of row indices
+            row_indices (Sequence[int]): List of row indices
             column_key (CK): The column key
             scalars (Sequence[SCALAR_TYPE]): List of new values
             
