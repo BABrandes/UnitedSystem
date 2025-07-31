@@ -7,7 +7,7 @@ including getting and setting individual cell values.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Any, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload, Sequence
 from ..._units_and_dimension.unit import Unit
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE
@@ -313,14 +313,14 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             self._cell_set_value(row_index, column_key, value, unit)
 
-    def cell_set_scalars(self, row_indices: list[int], column_key: CK, values: list[Any]) -> None:
+    def cell_set_scalars(self, row_indices: list[int], column_key: CK, scalars: Sequence[SCALAR_TYPE]) -> None:
         """
         Set multiple cell values in a single column.
         
         Args:
             row_indices (list[int]): List of row indices
             column_key (CK): The column key
-            values (list[Any]): List of new values
+            scalars (Sequence[SCALAR_TYPE]): List of new values
             
         Raises:
             ValueError: If the dataframe is read-only or parameters are invalid
@@ -330,15 +330,15 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             if column_key not in self._column_keys:
                 raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
-            if len(row_indices) != len(values):
-                raise ValueError(f"Length of row_indices ({len(row_indices)}) does not match length of values ({len(values)}).")
+            if len(row_indices) != len(scalars):
+                raise ValueError(f"Length of row_indices ({len(row_indices)}) does not match length of values ({len(scalars)}).")
             
             # Check all row indices are valid
             for row_index in row_indices:
                 if row_index < 0 or row_index >= len(self._internal_dataframe):
                     raise ValueError(f"Row index {row_index} is out of bounds.")
             
-            for row_index, value in zip(row_indices, values):
+            for row_index, value in zip(row_indices, scalars):
                 self._cell_set_scalar(row_index, column_key, value)
 
     def _cell_set_array(self, first_row_index: int, column_key: CK, array: ARRAY_TYPE) -> None:
