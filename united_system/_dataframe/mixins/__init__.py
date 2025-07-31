@@ -27,6 +27,7 @@ Mixins included:
 - AccessorGetitemMixin: Magic methods (__getitem__, __iter__)
 - AccessorSetitemMixin: Magic methods (__setitem__)
 - SegmentMixin: Complete segment functionality
+- DataframeMixin: Complete dataframe functionality
 """
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
@@ -51,6 +52,7 @@ from .iter_mixin import IterMixin
 from .row_statistics_mixin import RowStatisticsMixin
 from .unit_mixin import UnitMixin
 from .segment_mixin import SegmentMixin
+from .dataframe_mixin import DataframeMixin
 
 __all__ = [
     # Protocol
@@ -80,4 +82,5 @@ __all__ = [
     "AccessorSetitemMixin",
     "IterMixin",
     "RowStatisticsMixin",
+    "DataframeMixin",
 ]

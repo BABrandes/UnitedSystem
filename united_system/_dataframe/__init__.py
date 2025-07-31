@@ -30,6 +30,7 @@ from .mixins import (
     SerializationMixin,
     ConstructorMixin,
     GroupbyMixin,
+    DataframeMixin,
 )
 
 if TYPE_CHECKING:
@@ -61,6 +62,7 @@ __all__ = [
     "SerializationMixin",
     "ConstructorMixin",
     "GroupbyMixin",
+    "DataframeMixin",
 ]
 
 # Version information
