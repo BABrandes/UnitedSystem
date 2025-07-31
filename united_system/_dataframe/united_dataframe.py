@@ -63,7 +63,7 @@ class UnitedDataframe(
 
     def __init__(
             self,
-            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType] = [],
+            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType] = [],
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
@@ -73,6 +73,34 @@ class UnitedDataframe(
         Initialize a UnitedDataframe instance.
         """
         pass
+
+    @overload
+    def __new__(
+            cls,
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType],
+            column_types: None = None,
+            column_units: None = None,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        ...
+
+    @overload
+    def __new__(
+            cls,
+            column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType],
+            column_types: None = None,
+            column_units: None = None,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            read_only: bool = False,
+    ) -> "UnitedDataframe[CK]":
+        """
+        Initialize a UnitedDataframe instance.
+        """
+        ...
 
     @overload
     def __new__(
@@ -104,7 +132,7 @@ class UnitedDataframe(
         
     def __new__(
             cls,
-            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType] = [],
+            column_keys: Sequence[CK]|dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Unit]]|ColumnType]|dict[CK, Tuple[ColumnType, Optional[Dimension]]|ColumnType] = [],
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
