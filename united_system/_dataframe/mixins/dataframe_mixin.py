@@ -26,13 +26,13 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    def contains_nan(self) -> bool:
+    def dataframe_contains_nan(self) -> bool:
         """
         Check if the dataframe contains any missing values
         """
         return self._internal_dataframe.isna().any().any() # type: ignore
     
-    def contains_inf(self) -> bool:
+    def dataframe_contains_inf(self) -> bool:
         """
         Check if the dataframe contains any infinite values
         """
