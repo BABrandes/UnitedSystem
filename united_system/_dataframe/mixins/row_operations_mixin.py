@@ -7,7 +7,7 @@ addition, removal, and row data manipulation.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 import pandas as pd
-from typing import Any, Dict, TYPE_CHECKING, Sequence
+from typing import Any, TYPE_CHECKING, Sequence
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType
@@ -39,7 +39,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         Args:
             row_index (int): The index where to insert the row
-            row_data (Dict[CK, Any]): Dictionary mapping column keys to values
+            number_of_rows (int): Number of empty rows to insert
             
         Raises:
             ValueError: If the dataframe is read-only or parameters are invalid
@@ -60,7 +60,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         Args:
             row_index_or_slice (int | slice): Row index (start) or slice object.
-            values (dict[CK, list[Any]]): Dictionary mapping column keys to lists of values.
+            values (dict[CK, Sequence[Any]]): Dictionary mapping column keys to lists of values.
 
         Raises:
             ValueError: If dataframe is read-only, values are inconsistent, or column types mismatch.
@@ -84,7 +84,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_type: ColumnType = self._column_types[column_key]
             column_unit: Unit | None = self._column_units[column_key]
             internal_column_name = self._internal_dataframe_column_names[column_key]
-            converted_column: list[Any] = []
+            converted_column: Sequence[Any] = []
 
             for value in value_list:
                 if column_type.has_unit and value is not None:
@@ -152,12 +152,12 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             
             self._row_insert_empty(len(self._internal_dataframe), number_of_rows)
 
-    def row_add_values(self, values: Dict[CK, Sequence[Any] | Dict[CK, Any]]) -> None:
+    def row_add_values(self, values: dict[CK, Sequence[Any] | dict[CK, Any]]) -> None:
         """
         Add rows with values to the end of the dataframe.
         
         Args:
-            values (Dict[CK, list[Any] | Dict[CK, Any]]): Dictionary mapping column keys to lists of values or single values
+            values (dict[CK, Sequence[Any] | dict[CK, Any]]): Dictionary mapping column keys to lists of values or single values
             
         Raises:
             ValueError: If the dataframe is read-only or values are invalid
@@ -204,7 +204,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             
             self._row_insert_empty(insert_index, number_of_rows)
 
-    def row_insert_values(self, row_index: int|slice, values: Dict[CK, Sequence[Any]|Dict[CK, Any]]) -> None:
+    def row_insert_values(self, row_index: int|slice, values: dict[CK, Sequence[Any]|dict[CK, Any]]) -> None:
         """
         Insert rows with values at a specific index.
         """
@@ -238,7 +238,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             self._row_insert_empty(insert_index, number_of_rows_to_add)
             self._row_set_values(slice(insert_index, insert_index + number_of_rows_to_add), values) # type: ignore
 
-    def row_set_values(self, row_index: int|slice, values: Dict[CK, Sequence[Any]|Dict[CK, Any]]) -> None:
+    def row_set_values(self, row_index: int|slice, values: dict[CK, Sequence[Any]|dict[CK, Any]]) -> None:
         """
         Replace rows with values at a specific index.
         """
