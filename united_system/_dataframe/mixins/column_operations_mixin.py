@@ -32,7 +32,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Column Operations: CRUD ------------
 
-    def column_add_empty(self, column_key: CK, column_type: ColumnType, unit: Unit) -> None:
+    def column_add_empty(self, column_key: CK, column_type: ColumnType, unit: Optional[Unit]) -> None:
         """
         Add a new empty column to the dataframe.
         """
