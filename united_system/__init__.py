@@ -23,6 +23,7 @@ from ._units_and_dimension.unit_symbol import UnitSymbol
 from ._units_and_dimension.unit_prefix import UnitPrefix
 from ._units_and_dimension.has_unit_protocol import HasUnit
 from ._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE
+from ._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 
 __all__ = [
     'RealUnitedScalar',
@@ -45,6 +46,7 @@ __all__ = [
     'VALUE_TYPE',
     'SCALAR_TYPE',
     'ARRAY_TYPE',
+    'InternalDataFrameColumnNameFormatter'
 ]
 __version__ = '0.1.0'
 __author__ = 'Benedikt Axel Brandes'
