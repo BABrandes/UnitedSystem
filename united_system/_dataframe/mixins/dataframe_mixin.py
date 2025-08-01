@@ -24,7 +24,7 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     - contains_nan: Check if the dataframe contains any missing values
     - contains_inf: Check if the dataframe contains any infinite values
     
-    Now inherits from UnitedDataframeMixin so it has full knowledge of the 
+    Now inherits from UnitedDataframeMixin so it has full knowledge of the
     UnitedDataframe interface with proper IDE support and type checking.
     """
 
