@@ -14,9 +14,7 @@ PT = TypeVar("PT", bound=float|complex)
 UST = TypeVar("UST", bound="UnitedScalar[Any, Any]")
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(BaseScalar, JSONable[UST], HDF5able[UST], HasUnit, Generic[UST, PT]):
-
-    canonical_value: PT
+class UnitedScalar(BaseScalar[PT], JSONable[UST], HDF5able[UST], HasUnit, Generic[UST, PT]):
     
     @abstractmethod
     def __add__(self, other: UST) -> UST:

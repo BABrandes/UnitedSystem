@@ -7,13 +7,11 @@ addition, removal, and row data manipulation.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 import pandas as pd
-from typing import Any, TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._dataframe.column_type import ColumnType
-from ..._units_and_dimension.unit import Unit
-from ..._scalars.united_scalar import UnitedScalar
-from ..._utils.general import VALUE_TYPE
+from ..._scalars.base_scalar import BaseScalar
+from ..._utils.general import VALUE_TYPE, SCALAR_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -33,13 +31,12 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     ##### Base row operations start #####
 
-    def _row_insert_empty(self, row_index: int, number_of_rows: int) -> None:
+    def _row_insert_empty(self, row_index: int) -> None:
         """
         Internal: Insert a row at a specific index. (no lock)
         
         Args:
             row_index (int): The index where to insert the row
-            number_of_rows (int): Number of empty rows to insert
             
         Raises:
             ValueError: If the dataframe is read-only or parameters are invalid
@@ -47,20 +44,36 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if self._read_only:
             raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
         
-        if row_index < 0 or row_index > len(self._internal_dataframe):
+        if row_index < 0 or row_index >= len(self._internal_dataframe):
             raise ValueError(f"Row index {row_index} is out of bounds for insertion.")
         
-        # Create empty rows
-        empty_rows = pd.DataFrame(index=range(row_index, row_index + number_of_rows), columns=self._internal_dataframe.columns)
-        self._internal_dataframe = pd.concat([self._internal_dataframe.iloc[:row_index], empty_rows, self._internal_dataframe.iloc[row_index:]], ignore_index=True)      
+        # Create empty rows and insert them at the correct index
+        empty_rows = pd.DataFrame(index=range(row_index, row_index + 1), columns=self._internal_dataframe.columns)
+        self._internal_dataframe = pd.concat([self._internal_dataframe.iloc[:row_index], empty_rows, self._internal_dataframe.iloc[row_index:]], ignore_index=True) 
 
-    def _row_set_values(self, row_index_or_slice: int | slice, values: dict[CK, Sequence[UnitedScalar[Any, Any]|VALUE_TYPE|None]]) -> None:
+    def _row_add_empty(self, number_of_rows: int) -> None:
+        """
+        Internal: Add empty rows to the end of the dataframe. (no lock)
+        
+        Args:
+            number_of_rows (int): Number of empty rows to add
+            
+        Raises:
+            ValueError: If the dataframe is read-only or parameters are invalid
+        """
+        if self._read_only:
+            raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+        
+        empty_rows = pd.DataFrame(index=range(len(self._internal_dataframe), len(self._internal_dataframe) + number_of_rows), columns=self._internal_dataframe.columns)  
+        self._internal_dataframe = pd.concat([self._internal_dataframe, empty_rows], ignore_index=True) 
+
+    def _row_set_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
 
         Args:
-            row_index_or_slice (int | slice): Row index (start) or slice object.
-            values (dict[CK, Sequence[Any]]): Dictionary mapping column keys to lists of values.
+            row_index (int): Row index (start) or slice object.
+            values (dict[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of values.
 
         Raises:
             ValueError: If dataframe is read-only, values are inconsistent, or column types mismatch.
@@ -68,55 +81,34 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if self._read_only:
             raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
         
-        if not values:
-            return
+        for column_key, value in values.items():
+            if isinstance(value, BaseScalar):
+                self._cell_set_scalar(row_index, column_key, value)
+            else:
+                self._cell_set_value(row_index, column_key, value) # type: ignore
 
-        num_rows: int = len(next(iter(values.values())))
+    def _row_set_ordered_values(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+        """
+        Internal: Set rows with values at a specific index. (no lock)
+        The values are expected to be correctly ordered according to the column keys.
 
-        # Validate all inputs and convert values
-        converted_values: dict[str, Sequence[Any]] = {}
-        for column_key, value_list in values.items():
-            if len(value_list) != num_rows:
-                raise ValueError(f"Column '{column_key}' has {len(value_list)} values, expected {num_rows}.")
-            if column_key not in self._column_keys:
-                raise ValueError(f"Column key '{column_key}' does not exist in the dataframe.")
-            
-            column_type: ColumnType = self._column_types[column_key]
-            column_unit: Unit | None = self._column_units[column_key]
-            internal_column_name = self._internal_dataframe_column_names[column_key]
-            converted_column: Sequence[Any] = []
+        Args:
+            row_index (int): The index where to set the values
+            values (Sequence[Any]): Sequence of values to set
 
-            for value in value_list:
-                if column_type.has_unit and value is not None:
-                    if not isinstance(value, UnitedScalar):
-                        raise ValueError(f"Value '{value}' in column '{column_key}' is not a UnitedScalar.")
-                    if value.unit != column_unit:
-                        raise ValueError(
-                            f"Value '{value}' has unit {value.unit}, "
-                            f"but expected {column_unit} for column '{column_key}'."
-                        )
-                converted_column.append(column_type.get_value_for_dataframe(value, column_unit))
-            
-            converted_values[internal_column_name] = converted_column
+        Raises:
+            ValueError: If the dataframe is read-only or values are invalid
+        """
 
-        # Determine row range
-        if isinstance(row_index_or_slice, int):
-            row_start = row_index_or_slice
-            row_stop = row_start + num_rows
-        else:
-            if row_index_or_slice.step not in (None, 1):
-                raise ValueError("Only slices with step=None or step=1 are supported.")
-            if row_index_or_slice.start is None or row_index_or_slice.stop is None:
-                raise ValueError("Slice must have start and stop defined.")
-            row_start = row_index_or_slice.start
-            row_stop = row_index_or_slice.stop
-            if row_stop - row_start != num_rows:
-                raise ValueError(
-                    f"Slice range {row_stop - row_start} does not match number of rows in values: {num_rows}."
-                )
-
-        # Assign using .loc with new DataFrame
-        self._internal_dataframe.loc[row_start:row_stop - 1, list(converted_values.keys())] = pd.DataFrame(converted_values, index=range(row_start, row_stop))
+        if not len(values) == len(self._column_keys):
+            raise ValueError(f"Number of values {len(values)} does not match number of columns {len(self._column_keys)}.")
+        
+        # Direct cell operations for performance
+        for col_index, column_key in enumerate(self._column_keys):
+            if isinstance(values[col_index], BaseScalar):
+                self._cell_set_scalar(row_index, column_key, values[col_index])
+            else:
+                self._cell_set_value(row_index, column_key, values[col_index]) # type: ignore
 
     def _row_remove(self, row_index_start_inclusive: int, row_index_stop_exclusive: int) -> None:
         """
@@ -150,9 +142,37 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:  # And _read_only!
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_insert_empty(len(self._internal_dataframe), number_of_rows)
+            self._row_add_empty(number_of_rows)
 
-    def row_add_values(self, values: dict[CK, Sequence[Any] | dict[CK, Any]]) -> None:
+    def row_set_ordered_values(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+        """
+        Set rows with values at a specific index. The values are expected to be correctly ordered according to the column keys.
+
+        Args:
+            row_index (int): The index where to set the values
+            values (Sequence[VALUE_TYPE]): Sequence of values to set
+
+        Raises:
+            ValueError: If the dataframe is read-only or values are invalid
+        """
+        with self._wlock:
+            if self._read_only:
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            
+            self._row_set_ordered_values(row_index, values)
+
+    def row_add_ordered_values(self, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+        """
+        Add rows with values to the end of the dataframe. The values are expected to be correctly ordered according to the column keys.
+        """
+        with self._wlock:
+            if self._read_only:
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            
+            self._row_add_empty(1)
+            self._row_set_ordered_values(len(self)-1, values)
+
+    def row_add_values(self, values: dict[CK, Sequence[VALUE_TYPE|SCALAR_TYPE] | dict[CK, VALUE_TYPE|SCALAR_TYPE]]) -> None:
         """
         Add rows with values to the end of the dataframe.
         
@@ -167,24 +187,10 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
 
-            if len(values) == 0:
-                raise ValueError("No values provided. Use 'add_empty_rows' instead!")
+            self._row_add_empty(1)
+            self._row_set_values(len(self)-1, values) # type: ignore
 
-            # Transform a dict of any to a dict of lists
-            if isinstance(next(iter(values.values())), (list, tuple)):
-                # Already a list of values
-                pass
-            else:
-                # Single value per column, convert to list
-                values = {column_key: [values[column_key]] for column_key in values}
-
-            number_of_rows_to_add = len(next(iter(values.values())))
-            start_index = len(self._internal_dataframe)
-
-            self._row_insert_empty(start_index, number_of_rows_to_add)
-            self._row_set_values(slice(start_index, start_index + number_of_rows_to_add), values) # type: ignore
-
-    def row_insert_empty(self, row_index: int|slice, number_of_rows: int) -> None:
+    def row_insert_empty(self, row_index: int) -> None:
         """
         Insert empty rows at a specific index.
         """
@@ -193,18 +199,9 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
 
-            if isinstance(row_index, slice):
-                if row_index.step not in (None, 1):
-                    raise ValueError("Only slices with step=None or step=1 are supported.")
-                if row_index.start is None or row_index.stop is None:
-                    raise ValueError("Slice must have start and stop defined.")
-                insert_index = row_index.start
-            else:
-                insert_index = row_index
-            
-            self._row_insert_empty(insert_index, number_of_rows)
+            self._row_insert_empty(row_index)
 
-    def row_insert_values(self, row_index: int|slice, values: dict[CK, Sequence[Any]|dict[CK, Any]]) -> None:
+    def row_insert_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Insert rows with values at a specific index.
         """
@@ -212,33 +209,10 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            if len(values) == 0:
-                raise ValueError("No values provided. Use 'insert_empty_rows' instead!")
-            
-            # Transform a dict of any to a dict of lists
-            if isinstance(next(iter(values.values())), (list, tuple)):
-                # Already a list of values
-                pass
-            else:
-                # Single value per column, convert to list
-                values = {column_key: [values[column_key]] for column_key in values}
-            
-            number_of_rows_to_add = len(next(iter(values.values())))
-            
-            # Handle slice vs int for row_index_or_slice
-            if isinstance(row_index, slice):
-                if row_index.step not in (None, 1):
-                    raise ValueError("Only slices with step=None or step=1 are supported.")
-                if row_index.start is None or row_index.stop is None:
-                    raise ValueError("Slice must have start and stop defined.")
-                insert_index = row_index.start
-            else:
-                insert_index = row_index
-            
-            self._row_insert_empty(insert_index, number_of_rows_to_add)
-            self._row_set_values(slice(insert_index, insert_index + number_of_rows_to_add), values) # type: ignore
+            self._row_insert_empty(row_index)
+            self._row_set_values(row_index, values)
 
-    def row_set_values(self, row_index: int|slice, values: dict[CK, Sequence[Any]|dict[CK, Any]]) -> None:
+    def row_set_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Replace rows with values at a specific index.
         """
@@ -247,34 +221,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            if len(values) == 0:
-                raise ValueError("No values provided!")
-            
-            # Transform a dict of any to a dict of lists
-            if isinstance(next(iter(values.values())), (list, tuple)):
-                # Already a list of values
-                pass
-            else:
-                # Single value per column, convert to list
-                values = {column_key: [values[column_key]] for column_key in values}
-            
-            number_of_rows_to_replace = len(next(iter(values.values())))
-            
-            # Handle slice vs int for row_index_or_slice
-            if isinstance(row_index, slice):
-                if row_index.step not in (None, 1):
-                    raise ValueError("Only slices with step=None or step=1 are supported.")
-                if row_index.start is None or row_index.stop is None:
-                    raise ValueError("Slice must have start and stop defined.")
-                row_start = row_index.start
-                row_stop = row_index.stop
-            else:
-                row_start = row_index
-                row_stop = row_start + number_of_rows_to_replace
-            
-            self._row_remove(row_start, row_stop)
-            self._row_insert_empty(row_start, number_of_rows_to_replace)
-            self._row_set_values(slice(row_start, row_start + number_of_rows_to_replace), values) # type: ignore
+            self._row_set_values(row_index, values)
 
     def row_clear(self, row_index_start_inclusive: int, number_of_rows: int) -> None:
         """
@@ -291,7 +238,11 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if number_of_rows < 0 or row_index_start_inclusive + number_of_rows > len(self._internal_dataframe):
                 raise ValueError(f"Number of rows {number_of_rows} is out of bounds for insertion.")
             
-            self._row_set_values(slice(row_index_start_inclusive, row_index_start_inclusive + number_of_rows), {column_key: [None] * number_of_rows for column_key in self._column_keys}) # type: ignore
+            # Clear each row using proper missing value handling
+            for i in range(number_of_rows):
+                row_index = row_index_start_inclusive + i
+                for column_key in self._column_keys:
+                    self._cell_set_missing(row_index, column_key)
             
     def row_remove(self, row_index_start_inclusive: int, row_index_stop_exclusive: int) -> None:
         """
@@ -319,7 +270,10 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_set_values(slice(0, len(self._internal_dataframe)), {column_key: [None] * len(self._internal_dataframe) for column_key in self._column_keys}) # type: ignore
+            # Clear all rows using proper missing value handling
+            for row_index in range(len(self._internal_dataframe)):
+                for column_key in self._column_keys:
+                    self._cell_set_missing(row_index, column_key)
 
     def row_remove_all(self) -> None:
         """

@@ -96,7 +96,7 @@ class ColumnType(Enum):
     
     # ------------ Get values for dataframe ------------
 
-    def get_value_for_dataframe(self, value: SCALAR_TYPE|None, unit_in_dataframe: Unit|None = None) -> Any:
+    def get_value_for_dataframe(self, scalar: SCALAR_TYPE|None, unit_in_dataframe: Unit|None = None) -> Any:
         """
         Get the value from a scalar for the dataframe.
 
@@ -107,58 +107,58 @@ class ColumnType(Enum):
         Returns:
             Any: The value for the dataframe.
         """
-        if value is None:
+        if scalar is None:
             return pd.NA
         else:
             match self:
                 case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    if not isinstance(value, RealUnitedScalar):
-                        raise ValueError(f"Value {value} is not a RealUnitedScalar.")
+                    if not isinstance(scalar, RealUnitedScalar):
+                        raise ValueError(f"Value {scalar} is not a RealUnitedScalar.")
                     if unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is required for RealUnitedScalar.")
-                    return unit_in_dataframe.from_canonical_value(value.canonical_value)
+                    return unit_in_dataframe.from_canonical_value(scalar.canonical_value)
                 case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                    if not isinstance(value, float|int):
-                        raise ValueError(f"Value {value} is not a float.")
+                    if not isinstance(scalar, float|int):
+                        raise ValueError(f"Value {scalar} is not a float.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for float.")
-                    return float(value)
+                    return float(scalar)
                 case ColumnType.COMPLEX_NUMBER_128:
-                    if not isinstance(value, ComplexUnitedScalar):
-                        raise ValueError(f"Value {value} is not a ComplexUnitedScalar.")
+                    if not isinstance(scalar, ComplexUnitedScalar):
+                        raise ValueError(f"Value {scalar} is not a ComplexUnitedScalar.")
                     if unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is required for ComplexUnitedScalar.")
                     raise NotImplementedError(f"ComplexUnitedScalar is not implemented.")
                 case ColumnType.COMPLEX_128:
-                    if not isinstance(value, complex):
-                        raise ValueError(f"Value {value} is not a ComplexUnitedScalar.")
+                    if not isinstance(scalar, complex):
+                        raise ValueError(f"Value {scalar} is not a ComplexUnitedScalar.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for ComplexUnitedScalar.")
-                    return complex(value)
+                    return complex(scalar)
                 case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                    if not isinstance(value, int):
-                        raise ValueError(f"Value {value} is not an int.")
+                    if not isinstance(scalar, int):
+                        raise ValueError(f"Value {scalar} is not an int.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for int.")
-                    return int(value)
+                    return int(scalar)
                 case ColumnType.STRING:
-                    if not isinstance(value, str):
-                        raise ValueError(f"Value {value} is not a str.")
+                    if not isinstance(scalar, str):
+                        raise ValueError(f"Value {scalar} is not a str.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for str.")
-                    return str(value)
+                    return str(scalar)
                 case ColumnType.BOOL:
-                    if not isinstance(value, bool):
-                        raise ValueError(f"Value {value} is not a bool.")
+                    if not isinstance(scalar, bool):
+                        raise ValueError(f"Value {scalar} is not a bool.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for bool.")
-                    return bool(value)
+                    return bool(scalar)
                 case ColumnType.TIMESTAMP:
-                    if not isinstance(value, Timestamp):
-                        raise ValueError(f"Value {value} is not a Timestamp.")
+                    if not isinstance(scalar, Timestamp):
+                        raise ValueError(f"Value {scalar} is not a Timestamp.")
                     if not unit_in_dataframe is None:
                         raise ValueError(f"Unit in dataframe is not allowed for Timestamp.")
-                    return Timestamp(value)
+                    return Timestamp(scalar)
 
     def get_pd_series_for_dataframe(self, array: ARRAY_TYPE|np.ndarray|pd.Series[Any], dataframe_unit: Unit|None, array_unit: Unit|None) -> pd.Series: # type: ignore[no-any-return]
         """
@@ -427,7 +427,7 @@ class ColumnType(Enum):
                     raise ValueError(f"Value {value} is not a float or int.")
                 if unit is None:
                     raise ValueError(f"Unit is required for {self.name}.")
-                return RealUnitedScalar.create_from_value_and_unit(value, unit)
+                return RealUnitedScalar(value, unit)
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
                 if not isinstance(value, (float, int)):
                     raise ValueError(f"Value {value} is not a float or int.")
@@ -869,44 +869,69 @@ class ColumnType(Enum):
                     return True
                 else:
                     return False
+                
+    def check_value_type(self, value_type: type|object) -> bool:
+        if not isinstance(value_type, type):
+            value_type = value_type.__class__
+        match self:
+            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                return isinstance(value_type, float)
+            case ColumnType.COMPLEX_NUMBER_128:
+                return isinstance(value_type, complex)
+            case ColumnType.STRING:
+                return isinstance(value_type, str)
+            case ColumnType.BOOL:
+                return isinstance(value_type, bool)
+            case ColumnType.TIMESTAMP:
+                return isinstance(value_type, Timestamp)
+            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                return isinstance(value_type, int)
+            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                return isinstance(value_type, float)
+            case ColumnType.COMPLEX_128:
+                return isinstance(value_type, complex)
 
-    def check_scalar_type(self, type: type) -> bool:
+    def check_scalar_type(self, value_type: type|object) -> bool:
+        if not isinstance(value_type, type):
+            value_type = value_type.__class__
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return issubclass(type, RealUnitedScalar)
+                return issubclass(value_type, RealUnitedScalar)
             case ColumnType.COMPLEX_NUMBER_128:
-                return issubclass(type, ComplexUnitedScalar)
+                return issubclass(value_type, ComplexUnitedScalar)
             case ColumnType.STRING:
-                return issubclass(type, str)
+                return issubclass(value_type, str)
             case ColumnType.BOOL:
-                return issubclass(type, bool)
+                return issubclass(value_type, bool)
             case ColumnType.TIMESTAMP:
-                return issubclass(type, Timestamp)
+                return issubclass(value_type, Timestamp)
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return issubclass(type, int)
+                return issubclass(value_type, int)
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return issubclass(type, float)
+                return issubclass(value_type, float)
             case ColumnType.COMPLEX_128:
-                return issubclass(type, complex)
+                return issubclass(value_type, complex)
             
-    def check_array_type(self, type: type) -> bool:
+    def check_array_type(self, value_type: type|object) -> bool:
+        if not isinstance(value_type, type):
+            value_type = value_type.__class__
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return issubclass(type, RealUnitedArray)
+                return issubclass(value_type, RealUnitedArray)
             case ColumnType.COMPLEX_NUMBER_128:
-                return issubclass(type, ComplexUnitedArray)
+                return issubclass(value_type, ComplexUnitedArray)
             case ColumnType.STRING:
-                return issubclass(type, StringArray)
+                return issubclass(value_type, StringArray)
             case ColumnType.BOOL:
-                return issubclass(type, BoolArray)
+                return issubclass(value_type, BoolArray)
             case ColumnType.TIMESTAMP:
-                return issubclass(type, TimestampArray)
+                return issubclass(value_type, TimestampArray)
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return issubclass(type, IntArray)
+                return issubclass(value_type, IntArray)
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return issubclass(type, FloatArray)
+                return issubclass(value_type, FloatArray)
             case ColumnType.COMPLEX_128:
-                return issubclass(type, ComplexArray)
+                return issubclass(value_type, ComplexArray)
 
     def __reduce_ex__(self, _: Any):
         """Custom pickle reduction to preserve enum identity by name."""

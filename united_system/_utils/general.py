@@ -16,7 +16,7 @@ from .._arrays.timestamp_array import TimestampArray
 from .._arrays.complex_array import ComplexArray
 
 VALUE_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
-SCALAR_TYPE: TypeAlias = VALUE_TYPE|BaseScalar
+SCALAR_TYPE: TypeAlias = VALUE_TYPE|BaseScalar[Any]
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
 
 T = TypeVar("T", covariant=True)

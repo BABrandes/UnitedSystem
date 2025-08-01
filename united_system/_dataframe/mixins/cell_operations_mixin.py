@@ -7,8 +7,9 @@ including getting and setting individual cell values.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Any, TypeVar, overload, Sequence
+from typing import TYPE_CHECKING, Any, TypeVar, overload, Sequence, Optional
 from ..._units_and_dimension.unit import Unit
+from ..._dataframe.column_type import ColumnType
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE
 import numpy as np
@@ -240,7 +241,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Args:
             row_index (int): The row index
             column_key (CK): The column key
-            value (Any): The new value
+            value (SCALAR_TYPE): The new value
             
         Raises:
             ValueError: If the dataframe is read-only or parameters are invalid
@@ -251,9 +252,9 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if column_key not in self._column_keys:
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
-        internal_column_name = self._internal_dataframe_column_names[column_key]
-        column_unit = self._column_units[column_key]
-        self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].get_value_for_dataframe(value, column_unit)
+        column_index: int = self._column_keys.index(column_key)        
+        column_unit: Optional[Unit] = self._column_units[column_key]
+        self._internal_dataframe.iloc[row_index, column_index] = self._column_types[column_key].get_value_for_dataframe(value, column_unit)
 
     def cell_set_scalar(self, row_index: int, column_key: CK, value: SCALAR_TYPE) -> None:
         """
@@ -291,17 +292,18 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if column_key not in self._column_keys:
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
 
-        internal_column_name = self._internal_dataframe_column_names[column_key]
-        if self._unit_has(column_key):
+        column_index: int = self._column_keys.index(column_key)
+        column_unit: Optional[Unit] = self._column_units[column_key]
+        column_type: ColumnType = self._column_types[column_key]
+        if not column_type.check_value_type(value):
+            raise ValueError(f"Value {value} is not a {column_type.name}.")
+        if column_type.has_unit:
             if unit is None:
-                raise ValueError(f"Column {column_key} has a unit, but no unit was provided.")
+                self._internal_dataframe.iloc[row_index, column_index] = value
             else:
-                self._internal_dataframe.loc[row_index, internal_column_name] = Unit.convert(value, unit, self._column_units[column_key]) #type: ignore[reportUnknownReturnType]
+                self._internal_dataframe.iloc[row_index, column_index] = Unit.convert(value, unit, column_unit) # type: ignore
         else:
-            if unit is not None:
-                raise ValueError(f"Column {column_key} does not have a unit, but a unit was provided.")
-            else:
-                self._internal_dataframe.loc[row_index, internal_column_name] = value
+            self._internal_dataframe.iloc[row_index, column_index] = value
 
     def cell_set_value(self, row_index: int, column_key: CK, value: VALUE_TYPE, unit: Unit|None=None) -> None:
         """
@@ -456,7 +458,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if column_key not in self._column_keys:
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
-        internal_column_name = self._internal_dataframe_column_names[column_key]
+        internal_column_name: str = self._internal_dataframe_column_names[column_key]
         if self._column_types[column_key].can_be_none:
             self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].missing_value
         else:
