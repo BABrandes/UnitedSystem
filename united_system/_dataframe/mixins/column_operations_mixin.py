@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, TypeVar, Optional
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType, ARRAY_TYPE
 from ..._units_and_dimension.unit import Unit
+from ..._units_and_dimension.has_unit_protocol import HasUnit
+import numpy as np
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
@@ -30,6 +32,41 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Column Operations: CRUD ------------
 
+    def column_add_empty(self, column_key: CK, column_type: ColumnType, unit: Unit) -> None:
+        """
+        Add a new empty column to the dataframe.
+        """
+        with self._wlock:
+            if self._read_only:
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            self._column_add_empty(column_key, column_type, unit)
+
+    def _column_add_empty(self, column_key: CK, column_type: ColumnType, unit: Optional[Unit]) -> None:
+        """
+        Internal: Add a new empty column to the dataframe. (no lock, no read-only check)
+        
+        Args:
+            column_key (CK): The column key
+            column_type (ColumnType): The column type
+            unit (Optional[Unit]): The unit. Can be None only if the column type does not have a unit.
+            
+        Raises:
+            ValueError: If the dataframe is read-only or the column already exists
+        """
+    
+        if column_key in self._column_keys:
+            raise ValueError(f"Column key {column_key} already exists in the dataframe.")
+        
+        # Add to internal structures
+        self._column_keys.append(column_key)
+        self._column_types[column_key] = column_type
+        self._column_units[column_key] = unit
+        
+        # Add to internal dataframe
+        internal_column_name: str = self._create_internal_dataframe_column_name(column_key)
+        self._internal_dataframe_column_names[column_key] = internal_column_name
+        self._internal_dataframe[internal_column_name] = column_type.get_pd_series_for_dataframe(np.empty(len(self._internal_dataframe)), unit) # type: ignore
+
     def column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Unit) -> None:
         """
         Add a new column to the dataframe.
@@ -38,7 +75,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_key (CK): The column key
             array (ARRAY_TYPE): The column data
             column_type (ColumnType): The column type
-            unit (Unit): The unit
+            unit (Optional[Unit]): The unit. If None, the unit is set according to the array.
             
         """
         with self._wlock:
@@ -46,7 +83,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             self._column_add(column_key, array, column_type, unit)
 
-    def _column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Unit) -> None:
+    def _column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Optional[Unit]) -> None:
         """
         Internal: Add a new column to the dataframe. (no lock, no read-only check)
         
@@ -54,7 +91,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_key (CK): The column key
             array (ARRAY_TYPE): The column data
             column_type (ColumnType): The column type
-            unit (Unit): The unit
+            unit (Optional[Unit]): The unit. If None, the unit is set according to the array.
             
         Raises:
             ValueError: If the dataframe is read-only or the column already exists
@@ -70,12 +107,22 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         # Add to internal structures
         self._column_keys.append(column_key)
         self._column_types[column_key] = column_type
-        self._column_units[column_key] = unit
+
+        # Use the provided unit if provided, otherwise infer the unit from the array
+        if column_type.has_unit:
+            if unit is None:
+                if isinstance(array, HasUnit):
+                    unit = array.unit
+                else:
+                    raise ValueError(f"Unit is required for column type {column_type}.")
+            else:
+                if not isinstance(array, HasUnit):
+                    raise ValueError(f"Unit is required for column type {column_type}.")
         
         # Add to internal dataframe
         internal_column_name: str = self._create_internal_dataframe_column_name(column_key)
         self._internal_dataframe_column_names[column_key] = internal_column_name
-        self._internal_dataframe[internal_column_name] = column_type.get_values_for_dataframe(array, unit) # type: ignore
+        self._internal_dataframe[internal_column_name] = column_type.get_pd_series_for_dataframe(array, unit) # type: ignore
 
     def column_remove(self, column_key: CK) -> None:
         """
