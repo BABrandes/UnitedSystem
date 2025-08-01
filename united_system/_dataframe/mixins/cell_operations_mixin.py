@@ -76,8 +76,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if column_key not in self._column_keys:
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
-        raw_value: VALUE_TYPE = self._internal_dataframe.loc[row_index, self._internal_dataframe_column_names[column_key]] # type: ignore
-        result: SCALAR_TYPE = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
+        result: SCALAR_TYPE = self._column_types[column_key].get_scalar_from_pd_series(self._internal_dataframe[self._internal_dataframe_column_names[column_key]], row_index, self._column_units[column_key]) # type: ignore
         return result
     
     @overload
@@ -194,10 +193,10 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if expected_type is not None:
             if not self._column_types[column_key].check_array_type(expected_type):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
-            result: AT = self._column_types[column_key].get_array_from_dataframe(self._internal_dataframe.loc[first_row_index:last_row_index, self._internal_dataframe_column_names[column_key]], self._column_units[column_key]) # type: ignore
+            result: AT = self._column_types[column_key].get_array_from_pd_series(self._internal_dataframe[self._internal_dataframe_column_names[column_key]][first_row_index:last_row_index], self._column_units[column_key]) # type: ignore
             return result
         else:
-            result: ARRAY_TYPE = self._column_types[column_key].get_array_from_dataframe(self._internal_dataframe.loc[first_row_index:last_row_index, self._internal_dataframe_column_names[column_key]], self._column_units[column_key]) # type: ignore
+            result: ARRAY_TYPE = self._column_types[column_key].get_array_from_pd_series(self._internal_dataframe[self._internal_dataframe_column_names[column_key]][first_row_index:last_row_index], self._column_units[column_key]) # type: ignore
             return result
         
     @overload
@@ -459,10 +458,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
-        if self._column_types[column_key].can_be_none:
-            self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].missing_value
-        else:
-            raise ValueError(f"Column '{column_key}' of type {self._column_types[column_key]} cannot be set to missing.")
+        self._internal_dataframe.loc[row_index, internal_column_name] = self._column_types[column_key].get_appropriate_missing_value("dataframe")
             
     def cell_set_missing(self, row_index: int, column_key: CK) -> None:
         """

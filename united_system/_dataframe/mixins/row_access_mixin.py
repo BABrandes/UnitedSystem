@@ -33,7 +33,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_keys = self._column_keys
         return {column_key: self._cell_get_value(row_index, column_key) for column_key in column_keys}
 
-    def row_get_as_dict(self, row_index: int, column_keys: list[CK]|None = None) -> dict[CK, SCALAR_TYPE]:
+    def row_get_as_dict(self, row_index: int, column_keys: Sequence[CK]|None = None) -> dict[CK, SCALAR_TYPE]:
         """
         Get a row as a dictionary with a subset of column keys.
         """

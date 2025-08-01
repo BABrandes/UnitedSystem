@@ -9,7 +9,7 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import TYPE_CHECKING, overload, TypeVar, Any
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._dataframe.column_type import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
+from ..._utils.general import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
 
 NST = TypeVar("NST", bound=NUMERIC_SCALAR_TYPE)
 ST = TypeVar("ST", bound=SCALAR_TYPE)
@@ -29,23 +29,23 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Column Statistics: Min/Max ------------
 
-    def _helper_return_numeric_scalar(self, raw_value: Any, column_key: CK, expected_type: type[NST]|None) -> NUMERIC_SCALAR_TYPE:
+    def _helper_return_numeric_scalar(self, raw_value: Any, column_key: CK, expected_type: type[NST]|None) -> NUMERIC_SCALAR_TYPE|NST:
         if expected_type is not None:
             if not self._column_types[column_key].check_scalar_type(expected_type):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
             result: NST = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
         else:
             result: NUMERIC_SCALAR_TYPE = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
-        return result
+        return result # type: ignore[no-any-return]
     
-    def _helper_return_scalar(self, raw_value: Any, column_key: CK, expected_type: type[ST]|None) -> SCALAR_TYPE:
+    def _helper_return_scalar(self, raw_value: Any, column_key: CK, expected_type: type[ST]|None) -> SCALAR_TYPE|ST:
         if expected_type is not None:
             if not self._column_types[column_key].check_scalar_type(expected_type):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
             result: ST = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
         else:
             result: SCALAR_TYPE = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
-        return result
+        return result # type: ignore[no-any-return]
 
     @overload
     def column_get_min(self, column_key: CK) -> NUMERIC_SCALAR_TYPE: ...

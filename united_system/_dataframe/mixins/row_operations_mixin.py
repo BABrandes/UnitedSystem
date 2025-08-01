@@ -10,8 +10,7 @@ import pandas as pd
 from typing import TYPE_CHECKING, Sequence
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._scalars.base_scalar import BaseScalar
-from ..._utils.general import VALUE_TYPE, SCALAR_TYPE
+from ..._utils.general import VALUE_TYPE, SCALAR_TYPE, SCALAR_TYPE_RUNTIME
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -82,7 +81,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
         
         for column_key, value in values.items():
-            if isinstance(value, BaseScalar):
+            if isinstance(value, SCALAR_TYPE_RUNTIME):
                 self._cell_set_scalar(row_index, column_key, value)
             else:
                 self._cell_set_value(row_index, column_key, value) # type: ignore
@@ -105,7 +104,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         # Direct cell operations for performance
         for col_index, column_key in enumerate(self._column_keys):
-            if isinstance(values[col_index], BaseScalar):
+            if isinstance(values[col_index], SCALAR_TYPE_RUNTIME):
                 self._cell_set_scalar(row_index, column_key, values[col_index])
             else:
                 self._cell_set_value(row_index, column_key, values[col_index]) # type: ignore

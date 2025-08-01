@@ -5,7 +5,8 @@ from typing import Callable
 import locale
 import h5py
 from pandas import Timestamp
-from .._scalars.base_scalar import BaseScalar
+from .._scalars.real_united_scalar import RealUnitedScalar
+from .._scalars.complex_united_scalar import ComplexUnitedScalar
 from .._arrays.real_united_array import RealUnitedArray
 from .._arrays.complex_united_array import ComplexUnitedArray
 from .._arrays.string_array import StringArray
@@ -16,8 +17,14 @@ from .._arrays.timestamp_array import TimestampArray
 from .._arrays.complex_array import ComplexArray
 
 VALUE_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
-SCALAR_TYPE: TypeAlias = VALUE_TYPE|BaseScalar[Any]
+SCALAR_TYPE: TypeAlias = VALUE_TYPE|RealUnitedScalar|ComplexUnitedScalar|int|float|complex|Timestamp
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
+
+VALUE_TYPE_RUNTIME: tuple[type, ...] = (float, complex, str, bool, int, Timestamp)
+SCALAR_TYPE_RUNTIME: tuple[type, ...] = (float, complex, str, bool, int, Timestamp, RealUnitedScalar, ComplexUnitedScalar)
+ARRAY_TYPE_RUNTIME: tuple[type, ...] = (RealUnitedArray, ComplexUnitedArray, StringArray, IntArray, FloatArray, BoolArray, TimestampArray, ComplexArray)
+
+NUMERIC_SCALAR_TYPE: TypeAlias = RealUnitedScalar|ComplexUnitedScalar|int|float|complex|Timestamp
 
 T = TypeVar("T", covariant=True)
 

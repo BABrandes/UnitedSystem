@@ -16,7 +16,7 @@ import h5py
 
 # Runtime imports needed for TypeVar definitions and protocol class
 from ..._dataframe.column_key import ColumnKey
-from ..._dataframe.column_type import ARRAY_TYPE, ColumnType, SCALAR_TYPE, NUMERIC_SCALAR_TYPE
+from ..._dataframe.column_type import ColumnType
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._units_and_dimension.unit import Unit
 from ..._units_and_dimension.dimension import Dimension
@@ -24,7 +24,7 @@ from ..grouping._groups import Groups
 from ..._arrays.bool_array import BoolArray
 from ..accessors._row_accessor import RowAccessor
 from ..accessors._column_accessor import ColumnAccessor
-from ..._utils.general import VALUE_TYPE
+from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, SCALAR_TYPE, NUMERIC_SCALAR_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -69,7 +69,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
     ######### INTERNAL METHODS (NO LOCKS, NO READ-ONLY CHECK) #########
 
     @classmethod
-    def _construct(cls, dataframe: pd.DataFrame, column_keys: list[CK], column_types: dict[CK, ColumnType], column_units: dict[CK, Optional[Unit]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False, copy_dataframe: bool = False, rename_dataframe_columns: bool = False) -> "UnitedDataframe[CK]": ...
+    def _construct(cls, dataframe: pd.DataFrame, column_keys: Sequence[CK], column_types: dict[CK, ColumnType], column_units: dict[CK, Optional[Unit]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False, copy_dataframe: bool = False, rename_dataframe_columns: bool = False) -> "UnitedDataframe[CK]": ...
 
     # UnitMixin internal methods
     def _unit_has(self, column_key: CK) -> bool: ...
@@ -302,10 +302,10 @@ class UnitedDataframeProtocol(Generic[CK, T]):
 
     # ConstructorMixin user methods
     @classmethod
-    def create_empty(cls, column_keys: list[CK], column_types: dict[CK, ColumnType], column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter) -> "UnitedDataframe[CK]": ...
+    def create_empty(cls, column_keys: Sequence[CK], column_types: dict[CK, ColumnType], column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter) -> "UnitedDataframe[CK]": ...
     @classmethod
     def create_from_data(cls, columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
                     Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
                     Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],],
                     internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False) -> "UnitedDataframe[CK]": ...
@@ -323,7 +323,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
     def create_from_pandas_with_incorrect_column_names(cls, pandas_dataframe: pd.DataFrame, column_key_mapping: dict[str, CK], column_types: dict[CK, ColumnType], column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, deep_copy: bool) -> "UnitedDataframe[CK]": ...
 
     # GroupbyMixin user methods
-    def groupby(self, by: Union[CK, list[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]: ...
+    def groupby(self, by: Union[CK, Sequence[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]: ...
     def crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: Sequence[int]|slice|None = None) -> "UnitedDataframe[CK]": ...
 
     # AccessorMixin user methods

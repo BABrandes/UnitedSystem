@@ -113,8 +113,13 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         else:
             pandas_series: pd.Series = self._internal_dataframe[internal_column_name] # type: ignore[no-any-return]
 
-        array: ARRAY_TYPE = column_type.get_array_from_dataframe(pandas_series, self._column_units[column_key]) # type: ignore[no-any-return]
-        return array
+        if expected_column_type is not None:
+            if not column_type.check_array_type(expected_column_type):
+                raise ValueError(f"Column {column_key} is not a {expected_column_type} column.")
+            array: AT = column_type.get_array_from_dataframe(pandas_series, self._column_units[column_key]) # type: ignore[no-any-return]
+        else:
+            array: ARRAY_TYPE = column_type.get_array_from_dataframe(pandas_series, self._column_units[column_key]) # type: ignore[no-any-return]
+        return array # type: ignore[no-any-return]
     
     def _column_get_as_column_accessor(self, column_key: CK, slice: slice|None = None) -> ColumnAccessor[CK]:
         """

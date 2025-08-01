@@ -11,7 +11,7 @@ from typing import overload, TYPE_CHECKING, Any, Union
 from collections.abc import Sequence
 from ..._dataframe.column_key import ColumnKey
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, SCALAR_TYPE
+from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, SCALAR_TYPE, SCALAR_TYPE_RUNTIME, VALUE_TYPE_RUNTIME
 import numpy as np
 import pandas as pd
 
@@ -110,17 +110,17 @@ class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
                     if isinstance(key_0, ColumnKey|str) and isinstance(key_1, int):
                         column_key: CK = key_0 # type: ignore
-                        if isinstance(value, SCALAR_TYPE):
+                        if isinstance(value, SCALAR_TYPE_RUNTIME):
                             self._cell_set_scalar(key_1, column_key, value)
-                        elif isinstance(value, VALUE_TYPE):
+                        elif isinstance(value, VALUE_TYPE_RUNTIME):
                             raise NotImplementedError("Setting a single cell value is not implemented.")
                         else:
                             raise ValueError(f"Invalid value: {value}")
                     elif isinstance(key_0, int) and isinstance(key_1, ColumnKey|str):
                         column_key: CK = key_1 # type: ignore
-                        if isinstance(value, SCALAR_TYPE):
+                        if isinstance(value, SCALAR_TYPE_RUNTIME):
                             self._cell_set_scalar(key_0, column_key, value)
-                        elif isinstance(value, VALUE_TYPE):
+                        elif isinstance(value, VALUE_TYPE_RUNTIME):
                             raise NotImplementedError("Setting a single cell value is not implemented.")
                         else:
                             raise ValueError(f"Invalid value: {value}")

@@ -20,7 +20,7 @@ from ..._units_and_dimension.unit import Unit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._arrays.base_united_array import BaseUnitedArray
 from ..._scalars.united_scalar import UnitedScalar
-from ..._utils.general import VALUE_TYPE, ARRAY_TYPE
+from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, ARRAY_TYPE_RUNTIME
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -121,7 +121,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @classmethod
     def create_empty(
         cls,
-        column_keys: list[CK],
+        column_keys: Sequence[CK],
         column_types: dict[CK, ColumnType],
         column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter
@@ -130,7 +130,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Create an empty UnitedDataframe with the specified structure.
         
         Args:
-            column_keys (list[CK]): List of column keys
+            column_keys (Sequence[CK]): Sequence of column keys
             column_types (dict[CK, ColumnType]): Column type mapping
             column_units_or_dimensions (dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter object
@@ -187,7 +187,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_data(
         cls,
         columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
                     Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
                     Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],
         ],
@@ -208,7 +208,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         - pd.Series[Any]
         
         Args:
-            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
+            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter function
             read_only (bool): Whether the UnitedDataframe should be read-only.
             
@@ -234,15 +234,16 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         def get_numpy_from_list_of_scalars(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: list[VALUE_TYPE]) -> np.ndarray:
             list_of_values: list[Any] = []
             for item in array_or_list_or_numpy_array_or_pandas_series:
-                if isinstance(item, UnitedScalar):
+                if issubclass(type(item), UnitedScalar):
+                    assert isinstance(item, UnitedScalar)
                     # UnitedScalar
-                    scalar: UnitedScalar[Any, Any] = cast(UnitedScalar[Any, Any], item)
+                    scalar: UnitedScalar[Any, Any] = item # type: ignore
                     if not column_types[column_key].check_compatibility(scalar, column_units[column_key]):
                         raise ValueError(f"List item {item} is not compatible with column unit {column_units[column_key]}")
                     if column_units[column_key] is not None:
                         list_of_values.append(column_units[column_key].from_canonical_value(scalar.canonical_value)) # type: ignore
                     else:
-                        list_of_values.append(scalar.canonical_value)
+                        list_of_values.append(scalar.canonical_value) # type: ignore
                 else:
                     # Non-UnitedScalar
                     list_of_values.append(item)
@@ -267,7 +268,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 else:
                     raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
                 
-                if isinstance(array_or_list_or_numpy_array_or_pandas_series, ARRAY_TYPE):
+                if isinstance(array_or_list_or_numpy_array_or_pandas_series, ARRAY_TYPE_RUNTIME):
+                    assert isinstance(array_or_list_or_numpy_array_or_pandas_series, ARRAY_TYPE)
                     column_values[column_key] = get_numpy_from_array(column_key, array_or_list_or_numpy_array_or_pandas_series)
                 elif isinstance(array_or_list_or_numpy_array_or_pandas_series, list):
                     column_values[column_key] = get_numpy_from_list_of_scalars(column_key, array_or_list_or_numpy_array_or_pandas_series)
@@ -282,7 +284,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
             else:
                 # Non-Tuple value
-                if isinstance(value, ARRAY_TYPE):
+                if isinstance(value, ARRAY_TYPE_RUNTIME):
+                    assert isinstance(value, ARRAY_TYPE)
                     column_types[column_key] = ColumnType.infer_approbiate_column_type(type(value)) # type: ignore
                     if isinstance(value, BaseUnitedArray):
                         column_units[column_key] = value.unit
