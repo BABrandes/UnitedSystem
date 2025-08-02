@@ -50,7 +50,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         empty_rows = pd.DataFrame(index=range(row_index, row_index + 1), columns=self._internal_dataframe.columns)
         self._internal_dataframe = pd.concat([self._internal_dataframe.iloc[:row_index], empty_rows, self._internal_dataframe.iloc[row_index:]], ignore_index=True) 
 
-    def _row_add_empty(self, number_of_rows: int) -> None:
+    def _row_add_empty(self, number_of_rows: int = 1) -> None:
         """
         Internal: Add empty rows to the end of the dataframe. (no lock)
         
@@ -127,7 +127,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     ##### Base row operations end #####
 
-    def row_add_empty(self, number_of_rows: int) -> None:
+    def row_add_empty(self, number_of_rows: int = 1) -> None:
         """
         Add empty rows to the end of the dataframe.
         
