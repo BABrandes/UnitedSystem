@@ -30,7 +30,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     Now inherits from UnitedDataframeProtocol so it has full knowledge of the 
     UnitedDataframe interface with proper IDE support and type checking.
     """
-
+    
     ################### Overloads for single indexing #########################################################
 
     @overload

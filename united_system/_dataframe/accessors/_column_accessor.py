@@ -4,10 +4,11 @@ if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
     from ..._dataframe.column_key import ColumnKey
 
-from ..._dataframe.column_type import ARRAY_TYPE, ColumnType, NUMERIC_SCALAR_TYPE, SCALAR_TYPE
+from ..._dataframe.column_type import ColumnType
 from ..._units_and_dimension.dimension import Dimension
 from ..._units_and_dimension.unit import Unit
 from ..._arrays.bool_array import BoolArray
+from ..._utils.general import ARRAY_TYPE, SCALAR_TYPE, VALUE_TYPE, NUMERIC_SCALAR_TYPE, VALUE_TYPE_RUNTIME, SCALAR_TYPE_RUNTIME, RealUnitedScalar, RealUnitedArray
 import pandas as pd
 import numpy as np
 
@@ -29,11 +30,23 @@ class ColumnAccessor(Generic[CK]):
         else:
             self._slice: slice = slice(0, len(self._parent), 1)
         
-    def __getitem__(self, row: int) -> SCALAR_TYPE:
+    def __getitem__(self, row: int) -> VALUE_TYPE:
         return self._parent.cell_get_value(row, self._column_key)
     
-    def __setitem__(self, row: int, value: SCALAR_TYPE) -> None:
-        self._parent.cell_set_value(row, self._column_key, value)
+    @overload
+    def __setitem__(self, row: int, value: VALUE_TYPE|None) -> None: ...
+    @overload
+    def __setitem__(self, row: int, value: SCALAR_TYPE|None) -> None: ...
+
+    def __setitem__(self, row: int, value: VALUE_TYPE|SCALAR_TYPE|None) -> None:
+        if isinstance(value, SCALAR_TYPE_RUNTIME):
+            assert isinstance(value, SCALAR_TYPE)
+            self._parent.cell_set_scalar(row, self._column_key, value)
+        elif isinstance(value, VALUE_TYPE_RUNTIME):
+            assert isinstance(value, VALUE_TYPE)
+            self._parent.cell_set_value(row, self._column_key, value)
+        else:
+            raise ValueError(f"Invalid value type: {type(value)}")
 
     def __len__(self) -> int:
         return len(self._parent)
@@ -261,6 +274,43 @@ class ColumnAccessor(Generic[CK]):
         """
         # This would need to be implemented in the parent dataframe
         raise NotImplementedError("Column row_index not yet implemented")
+    
+    def _get_array(self, column_key: CK) -> RealUnitedArray:
+        if not self._parent._colkey_is_numeric(column_key): # type: ignore
+            raise ValueError(f"Column {column_key} is not numeric")
+        return self._parent._column_get_as_array(column_key, RealUnitedArray) # type: ignore
+
+    @overload
+    def __add__(self, other: RealUnitedScalar) -> RealUnitedArray: ...
+    @overload
+    def __add__(self, other: RealUnitedArray) -> RealUnitedArray: ...
+
+    def __add__(self, other: RealUnitedScalar|RealUnitedArray) -> RealUnitedArray:
+        return self._get_array(self._column_key) + other
+        
+    def __radd__(self, other: RealUnitedScalar|RealUnitedArray) -> RealUnitedArray:
+        return self.__add__(other)
+    
+    def __sub__(self, other: RealUnitedScalar|RealUnitedArray) -> RealUnitedArray:
+        return self._get_array(self._column_key) - other
+        
+    def __rsub__(self, other: RealUnitedScalar|RealUnitedArray) -> RealUnitedArray:
+        return self.__sub__(other)
+    
+    def __mul__(self, other: RealUnitedScalar|RealUnitedArray|float) -> RealUnitedArray:
+        return self._get_array(self._column_key) * other
+    
+    def __rmul__(self, other: RealUnitedScalar|RealUnitedArray|float) -> RealUnitedArray:
+        return self.__mul__(other)
+    
+    def __truediv__(self, other: RealUnitedScalar|RealUnitedArray|float) -> RealUnitedArray:
+        return self._get_array(self._column_key) / other
+        
+    def __rtruediv__(self, other: RealUnitedScalar|RealUnitedArray|float) -> RealUnitedArray:
+        return other / self._get_array(self._column_key)
+    
+    def __abs__(self) -> RealUnitedArray:
+        return abs(self._get_array(self._column_key))
 
 
     
