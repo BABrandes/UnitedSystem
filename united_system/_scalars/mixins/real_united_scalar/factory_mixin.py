@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Union, Optional
 from ...._units_and_dimension.unit import Unit
 from ...._units_and_dimension.dimension import Dimension
 from .protocol import RealUnitedScalarProtocol
+from ...._units_and_dimension.named_quantity import NamedQuantity
 
 if TYPE_CHECKING:
     from ...._scalars.real_united_scalar import RealUnitedScalar
@@ -124,14 +125,48 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         from ...._scalars.real_united_scalar import RealUnitedScalar
         return RealUnitedScalar.create_from_canonical_value(value, Dimension.dimensionless_dimension(), None)
 
-    @classmethod
-    def zero(cls, dimension: "Dimension") -> "RealUnitedScalar":
-        """Create a zero scalar with the given dimension."""
-        from ...._scalars.real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(0.0, dimension, None)
+    #########################################################
+    # Factory methods for special values (cached)
+    #########################################################
+
+    _CACHE_SPECIAL_VALUES: dict[float, dict[Unit|Dimension|NamedQuantity|None, "RealUnitedScalar"]] = {}
 
     @classmethod
-    def one(cls, dimension: "Dimension") -> "RealUnitedScalar":
-        """Create a one scalar with the given dimension."""
-        from ...._scalars.real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(1.0, dimension, None)
+    def positive_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+        if float("inf") not in cls._CACHE_SPECIAL_VALUES:
+            cls._CACHE_SPECIAL_VALUES[float("inf")] = {}
+        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("inf")]:
+            cls._CACHE_SPECIAL_VALUES[float("inf")][unit_or_dimension] = RealUnitedScalar(float("inf"), unit_or_dimension)
+        return cls._CACHE_SPECIAL_VALUES[float("inf")][unit_or_dimension]
+    
+    @classmethod
+    def negative_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+        if float("-inf") not in cls._CACHE_SPECIAL_VALUES:
+            cls._CACHE_SPECIAL_VALUES[float("-inf")] = {}
+        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("-inf")]:
+            cls._CACHE_SPECIAL_VALUES[float("-inf")][unit_or_dimension] = RealUnitedScalar(float("-inf"), unit_or_dimension)
+        return cls._CACHE_SPECIAL_VALUES[float("-inf")][unit_or_dimension]
+    
+    @classmethod
+    def nan(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+        if float("nan") not in cls._CACHE_SPECIAL_VALUES:
+            cls._CACHE_SPECIAL_VALUES[float("nan")] = {}
+        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("nan")]:
+            cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension] = RealUnitedScalar(float("nan"), unit_or_dimension)
+        return cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension]
+        
+    @classmethod
+    def zero(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+        if 0.0 not in cls._CACHE_SPECIAL_VALUES:
+            cls._CACHE_SPECIAL_VALUES[0.0] = {}
+        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[0.0]:
+            cls._CACHE_SPECIAL_VALUES[0.0][unit_or_dimension] = RealUnitedScalar(0.0, unit_or_dimension)
+        return cls._CACHE_SPECIAL_VALUES[0.0][unit_or_dimension]
+        
+    @classmethod
+    def one(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+        if 1.0 not in cls._CACHE_SPECIAL_VALUES:
+            cls._CACHE_SPECIAL_VALUES[1.0] = {}
+        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[1.0]:
+            cls._CACHE_SPECIAL_VALUES[1.0][unit_or_dimension] = RealUnitedScalar(1.0, unit_or_dimension)
+        return cls._CACHE_SPECIAL_VALUES[1.0][unit_or_dimension]
