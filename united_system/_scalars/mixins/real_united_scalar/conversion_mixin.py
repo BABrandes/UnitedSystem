@@ -37,9 +37,11 @@ class ConversionMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             self.dimension,
             self.dimension.canonical_unit)
 
-    def scalar_in_unit(self, unit: "Unit") -> "RealUnitedScalar":
+    def scalar_in_unit(self, unit: "Unit|str") -> "RealUnitedScalar":
         """Return a new scalar with the specified unit as display unit."""
         from united_system._scalars.real_united_scalar import RealUnitedScalar
+        if isinstance(unit, str):
+            unit = Unit(unit)
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
         return RealUnitedScalar(

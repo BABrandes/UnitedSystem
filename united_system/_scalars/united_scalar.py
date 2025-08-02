@@ -108,10 +108,12 @@ class UnitedScalar(BaseScalar[PT], JSONable[UST], HDF5able[UST], HasUnit, Generi
     def compatible_to(self, *args: UST) -> bool:
         ...
 
-    def value_in_unit(self, unit: Unit) -> PT:
+    def value_in_unit(self, unit: Unit|str) -> PT:
         """
         Get the scalar value as a float in the given unit.
         """
+        if isinstance(unit, str):
+            unit = Unit(unit)
         if not unit.compatible_to(self.dimension): # type: ignore
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return unit.from_canonical_value(self.canonical_value) # type: ignore
@@ -137,7 +139,7 @@ class UnitedScalar(BaseScalar[PT], JSONable[UST], HDF5able[UST], HasUnit, Generi
         """
     
     @abstractmethod
-    def scalar_in_unit(self, unit: Unit) -> UST:
+    def scalar_in_unit(self, unit: Unit|str) -> UST:
         """
         Convert the scalar to a unit representation.
         """
