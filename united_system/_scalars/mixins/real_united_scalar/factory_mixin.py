@@ -132,7 +132,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     _CACHE_SPECIAL_VALUES: dict[float, dict[Unit|Dimension|NamedQuantity|None, "RealUnitedScalar"]] = {}
 
     @classmethod
-    def positive_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+    def positive_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
         """
         Returns a scalar with positive infinity from the cache.
 
@@ -142,6 +142,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         Returns:
             A new RealUnitedScalar with positive infinity
         """
+        if isinstance(unit_or_dimension, str):
+            unit_or_dimension = Unit(unit_or_dimension)
         if float("inf") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("inf")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("inf")]:
@@ -149,7 +151,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         return cls._CACHE_SPECIAL_VALUES[float("inf")][unit_or_dimension]
     
     @classmethod
-    def negative_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+    def negative_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
         """
         Returns a scalar with negative infinity from the cache.
 
@@ -159,6 +161,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         Returns:
             A new RealUnitedScalar with negative infinity
         """
+        if isinstance(unit_or_dimension, str):
+            unit_or_dimension = Unit(unit_or_dimension)
         if float("-inf") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("-inf")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("-inf")]:
@@ -166,7 +170,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         return cls._CACHE_SPECIAL_VALUES[float("-inf")][unit_or_dimension]
     
     @classmethod
-    def nan(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+    def nan(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
         """
         Returns a scalar with NaN from the cache.
 
@@ -176,6 +180,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         Returns:
             A new RealUnitedScalar with NaN
         """
+        if isinstance(unit_or_dimension, str):
+            unit_or_dimension = Unit(unit_or_dimension)
         if float("nan") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("nan")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("nan")]:
@@ -183,7 +189,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         return cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension]
         
     @classmethod
-    def zero(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+    def zero(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
         """
         Returns a scalar with zero from the cache.
 
@@ -193,6 +199,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         Returns:
             A new RealUnitedScalar with zero
         """
+        if isinstance(unit_or_dimension, str):
+            unit_or_dimension = Unit(unit_or_dimension)
         if 0.0 not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[0.0] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[0.0]:
@@ -200,7 +208,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         return cls._CACHE_SPECIAL_VALUES[0.0][unit_or_dimension]
         
     @classmethod
-    def one(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|None = None) -> "RealUnitedScalar":
+    def one(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
         """
         Returns a scalar with one from the cache.
 
@@ -210,6 +218,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         Returns:
             A new RealUnitedScalar with one
         """
+        if isinstance(unit_or_dimension, str):
+            unit_or_dimension = Unit(unit_or_dimension)
         if 1.0 not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[1.0] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[1.0]:
