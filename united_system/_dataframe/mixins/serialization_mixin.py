@@ -186,7 +186,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
         
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df) # type: ignore
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df, internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter) # type: ignore
         return united_dataframe  # type: ignore
 
     # ----------- Pickle Serialization ------------

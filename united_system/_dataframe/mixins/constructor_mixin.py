@@ -336,7 +336,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_types=column_types,
             column_units=column_units,
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter,
-            read_only= False,
+            read_only= read_only,
             copy_dataframe= False,
             rename_dataframe_columns= False
         )
