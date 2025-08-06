@@ -105,89 +105,66 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- HDF5 Serialization ------------
 
-    def to_hdf5(self, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", **kwargs: Any) -> None:
+    def to_hdf5(self, group: Union[h5py.Group, tuple[str, h5py.Group]], **kwargs: Any) -> None:
         """
         Serialize dataframe to HDF5 format.
-        
+
         Args:
-            path_or_group (Union[Path, str, h5py.Group]): File path or h5py Group to save to
-            key (str): HDF5 key/group name (default: "dataframe") - ignored if path_or_group is a Group
+            group (Union[h5py.Group, tuple[str, h5py.Group]]): h5py Group to save to. If a tuple is provided, the first element is the key and the second element is the parent h5py Group.
             **kwargs: Additional arguments passed to pandas.DataFrame.to_hdf()
         """
         with self._rlock:
-            if isinstance(path_or_group, (str, Path)):
-                # File path - use pandas standard HDF5 interface
-                # Convert extension arrays to numpy arrays for HDF5 compatibility
-                df_to_save = self._internal_dataframe.copy()
-                for col in df_to_save.columns:
-                    if hasattr(df_to_save[col].dtype, 'numpy_dtype'):
-                        # Convert extension arrays (FloatingArray, etc.) to numpy arrays
-                        df_to_save[col] = df_to_save[col].astype(df_to_save[col].dtype.numpy_dtype) #type: ignore
-                df_to_save.to_hdf(str(path_or_group), key, **kwargs) # type: ignore
-            else:
-                # h5py Group - need to use a different approach
-                # Save to temporary file then copy to group
-                import tempfile
-                import os
-                with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
-                    temp_path = tmp_file.name
-                try:
-                    # Save to temporary file with extension array conversion
-                    df_to_save = self._internal_dataframe.copy()
-                    for col in df_to_save.columns:
-                        if hasattr(df_to_save[col].dtype, 'numpy_dtype'):
-                            # Convert extension arrays (FloatingArray, etc.) to numpy arrays
-                            df_to_save[col] = df_to_save[col].astype(df_to_save[col].dtype.numpy_dtype) #type: ignore
-                    df_to_save.to_hdf(temp_path, key, **kwargs) # type: ignore
-                    
-                    # Copy from temporary file to target group
-                    import h5py
-                    with h5py.File(temp_path, 'r') as temp_h5:
-                        temp_h5.copy(key, path_or_group, name=key) # type: ignore
-                finally:
-                    # Clean up temporary file
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
+            if isinstance(group, tuple):
+                group_name, parent = group
+                if group_name in parent:
+                    raise ValueError(f"The key {group_name} already exists in {parent.name}") #type: ignore
+                group = parent.create_group(group_name) #type: ignore
+
+            file_path: str = group.file.filename
+            key: str = kwargs.pop("key", "dataframe")
+            group_name: str = str(group.name)  #type: ignore
+            full_key: str = group_name + "/" + key
+
+            self._internal_dataframe.to_hdf(file_path, key=full_key, **kwargs)
 
     @classmethod
-    def from_hdf5(cls, path_or_group: Union[Path, str, h5py.Group], key: str = "dataframe", internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **kwargs: Any) -> "UnitedDataframe[CK]":
+    def from_hdf5(
+        cls,
+        group: Union[h5py.Group, tuple[str, h5py.Group]],
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
+        **kwargs: Any
+    ) -> "UnitedDataframe[CK]":
         """
         Load dataframe from HDF5 format.
         
         Args:
-            path_or_group (Union[Path, str, h5py.Group]): File path or h5py Group to load from
-            key (str): HDF5 key/group name (default: "dataframe") - ignored if path_or_group is a Group
+            group (Union[h5py.Group, tuple[str, h5py.Group]]): h5py Group to load from. If a tuple is provided, the first element is the key and the second element is the parent h5py Group.
             internal_dataframe_column_name_formatter: Formatter for internal column names
             **kwargs: Additional arguments passed to pandas.read_hdf()
         """
         import pandas as pd
-        
-        if isinstance(path_or_group, (str, Path)):
-            # File path - use pandas standard HDF5 interface
-            df: pd.DataFrame = pd.read_hdf(str(path_or_group), key, **kwargs) # type: ignore
-        else:
-            # h5py Group - need to use a different approach
-            # Copy from group to temporary file then read
-            import tempfile
-            import os
-            import h5py
-            
-            with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
-                temp_path = tmp_file.name
-            try:
-                # Copy from group to temporary file
-                with h5py.File(temp_path, 'w') as temp_h5:
-                    path_or_group.copy(key, temp_h5, name=key) # type: ignore
-                
-                # Read from temporary file
-                df: pd.DataFrame = pd.read_hdf(temp_path, key, **kwargs) # type: ignore
-            finally:
-                # Clean up temporary file
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-        
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df, internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter) # type: ignore
-        return united_dataframe  # type: ignore
+
+        if isinstance(group, tuple):
+            parent_group: h5py.Group = group[1]
+            key_string: str = group[0]
+            group_ = parent_group[key_string]
+            if not isinstance(group_, h5py.Group):
+                raise ValueError(f"The key {key_string} is not a h5py Group.")
+            group = group_
+
+        file_path: str = group.file.filename
+        key: str = kwargs.pop("key", "dataframe")
+        group_name: str = str(group.name) #type: ignore
+        full_key: str = group_name + "/" + key
+
+        df: pd.DataFrame = pd.read_hdf(file_path, key=full_key, **kwargs) # type: ignore
+        assert isinstance(df, pd.DataFrame)
+
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(
+            dataframe=df,
+            internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter
+        )  # type: ignore
+        return united_dataframe
 
     # ----------- Pickle Serialization ------------
 
