@@ -22,9 +22,7 @@ import tempfile
 import os
 
 # Import the modules to test
-from united_system._scalars.real_united_scalar import RealUnitedScalar
-from united_system._units_and_dimension.dimension import Dimension
-from united_system._units_and_dimension.unit import Unit
+from united_system import RealUnitedScalar, Dimension, Unit
 
 class TestRealUnitedScalarCore:
     """Test core functionality of RealUnitedScalar."""
@@ -114,7 +112,7 @@ class TestRealUnitedScalarCore:
         scalar = RealUnitedScalar(5.0, unit)
         
         # active_float should be the value in the display unit
-        assert scalar.active_float == 5.0
+        assert scalar.value() == 5.0
     
     def test_compatible_to(self):
         """Test compatible_to method."""
@@ -261,7 +259,7 @@ class TestRealUnitedScalarConversion:
     
     def test_in_unit(self):
         """Test conversion to different unit."""
-        result = self.scalar.in_unit(self.g_unit)
+        result: RealUnitedScalar = self.scalar.scalar_in_unit(self.g_unit)
         assert result.canonical_value == 1.0  # Same canonical value
         assert result.dimension == self.mass_dim
         assert result.unit == self.g_unit
@@ -271,18 +269,18 @@ class TestRealUnitedScalarConversion:
         m_unit = Unit("m")
         
         with pytest.raises(ValueError):
-            self.scalar.in_unit(m_unit)
+            self.scalar.value_in_unit(m_unit)
     
     def test_to_canonical(self):
         """Test conversion to canonical unit."""
-        result = self.scalar.to_canonical()
+        result = self.scalar.scalar_in_canonical_unit()
         assert result.canonical_value == 1.0
         assert result.dimension == self.mass_dim
         assert result._display_unit is None  # type: ignore
     
     def test_to_canonical_with_display_unit(self):
         """Test conversion to canonical unit with display unit set."""
-        result = self.scalar.to_canonical(with_display_unit=True)
+        result: RealUnitedScalar = self.scalar.scalar_in_canonical_unit()
         assert result.canonical_value == 1.0
         assert result.dimension == self.mass_dim
         assert result.unit == self.mass_dim.canonical_unit
@@ -319,17 +317,17 @@ class TestRealUnitedScalarConversion:
     
     def test_float_in_unit(self):
         """Test float_in_unit method."""
-        value = self.scalar.float_in_unit(self.g_unit)
+        value = self.scalar.value_in_unit(self.g_unit)
         assert value == 1000.0  # 1 kg = 1000 g
     
     def test_canonical_float(self):
         """Test canonical_float method."""
-        value = self.scalar.canonical_float()
+        value = self.scalar.value_in_canonical_unit()
         assert value == 1.0  # 1 kg in canonical units
     
     def test_display_float(self):
         """Test display_float method."""
-        value = self.scalar.display_float()
+        value = self.scalar.value()
         assert value == 1.0  # 1 kg in display unit
     
     def test_display_float_no_display_unit(self):
@@ -337,7 +335,7 @@ class TestRealUnitedScalarConversion:
         scalar_no_display = RealUnitedScalar(1.0, self.mass_dim)
         
         with pytest.raises(ValueError, match="No display unit set"):
-            scalar_no_display.display_float()
+            scalar_no_display.value()
 
 class TestRealUnitedScalarFormatting:
     """Test formatting operations."""

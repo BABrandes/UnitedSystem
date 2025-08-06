@@ -19,11 +19,9 @@ import numpy as np
 import h5py
 
 # Import the modules to test
-from united_system._units_and_dimension.unit import Unit
-from united_system._units_and_dimension.dimension import Dimension
-from united_system._units_and_dimension.unit_symbol import UnitSymbol
+from united_system import Unit, UnitPrefix, NamedQuantity, Dimension, UnitSymbol
+
 from united_system._units_and_dimension.utils import seperate_string
-from united_system._units_and_dimension.named_quantity import NamedQuantity
 
 class TestUnitCreation:
     """Test unit creation and initialization."""
@@ -446,7 +444,7 @@ class TestUnitArithmetic:
         km_element = None
         second_element = None
         for element in elements:
-            if element.unit_symbol == UnitSymbol.METER and element.prefix == "k":
+            if element.unit_symbol == UnitSymbol.METER and element.prefix == UnitPrefix.KILO:
                 km_element = element
             elif element.unit_symbol == UnitSymbol.SECOND:
                 second_element = element
