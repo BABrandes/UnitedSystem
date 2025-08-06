@@ -3,6 +3,13 @@ from .._units_and_dimension.unit import Unit
 from .._dataframe.column_key import ColumnKey
 
 class InternalDataFrameColumnNameFormatter(Protocol):
+    """
+    Protocol for creating and retrieving internal dataframe column names.
+    The column key is the key of the column in the UnitedDataframe, the unit is the unit of the column.
+    The column key is a string, the unit is a Unit object.
+    The column key is a string, the unit is a Unit object. The column key is a string, the unit is a Unit object.
+    """
+
     def create_internal_dataframe_column_name(self, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:
         ...
     @classmethod
@@ -11,6 +18,14 @@ class InternalDataFrameColumnNameFormatter(Protocol):
 
 # Concrete implementation of the protocol
 class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter):
+    """
+    Simple implementation of the InternalDataFrameColumnNameFormatter protocol.
+    It creates and retrieves internal dataframe column names in the format "<column_key> [<unit>]" or "<column_key> [-]" if the unit is None.
+    The column key is the key of the column in the UnitedDataframe, the unit is the unit of the column.
+    The column key is a string, the unit is a Unit object.
+    The column key is a string, the unit is a Unit object.
+    """
+
     def create_internal_dataframe_column_name(self, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:
         return f"{column_key} [{unit}]" if unit != None else f"{column_key} [-]"
     @classmethod
