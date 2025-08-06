@@ -317,8 +317,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
         deepcopy: bool = True,
         read_only: bool = False
-    ) -> "UnitedDataframe[CK]":
-        ...
+    ) -> "UnitedDataframe[CK]": ...
     
     # GroupbyMixin user methods
     def groupby(self, by: Union[CK, Sequence[CK]], sort: bool = True, dropna: bool = True) -> Groups[CK]: ...
