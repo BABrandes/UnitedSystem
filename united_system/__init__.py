@@ -55,6 +55,6 @@ __all__ = [
     'DIMENSIONLESS_DIMENSION',
     'ANGLE_DIMENSION'
 ]
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __author__ = 'Benedikt Axel Brandes'
 __year__ = '2025'

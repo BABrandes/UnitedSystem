@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "united-system"
-version = "1.0.0"
+version = "0.1.1"
 description = "A comprehensive Python library for handling physical units, dimensions, and united data structures with support for dataframes, arrays, and scalars."
 readme = "README.md"
 license = "Apache-2.0"
