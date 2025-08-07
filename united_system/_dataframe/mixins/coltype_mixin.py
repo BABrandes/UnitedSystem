@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, TypeVar
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType
 
-CK_CF = TypeVar("CK_CF", bound=str, default=str)
+CK_CF = TypeVar("CK_CF", bound=str)
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
