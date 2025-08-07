@@ -20,7 +20,8 @@ from ..._units_and_dimension.unit import Unit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._arrays.base_united_array import BaseUnitedArray
 from ..._scalars.united_scalar import UnitedScalar
-from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, ARRAY_TYPE_RUNTIME
+from ..._utils.value_type import VALUE_TYPE
+from ..._utils.array_type import ARRAY_TYPE, ARRAY_TYPE_RUNTIME
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -187,8 +188,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_data(
         cls,
         columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]|
+                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]|
                     Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],
         ],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
@@ -203,12 +204,12 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         column_values can be: 
         - ARRAY_TYPE
-        - list[LOWLEVEL_TYPE]
+        - list[VALUE_TYPE]
         - np.ndarray
         - pd.Series[Any]
         
         Args:
-            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[LOWLEVEL_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
+            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter function
             read_only (bool): Whether the UnitedDataframe should be read-only.
             
@@ -221,7 +222,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         # Step 2: Determine the column units and types from the arrays or, if a list is given, from column_types and column_units_or_dimensions dictionaries
         column_units: dict[CK, Unit | None] = {}
         column_types: dict[CK, ColumnType] = {}
-        column_values: dict[CK, Union[np.ndarray, pd.Series[Any]]] = {}
+        column_values: dict[CK, Union[np.ndarray, "pd.Series[Any]"]] = {}
         def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
             unit: Optional[Unit] = column_units[column_key]
             if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
@@ -251,7 +252,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         for column_key, value in columns.items():
             if isinstance(value, tuple):
                 # Tuple value
-                tuple_value: Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]]] = value # type: ignore
+                tuple_value: Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]|Tuple[ColumnType, Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]] = value # type: ignore
                 if len(tuple_value) == 3:
                     column_types[column_key] = tuple_value[0]
                     if isinstance(tuple_value[1], Unit):
@@ -260,11 +261,11 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                         column_units[column_key] = tuple_value[1].canonical_unit
                     else:
                         column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[2]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"] = tuple_value[2]
                 elif len(tuple_value) == 2:
                     column_types[column_key] = tuple_value[0]
                     column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, pd.Series[Any]] = tuple_value[1]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"] = tuple_value[1]
                 else:
                     raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
                 
@@ -388,9 +389,58 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             copy_dataframe= deep_copy,
             rename_dataframe_columns= False
         )
+    
+    def _create_with_replaced_internal_dataframe(self, dataframe: pd.DataFrame, copy_dataframe: bool) -> "UnitedDataframe[CK]":
+        """
+        Internal: Create a UnitedDataframe from a pandas DataFrame. (no lock, no read-only check)
+        The column names of the dataframe must match the column names of the UnitedDataframe.
+
+        Args:
+            dataframe (pd.DataFrame): The pandas DataFrame to create the UnitedDataframe from.
+            copy_dataframe (bool): Whether to copy the dataframe.
+
+        Returns:
+            UnitedDataframe: The UnitedDataframe created from the pandas DataFrame.
+        """
+
+        if not dataframe.columns.equals(self._internal_dataframe.columns): # type: ignore
+            raise ValueError("The column names of the dataframe do not match the column names of the UnitedDataframe.")
+
+        return self._construct(
+            dataframe=dataframe,
+            column_keys=self._column_keys,
+            column_types=self._column_types.copy(),
+            column_units=self._column_units.copy(),
+            internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter,
+            read_only=self._read_only,
+            copy_dataframe=False,
+            rename_dataframe_columns=False
+        )
 
     # ----------- Copy Operations ------------
 
+    def _copy(self, deep: bool = True) -> "UnitedDataframe[CK]":
+        """
+        Internal: Create a copy of the dataframe. (no lock, no read-only check)
+        
+        Args:
+            deep: Whether to create a deep copy (default: True)
+            
+        Returns:
+            UnitedDataframe: Copy of the dataframe
+        """
+        # For copy, preserve the original column metadata instead of inferring from pandas dtypes
+        dataframe_copy = self._internal_dataframe.copy(deep=deep)
+        
+        return self.__class__._construct( # type: ignore
+            dataframe=dataframe_copy,
+            column_keys=self._column_keys,
+            column_types=self._column_types.copy(),
+            column_units=self._column_units.copy(),
+            internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter,
+            read_only=False  # Copy should not be read-only by default
+        )
+        
     def copy(self, deep: bool = True) -> "UnitedDataframe[CK]":
         """
         Create a copy of the dataframe.
@@ -401,19 +451,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Returns:
             UnitedDataframe: Copy of the dataframe
         """
-        with self._rlock:  # Full IDE support!
-            
-            # For copy, preserve the original column metadata instead of inferring from pandas dtypes
-            dataframe_copy = self._internal_dataframe.copy(deep=deep)
-            
-            return self.__class__._construct( # type: ignore
-                dataframe=dataframe_copy,
-                column_keys=self._column_keys,
-                column_types=self._column_types.copy(),
-                column_units=self._column_units.copy(),
-                internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter,
-                read_only=False  # Copy should not be read-only by default
-            )
+        with self._rlock:
+            return self._copy(deep=deep)
 
     def copy_structure(self) -> "UnitedDataframe[CK]":
         """

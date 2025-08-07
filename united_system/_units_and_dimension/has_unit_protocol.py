@@ -1,8 +1,9 @@
-from typing import Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING
 from abc import abstractmethod
 
-from .unit import Unit
-from .dimension import Dimension
+if TYPE_CHECKING:
+    from .unit import Unit
+    from .dimension import Dimension
 
 @runtime_checkable
 class HasUnit(Protocol):
@@ -15,9 +16,9 @@ class HasUnit(Protocol):
     It is useful for example in type hints to indicate that an object has a unit such as isinstance(obj, United).
     """
 
-    dimension: Dimension
-    _display_unit: Optional[Unit]
+    dimension: "Dimension"
+    _display_unit: Optional["Unit"]
 
     @property
     @abstractmethod
-    def unit(self) -> Unit: ...
+    def unit(self) -> "Unit": ...

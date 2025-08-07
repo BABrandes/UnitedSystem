@@ -7,11 +7,13 @@ including getting and setting individual cell values.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Any, TypeVar, overload, Sequence, Optional
+from typing import TYPE_CHECKING, Any, TypeVar, overload, Sequence, Optional, Union
 from ..._units_and_dimension.unit import Unit
 from ..._dataframe.column_type import ColumnType
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE
+from ..._utils.value_type import VALUE_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE
+from ..._utils.array_type import ARRAY_TYPE
 import numpy as np
 import pandas as pd
 
@@ -390,7 +392,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             self._cell_set_array(first_row_index, column_key, array)
 
-    def _cell_set_numpy_array_or_series(self, first_row_index: int, column_key: CK, numpy_array_or_series: np.ndarray|pd.Series[Any], array_unit: Unit|None=None) -> None: # type: ignore
+    def _cell_set_numpy_array_or_series(self, first_row_index: int, column_key: CK, numpy_array_or_series: Union[np.ndarray, "pd.Series[Any]"], array_unit: Optional[Unit]=None) -> None: # type: ignore
         """
         Internal: Set a numpy array or series at a specific row index. (no lock, no read-only check)
         """
@@ -405,7 +407,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         self._internal_dataframe.loc[first_row_index:first_row_index + len(numpy_array_or_series), internal_column_name] = internal_dataframe_column_type.get_pd_series_for_dataframe(numpy_array_or_series, internal_dataframe_column_unit, array_unit) # type: ignore[reportUnknownReturnType]
         
-    def cell_set_numpy_array_or_series(self, first_row_index: int, column_key: CK, numpy_array_or_series: np.ndarray|pd.Series[Any], array_unit: Unit|None=None) -> None:
+    def cell_set_numpy_array_or_series(self, first_row_index: int, column_key: CK, numpy_array_or_series: Union[np.ndarray, "pd.Series[Any]"], array_unit: Optional[Unit]=None) -> None:
         """
         Set a numpy array or series at a specific row index.
         """

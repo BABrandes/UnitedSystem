@@ -11,7 +11,9 @@ from typing import overload, TYPE_CHECKING, Any, Union
 from collections.abc import Sequence
 from ..._dataframe.column_key import ColumnKey
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, SCALAR_TYPE, SCALAR_TYPE_RUNTIME, VALUE_TYPE_RUNTIME
+from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
+from ..._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from ..._utils.array_type import ARRAY_TYPE
 import numpy as np
 import pandas as pd
 

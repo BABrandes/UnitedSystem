@@ -56,10 +56,6 @@ class ProperExponents:
             Tuple of proper exponents
         """
 
-        print(f"DEBUG: proper_exponents_of_unit_elements called with elements: {elements}")
-        for i, elem in enumerate(elements):
-            print(f"DEBUG: element {i}: {elem}, type: {type(elem)}")
-
         from .unit_symbol import UnitSymbol, LogDimensionSymbol
         from .unit_element import UnitElement
         from .named_quantity import NamedQuantity

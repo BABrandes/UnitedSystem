@@ -10,7 +10,8 @@ import pandas as pd
 from typing import TYPE_CHECKING, Sequence
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.general import VALUE_TYPE, SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from ..._utils.value_type import VALUE_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe

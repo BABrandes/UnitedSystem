@@ -86,7 +86,7 @@ class UnitMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     def _unit_change(self, column_key: CK, unit: Unit):
         """
-        Changes the unit for a column, but not the dimension.
+        Internal: Changes the unit for a column, but not the dimension. (no lock, no read-only check)
         
         Args:
             column_key (CK): The column key
@@ -105,8 +105,21 @@ class UnitMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if not unit.compatible_to(old_unit):    
             raise ValueError(f"Unit {unit} is not compatible with the current unit {old_unit}.")
         
-        dataframe_column_name: str = self._internal_dataframe_column_names[column_key]
-        numpy_array_in_old_unit: np.ndarray = self._internal_dataframe[dataframe_column_name].to_numpy() # type: ignore
+        old_dataframe_column_name: str = self._internal_dataframe_column_names[column_key]
+        
+        # Convert the data
+        numpy_array_in_old_unit: np.ndarray = self._internal_dataframe[old_dataframe_column_name].to_numpy() # type: ignore
         numpy_array_in_new_unit: np.ndarray = Unit.convert(numpy_array_in_old_unit, old_unit, unit) # type: ignore
-        self._internal_dataframe[dataframe_column_name] = numpy_array_in_new_unit
+        
+        # Update the unit first
         self._column_units[column_key] = unit
+        
+        # Now generate the new column name with the updated unit
+        new_dataframe_column_name: str = self._create_internal_dataframe_column_name(column_key)
+        
+        # Update the internal column name and rename the column in the dataframe
+        self._internal_dataframe_column_names[column_key] = new_dataframe_column_name
+        self._internal_dataframe.rename(columns={old_dataframe_column_name: new_dataframe_column_name}, inplace=True)
+        
+        # Update the data in the renamed column
+        self._internal_dataframe[new_dataframe_column_name] = numpy_array_in_new_unit

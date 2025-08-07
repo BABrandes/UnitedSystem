@@ -2,12 +2,15 @@ from typing import Iterator, Generic, TypeVar, Any, overload
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-import h5py
-from numpy.typing import NDArray    
+import h5py  
 from pandas._typing import Dtype
 import pandas as pd
-from .._arrays.base_united_array import BaseUnitedArray
-from .._utils.general import VALUE_TYPE, SCALAR_TYPE
+# Import moved to TYPE_CHECKING to avoid circular import
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .._arrays.base_united_array import BaseUnitedArray
+from .._utils.value_type import VALUE_TYPE
+from .._utils.scalar_type import SCALAR_TYPE
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 IT = TypeVar("IT", bound=SCALAR_TYPE)
@@ -16,7 +19,7 @@ AT = TypeVar("AT", bound="BaseArray[VALUE_TYPE, SCALAR_TYPE, Any]")
 @dataclass(frozen=True, slots=True)
 class BaseArray(ABC, Generic[PT, IT, AT]):
 
-    canonical_np_array: NDArray[Any]
+    canonical_np_array: np.ndarray
 
     def __post_init__(self) -> None:
         if self.canonical_np_array.ndim != 1:

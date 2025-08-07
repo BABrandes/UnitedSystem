@@ -9,7 +9,7 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import TYPE_CHECKING, overload, TypeVar, Any
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.general import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
+from ..._utils.scalar_type import NUMERIC_SCALAR_TYPE, SCALAR_TYPE
 
 NST = TypeVar("NST", bound=NUMERIC_SCALAR_TYPE)
 ST = TypeVar("ST", bound=SCALAR_TYPE)

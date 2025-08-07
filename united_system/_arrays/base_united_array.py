@@ -12,7 +12,7 @@ import h5py
 import pandas as pd
 from pandas._typing import Dtype
 from .._units_and_dimension.named_quantity import NamedQuantity
-from .._utils.general import VALUE_TYPE
+from .._utils.value_type import VALUE_TYPE
 
 UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any]")
 UST = TypeVar("UST", bound=UnitedScalar[Any, Any])
@@ -37,7 +37,7 @@ class ScalarIterator(Iterator[UST], Generic[UST, PT]):
         return len(self.array)
 
 @dataclass(frozen=True, slots=True, init=False)
-class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, PT]):
+class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[PT], ABC, Generic[UAT, UST, PT]): # type: ignore
     
     # Required field from BaseArray inheritance
     canonical_np_array: np.ndarray

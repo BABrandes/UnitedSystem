@@ -130,6 +130,15 @@ class UnitElement:
         else:
             return f"{prefix_str}{symbol_str}{exponent_str}", "nominator"
 
+    def __repr__(self) -> str:
+        """Get detailed string representation of the unit element."""
+        try:
+            return f"UnitElement(prefix={self.prefix}, unit_symbol={self.unit_symbol}, exponent={self.exponent})"
+        except RecursionError:
+            return f"UnitElement(<recursion_error>)"
+        except Exception:
+            return f"UnitElement(<repr_error>)"
+
 ########################################################
 # Parsing
 ########################################################

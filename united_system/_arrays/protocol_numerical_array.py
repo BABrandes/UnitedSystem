@@ -1,7 +1,7 @@
 from typing import Generic, Protocol, runtime_checkable, TypeVar
-from .base_array import PT_TYPE
+from .._utils.value_type import VALUE_TYPE
 
-PT = TypeVar("PT", bound=PT_TYPE, covariant=True)
+PT = TypeVar("PT", bound=VALUE_TYPE, covariant=True)
 
 @runtime_checkable
 class ProtocolNumericalArray(Protocol, Generic[PT]):

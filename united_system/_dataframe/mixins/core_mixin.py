@@ -317,14 +317,14 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Return the first n rows of the dataframe.
         """
         with self._rlock:
-            return self._create_with_replaced_dataframe(self._internal_dataframe.head(n))
+            return self._create_with_replaced_internal_dataframe(self._internal_dataframe.head(n), copy_dataframe=False)
         
     def tail(self, n: int = 5) -> "UnitedDataframe[CK]":
         """
         Return the last n rows of the dataframe.
         """
         with self._rlock:
-            return self._create_with_replaced_dataframe(self._internal_dataframe.tail(n))
+            return self._create_with_replaced_internal_dataframe(self._internal_dataframe.tail(n), copy_dataframe=False)
         
     @overload
     def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, Union[str, Unit, tuple[str, Unit], tuple[Unit, str]]] = {}) -> pd.DataFrame:
@@ -392,3 +392,86 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                         internal_column_name: str = self._get_internal_dataframe_column_name(column_key)
                         internal_column_names_to_extract.append(internal_column_name)
                     return self._internal_dataframe[internal_column_names_to_extract].copy(deep=deepcopy)
+                
+
+    def append(self, *others: "UnitedDataframe[CK]") -> "UnitedDataframe[CK]":
+        """
+        Append a dataframe to the current dataframe. The units of the columns may be different, but they must be compatible.
+        If the units are effectively the same, this method will be much faster than if the units are different.
+
+        Args:
+            *others (UnitedDataframe[CK]): The dataframes to append to the current dataframe.
+
+        Returns:
+            UnitedDataframe[CK]: The dataframe with the appended dataframes.
+        """
+
+        def helper_append(other: "UnitedDataframe[CK]") -> pd.DataFrame:
+            """
+            Internal: Helper method for appending a dataframe. It returns a dataframe ready to be appended to the current dataframe.
+            """
+
+            # Check if the column keys are the same
+            if set(self._column_keys) != set(other._column_keys):
+                raise ValueError("The column keys of the two dataframes must be the same.")
+            
+            # Check if the column dimensions and types are the same for each column
+            columns_that_need_unit_conversion: set[CK] = set()
+            columns_that_only_need_renaming: set[CK] = set()
+            for column_key in self._column_keys:
+                if self._column_types[column_key] != other._column_types[column_key]:
+                    raise ValueError(f"The column {column_key} has different types in the two dataframes.")
+                if self._unit_has(column_key) != other._unit_has(column_key): # type: ignore
+                    raise ValueError(f"The column {column_key} and {other._get_internal_dataframe_column_name(column_key)} must both have units or neither have units.")
+                if self._unit_has(column_key):
+                    unit: Unit = self._unit_get(column_key)
+                    other_unit: Unit = other._unit_get(column_key) #type: ignore
+                    if not Unit.compatible_to(unit, other_unit):
+                        raise ValueError(f"The column {column_key} and {other._get_internal_dataframe_column_name(column_key)} must both have units that are compatible.")
+                    if not unit == other_unit:
+                        if Unit.effectively_equal_to(unit, other_unit):
+                            columns_that_only_need_renaming.add(column_key)
+                        else:
+                            columns_that_need_unit_conversion.add(column_key)
+
+            if len(columns_that_need_unit_conversion) == 0:
+                # This is the cheap case, we can just rename the columns and concatenate
+
+                # Copy the other dataframe and rename its columns to match self
+                dataframe_to_append: pd.DataFrame = other._internal_dataframe.copy(deep=False)
+                rename_dict: dict[str, str] = {}
+                for column_key in columns_that_only_need_renaming:
+                    rename_dict[other._get_internal_dataframe_column_name(column_key)] = self._get_internal_dataframe_column_name(column_key)
+                
+                # Only rename if there are columns to rename
+                if rename_dict:
+                    dataframe_to_append = dataframe_to_append.rename(columns=rename_dict, inplace=False)
+
+                # Check if the renamed dataframe has the same column names as self
+                if set(dataframe_to_append.columns) != set(self._internal_dataframe.columns):
+                    raise AssertionError("The internal column names of the two dataframes must be the same.")
+                
+                return dataframe_to_append
+            
+            else:
+                # This is the expensive case, we need to convert the units and concatenate
+
+                # Copy the current dataframe
+                united_dataframe_to_append: "UnitedDataframe[CK]" = other._copy(deep=False) # type: ignore
+
+                # Convert the columns that need unit conversion
+                for column_key in columns_that_need_unit_conversion:
+                    united_dataframe_to_append._unit_change(column_key, self._unit_get(column_key)) #type: ignore
+
+                # After unit conversion, the column names should match
+                if set(united_dataframe_to_append._internal_dataframe.columns) != set(self._internal_dataframe.columns):
+                    raise AssertionError("After unit conversion, the internal column names of the two dataframes must be the same.")
+                
+                return united_dataframe_to_append._internal_dataframe
+
+        with self._rlock:
+            list_of_dataframes_to_append: list[pd.DataFrame] = [self._internal_dataframe]
+            for other in others:
+                list_of_dataframes_to_append.append(helper_append(other))
+            concatenated_df = pd.concat(list_of_dataframes_to_append, axis=0)
+            return self._create_with_replaced_internal_dataframe(concatenated_df, copy_dataframe=False)

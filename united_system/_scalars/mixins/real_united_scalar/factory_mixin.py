@@ -5,6 +5,7 @@ from ...._units_and_dimension.unit import Unit
 from ...._units_and_dimension.dimension import Dimension
 from .protocol import RealUnitedScalarProtocol
 from ...._units_and_dimension.named_quantity import NamedQuantity
+from ...._utils.string_utils import str_to_float
 
 if TYPE_CHECKING:
     from ...._scalars.real_united_scalar import RealUnitedScalar
@@ -75,7 +76,6 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
         Give the canonical value and the display unit.
         """
-        from ...._utils.general import str_to_float
 
         split_string = string.rsplit(" ", 1)
         if len(split_string) == 1:

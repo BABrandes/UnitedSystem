@@ -29,7 +29,7 @@ Example:
     >>> retrieved_value = column_type.get_value_from_pd_series(series, 0)
 """
 
-from typing import Literal, overload, Any, NamedTuple, Optional
+from typing import Literal, overload, Any, NamedTuple, Optional, Union
 from enum import Enum
 import math
 
@@ -37,7 +37,8 @@ import pandas as pd
 from pandas._typing import Dtype
 from pandas import Timestamp
 import numpy as np
-from numpy.typing import DtypeLike
+# Use Any instead of DtypeLike for compatibility with older numpy versions
+from typing import Any as DtypeLike
 
 from .._units_and_dimension.unit import Unit
 from .._scalars.real_united_scalar import RealUnitedScalar
@@ -52,7 +53,9 @@ from .._arrays.bool_array import BoolArray
 from .._arrays.timestamp_array import TimestampArray
 from .._units_and_dimension.has_unit_protocol import HasUnit
 from .._arrays.base_array import BaseArray
-from .._utils.general import VALUE_TYPE, SCALAR_TYPE, ARRAY_TYPE, SCALAR_TYPE_RUNTIME, VALUE_TYPE_RUNTIME
+from .._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
+from .._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from .._utils.array_type import ARRAY_TYPE
 
 class ColumnTypeInformation(NamedTuple):
     """
@@ -520,7 +523,7 @@ class ColumnType(Enum):
         else:
             raise ValueError(f"Invalid value: {scalar_or_value}")
 
-    def get_pd_series_for_dataframe(self, array: ARRAY_TYPE|np.ndarray|pd.Series[Any], dataframe_unit: Unit|None, array_unit: Unit|None) -> pd.Series[Any]:
+    def get_pd_series_for_dataframe(self, array: Union[ARRAY_TYPE, np.ndarray, "pd.Series[Any]"], dataframe_unit: Optional[Unit], array_unit: Optional[Unit]) -> "pd.Series[Any]":
         """
         Convert an array to a pandas Series for DataFrame storage.
         
@@ -562,14 +565,14 @@ class ColumnType(Enum):
 
         dtype: Dtype = self.value.dataframe_storage_type
 
-        def create_series_from_np_array(np_array: np.ndarray) -> pd.Series[Any]:
+        def create_series_from_np_array(np_array: np.ndarray) -> "pd.Series[Any]":
             if np.isnan(np_array).any():
                 if self.value.missing_values_in_dataframe is None:
                     raise ValueError(f"The column type {self} must not have missing values in dataframe.")
                 np_array = np.where(np.isnan(np_array), self.value.missing_values_in_dataframe, np_array)
             return pd.Series(np_array, dtype=dtype)
         
-        def create_series_from_series(series: pd.Series[Any]) -> pd.Series[Any]:
+        def create_series_from_series(series: "pd.Series[Any]") -> "pd.Series[Any]":
             if series.isna().any(): # type: ignore[reportUnknownReturnType]
                 if self.value.missing_values_in_dataframe is None:
                     raise ValueError(f"The column type {self} must not have missing values in dataframe.")
@@ -698,7 +701,7 @@ class ColumnType(Enum):
                         raise ValueError(f"Unit of the numpy array is not allowed for TimestampArray.")
                     return create_series_from_np_array(array)
                 
-        elif isinstance(array, pd.Series[Any]): # type: ignore[reportUnknownReturnType]
+        elif isinstance(array, "pd.Series[Any]"): # type: ignore[reportUnknownReturnType]
             match self:
                 case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
                     if not isinstance(array, RealUnitedArray):
@@ -778,7 +781,7 @@ class ColumnType(Enum):
             
     # ------------ Get values from dataframe ------------
 
-    def get_value_from_pd_series(self, pandas_series: pd.Series[Any], row_index: int, source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> float|complex|str|bool|int|Timestamp:
+    def get_value_from_pd_series(self, pandas_series: "pd.Series[Any]", row_index: int, source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> float|complex|str|bool|int|Timestamp:
         """
         Extract a single value from a pandas Series with proper type conversion.
         
@@ -853,7 +856,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return Timestamp(value)
             
-    def get_scalar_from_pd_series(self, pandas_series: pd.Series[Any], row_index: int, unit_in_dataframe: Optional[Unit] = None) -> SCALAR_TYPE:
+    def get_scalar_from_pd_series(self, pandas_series: "pd.Series[Any]", row_index: int, unit_in_dataframe: Optional[Unit] = None) -> SCALAR_TYPE:
         """
         Extract a scalar value from a pandas Series with proper type conversion.
         
@@ -928,7 +931,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return Timestamp(value)
             
-    def get_numpy_array_from_pd_series(self, pandas_series: pd.Series[Any], source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> np.ndarray[Any, Any]: # type: ignore[reportUnknownReturnType]
+    def get_numpy_array_from_pd_series(self, pandas_series: "pd.Series[Any]", source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> np.ndarray[Any, Any]: # type: ignore[reportUnknownReturnType]
         """
         Convert a pandas Series to a numpy array with proper type handling.
         
@@ -998,7 +1001,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return numpy_array
             
-    def get_array_from_pd_series(self, pandas_series: pd.Series[Any], unit_in_dataframe: Optional[Unit] = None) -> ARRAY_TYPE: # type: ignore[reportUnknownReturnType]
+    def get_array_from_pd_series(self, pandas_series: "pd.Series[Any]", unit_in_dataframe: Optional[Unit] = None) -> ARRAY_TYPE: # type: ignore[reportUnknownReturnType]
         """
         Convert a pandas Series to an appropriate array type.
         
@@ -1064,7 +1067,7 @@ class ColumnType(Enum):
             case ColumnType.TIMESTAMP:
                 return TimestampArray(numpy_array)
             
-    def get_list_from_pd_series(self, pandas_series: pd.Series[Any], source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> list[float]|list[complex]|list[int]|list[str]|list[bool]|list[Timestamp]: # type: ignore[reportUnknownReturnType]
+    def get_list_from_pd_series(self, pandas_series: "pd.Series[Any]", source_and_target_unit: Optional[tuple[Unit, Unit]] = None) -> list[float]|list[complex]|list[int]|list[str]|list[bool]|list[Timestamp]: # type: ignore[reportUnknownReturnType]
         """
         Convert a pandas Series to a Python list with proper type handling.
         

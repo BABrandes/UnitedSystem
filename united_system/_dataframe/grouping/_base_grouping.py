@@ -7,10 +7,12 @@ import numpy as np
 from enum import Enum, auto
 
 from ..._dataframe.column_key import ColumnKey
-from ..._dataframe.column_type import SCALAR_TYPE, ColumnType, LOWLEVEL_TYPE
+from ..._dataframe.column_type import ColumnType
 from ..accessors._row_accessor import RowAccessor
 from ..._units_and_dimension.unit import Unit
 from ..._scalars.united_scalar import UnitedScalar
+from ..._utils.scalar_type import SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -27,7 +29,7 @@ class GroupingContainer(Generic[CK]):
     available_column_types: dict[CK, ColumnType]
     available_column_units: dict[CK, Unit|None]
     categorical_column_keys: list[CK]
-    categorical_key_values: Tuple[LOWLEVEL_TYPE, ...]
+    categorical_key_values: Tuple[VALUE_TYPE, ...]
     _united_dataframe: "UnitedDataframe[CK]|None" = field(init=False, repr=False, default=None)
 
     def united_dataframe(self, column_keys: Sequence[CK] | None = None) -> "UnitedDataframe[CK]":
@@ -244,7 +246,7 @@ class BaseGrouping(Generic[CK]):
         return [group.united_dataframe(column_keys) for group in self._grouping_containers]
     
     @property
-    def categorical_key_values(self) -> list[tuple[LOWLEVEL_TYPE, ...]]:
+    def categorical_key_values(self) -> list[tuple[VALUE_TYPE, ...]]:
         """
         Get the group keys.
         
@@ -315,10 +317,10 @@ class BaseGrouping(Generic[CK]):
             
             # Step 2: Aggregate the data
 
-            group_data: list[dict[CK, LOWLEVEL_TYPE]] = []
+            group_data: list[dict[CK, VALUE_TYPE]] = []
             
             for container in self._grouping_containers:
-                row_data: dict[CK, LOWLEVEL_TYPE] = {}
+                row_data: dict[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col, col_info in self._categorical_column_information.items():
@@ -392,11 +394,11 @@ class BaseGrouping(Generic[CK]):
             United_Dataframe[CK]: A dataframe with group keys and group sizes
         """
         with self._dataframe._rlock: # type: ignore
-            group_data: list[dict[CK, LOWLEVEL_TYPE]] = []
+            group_data: list[dict[CK, VALUE_TYPE]] = []
             
             # Get the group data
             for container in self._grouping_containers:
-                row_data: dict[CK, LOWLEVEL_TYPE] = {}
+                row_data: dict[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():
@@ -506,10 +508,10 @@ class BaseGrouping(Generic[CK]):
 
             # Step 2: Count the number of non-null values for each group for the columns to consider
             
-            group_data: list[dict[CK, LOWLEVEL_TYPE]] = []
+            group_data: list[dict[CK, VALUE_TYPE]] = []
             
             for container in self._grouping_containers:
-                row_data: dict[CK, LOWLEVEL_TYPE] = {}
+                row_data: dict[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():
@@ -562,13 +564,13 @@ class BaseGrouping(Generic[CK]):
         result_column_key, func = func_tuple
         
         with self._dataframe._rlock: # type: ignore
-            group_data: list[dict[CK, LOWLEVEL_TYPE]] = []
+            group_data: list[dict[CK, VALUE_TYPE]] = []
             result_column_type: ColumnType | None = None
             result_column_unit: Unit | None = None
             first_result: bool = True
             
             for container in self._grouping_containers:
-                row_data: dict[CK, LOWLEVEL_TYPE] = {}
+                row_data: dict[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():

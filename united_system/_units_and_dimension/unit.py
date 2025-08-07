@@ -228,7 +228,6 @@ class Unit:
             return instance
         
         elif isinstance(value, NamedQuantity): # type: ignore
-
             # Create a new instance
             if subscript is None:
                 instance: Unit = value.dimension.canonical_unit
@@ -673,9 +672,15 @@ class Unit:
     
     def effectively_equal_to(self, other: "Unit") -> bool:
         """
-        Check if this unit is effectively equal to another unit.
+        Check if this unit is effectively equal to another unit, meaning that they have the same dimension, factor and offset.
         """
-        return Unit.effectively_equal(self, other)
+        if self.dimension != other.dimension:
+            return False
+        if self.factor != other.factor:
+            return False
+        if self.offset != other.offset:
+            return False
+        return True
     
     @classmethod
     def effectively_equal(cls, *units: "Unit") -> bool:
@@ -683,7 +688,7 @@ class Unit:
         Check if units are effectively equal, meaning that they have the same dimension, factor and offset.
         """
         for unit in units:
-            if not unit.effectively_equal(units[0]):
+            if not unit.effectively_equal_to(units[0]):
                 return False
         return True
 
@@ -822,7 +827,12 @@ class Unit:
 
     def __repr__(self) -> str:
         """Get detailed string representation of the unit."""
-        return f"Unit('{self.format_string()}')"
+        try:
+            return f"Unit('{self.format_string()}')"
+        except RecursionError:
+            return f"Unit(<recursion_error>)"
+        except Exception:
+            return f"Unit(<format_error>)"
 
     ########################################################
     # Parsing
@@ -1026,12 +1036,12 @@ class Unit:
         """
         ...
     @overload
-    def to_canonical_value(self, value_in_unit: pd.Series[Any]) -> pd.Series[Any]:
+    def to_canonical_value(self, value_in_unit: "pd.Series[Any]") -> "pd.Series[Any]":
         """
         Convert a pandas series from this unit to canonical units.
         """
         ...
-    def to_canonical_value(self, value_in_unit: float|int|complex|np.ndarray|pd.Series[Any]) -> float|int|complex|np.ndarray|pd.Series[Any]:
+    def to_canonical_value(self, value_in_unit: Union[float, int, complex, np.ndarray, "pd.Series[Any]"]) -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
         """
         Convert a value from this unit to canonical units.
         
@@ -1075,12 +1085,12 @@ class Unit:
         """
         ...
     @overload
-    def from_canonical_value(self, canonical_value: pd.Series[Any]) -> pd.Series[Any]:
+    def from_canonical_value(self, canonical_value: "pd.Series[Any]") -> "pd.Series[Any]":
         """
         Convert a pandas series from canonical units to this unit.
         """
         ...
-    def from_canonical_value(self, canonical_value: float|int|complex|np.ndarray|pd.Series[Any]) -> float|int|complex|np.ndarray|pd.Series[Any]:
+    def from_canonical_value(self, canonical_value: Union[float, int, complex, np.ndarray, "pd.Series[Any]"]) -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
         """
         Convert a value from canonical units to this unit.
         
@@ -1106,7 +1116,7 @@ class Unit:
             raise ValueError(f"Invalid value type: {type(canonical_value)}")
         
     @classmethod
-    def convert(cls, value: float|int|complex|np.ndarray|pd.Series[Any], from_unit: "Unit", to_unit: "Unit") -> float|int|complex|np.ndarray|pd.Series[Any]:
+    def convert(cls, value: Union[float, int, complex, np.ndarray, "pd.Series[Any]"], from_unit: "Unit", to_unit: "Unit") -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
         """
         Create a unit from a canonical value.
         """

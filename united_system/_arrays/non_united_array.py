@@ -3,7 +3,7 @@ from .base_array import BaseArray
 import numpy as np
 from pandas._typing import Dtype
 import pandas as pd
-from .._utils.general import VALUE_TYPE
+from .._utils.value_type import VALUE_TYPE
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 AT = TypeVar("AT", bound="NonUnitedArray[VALUE_TYPE, Any]")

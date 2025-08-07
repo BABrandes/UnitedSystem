@@ -1,11 +1,11 @@
-from typing import Generic, Iterator, TypeVar, TYPE_CHECKING, Any, Sequence, overload, Union
+from typing import Generic, Iterator, TypeVar, TYPE_CHECKING, Sequence, overload, Union
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
     from ..._dataframe.column_key import ColumnKey
 
-from ..._scalars.united_scalar import UnitedScalar
-from ..._dataframe.column_type import SCALAR_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
 
 CK = TypeVar("CK", bound="ColumnKey|str")
 
@@ -32,8 +32,19 @@ class RowAccessor(Generic[CK]):
         else:
             return self._parent.cell_get_value(self._row_index, column_key)
     
-    def __setitem__(self, column_key: CK, value: UnitedScalar[Any, Any]):
-        self._parent.cell_set_value(self._row_index, column_key, value)
+    @overload
+    def __setitem__(self, column_key: CK, value: VALUE_TYPE) -> None: ...
+    @overload
+    def __setitem__(self, column_key: CK, value: SCALAR_TYPE) -> None: ...
+    def __setitem__(self, column_key: CK, value: VALUE_TYPE|SCALAR_TYPE) -> None:
+        if isinstance(value, VALUE_TYPE_RUNTIME):
+            assert isinstance(value, VALUE_TYPE)
+            self._parent.cell_set_value(self._row_index, column_key, value)
+        elif isinstance(value, SCALAR_TYPE_RUNTIME):
+            assert isinstance(value, SCALAR_TYPE)
+            self._parent.cell_set_scalar(self._row_index, column_key, value)
+        else:
+            raise ValueError(f"Invalid value type: {type(value)}")
     
     def __len__(self) -> int:
         return len(self._parent.colkeys)

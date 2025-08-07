@@ -8,7 +8,11 @@ from ..._dataframe.column_type import ColumnType
 from ..._units_and_dimension.dimension import Dimension
 from ..._units_and_dimension.unit import Unit
 from ..._arrays.bool_array import BoolArray
-from ..._utils.general import ARRAY_TYPE, SCALAR_TYPE, VALUE_TYPE, NUMERIC_SCALAR_TYPE, VALUE_TYPE_RUNTIME, SCALAR_TYPE_RUNTIME, RealUnitedScalar, RealUnitedArray
+from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
+from ..._utils.scalar_type import SCALAR_TYPE, NUMERIC_SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from ..._utils.array_type import ARRAY_TYPE
+from ..._scalars.real_united_scalar import RealUnitedScalar
+from ..._arrays.real_united_array import RealUnitedArray
 import pandas as pd
 import numpy as np
 

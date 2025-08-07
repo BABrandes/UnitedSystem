@@ -7,7 +7,8 @@ from bidict import bidict
 from ..._dataframe.column_key import ColumnKey
 from ..accessors._row_accessor import RowAccessor
 from ._base_grouping import BaseGrouping, GroupingContainer
-from ..._dataframe.column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -90,7 +91,7 @@ class Groups(BaseGrouping[CK]):
         return self.groupings()
     
     @property
-    def group_keys(self) -> list[tuple[LOWLEVEL_TYPE, ...]]:
+    def group_keys(self) -> list[tuple[VALUE_TYPE, ...]]:
         """
         Get the group keys.
         
@@ -99,7 +100,7 @@ class Groups(BaseGrouping[CK]):
         """
         return self.categorical_key_values
     
-    def get_group_by_key(self, group_key: tuple[LOWLEVEL_TYPE, ...]) -> Union["UnitedDataframe[CK]", None]:
+    def get_group_by_key(self, group_key: tuple[VALUE_TYPE, ...]) -> Union["UnitedDataframe[CK]", None]:
         """
         Get a specific group by its key.
         
@@ -115,7 +116,7 @@ class Groups(BaseGrouping[CK]):
         except ValueError:
             return None
     
-    def get_group_by_index(self, index: int) -> tuple[tuple[LOWLEVEL_TYPE, ...], "UnitedDataframe[CK]"] | None:
+    def get_group_by_index(self, index: int) -> tuple[tuple[VALUE_TYPE, ...], "UnitedDataframe[CK]"] | None:
         """
         Get a specific group by its index.
         

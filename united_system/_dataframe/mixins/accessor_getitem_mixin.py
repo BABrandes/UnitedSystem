@@ -13,7 +13,7 @@ import pandas as pd
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_key import ColumnKey
 from ..._arrays.bool_array import BoolArray
-from ..._utils.general import VALUE_TYPE
+from ..._utils.value_type import VALUE_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe

@@ -23,7 +23,9 @@ from ..grouping._groups import Groups
 from ..._arrays.bool_array import BoolArray
 from ..accessors._row_accessor import RowAccessor
 from ..accessors._column_accessor import ColumnAccessor
-from ..._utils.general import VALUE_TYPE, ARRAY_TYPE, SCALAR_TYPE, NUMERIC_SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE, NUMERIC_SCALAR_TYPE
+from ..._utils.array_type import ARRAY_TYPE
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -127,10 +129,7 @@ class UnitedDataframeProtocol(Generic[CK, T]):
 
     # ConstructorMixin internal methods
     def _crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> "UnitedDataframe[CK]": ...
-    
-    ######### CONSTRUCTOR METHODS #########
-
-    def _create_with_replaced_dataframe(self, dataframe: pd.DataFrame) -> "UnitedDataframe[CK]": ...
+    def _create_with_replaced_internal_dataframe(self, dataframe: pd.DataFrame, copy_dataframe: bool) -> "UnitedDataframe[CK]": ...
 
     ######### STANDARD PRAXIS PYTHON METHODS #########
 
@@ -304,8 +303,8 @@ class UnitedDataframeProtocol(Generic[CK, T]):
     def create_empty(cls, column_keys: Sequence[CK], column_types: dict[CK, ColumnType], column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter) -> "UnitedDataframe[CK]": ...
     @classmethod
     def create_from_data(cls, columns: dict[CK,
-                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
-                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]|
+                    Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]|
+                    Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]|
                     Union[ARRAY_TYPE, Sequence[VALUE_TYPE]],],
                     internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, read_only: bool = False) -> "UnitedDataframe[CK]": ...
     @classmethod

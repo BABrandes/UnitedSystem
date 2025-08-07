@@ -1,5 +1,5 @@
 from typing import TypeVar, Generic
-from .._utils.general import VALUE_TYPE
+from .._utils.value_type import VALUE_TYPE
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 

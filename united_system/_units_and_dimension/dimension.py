@@ -1547,7 +1547,7 @@ class Dimension:
             return None
         
     @classmethod
-    def check_dimensions(cls, dictionary: dict[HasUnit, Union["Dimension", Unit]]) -> bool:
+    def check_dimensions(cls, dictionary: dict[HasUnit, Union["Dimension", "Unit"]]) -> bool:
         """
         Check if the dimensions of the United objects in the dictionary are compatible.
         """

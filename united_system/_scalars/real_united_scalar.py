@@ -5,7 +5,7 @@ from typing import Optional, overload
 from .._units_and_dimension.named_quantity import NamedQuantity
 from .._units_and_dimension.dimension import Dimension
 from .._units_and_dimension.unit import Unit
-from .._utils.general import str_to_float
+from .._utils.string_utils import str_to_float
 
 # Import all mixins
 from .._scalars.mixins.real_united_scalar.core_mixin import RealUnitedScalarCore

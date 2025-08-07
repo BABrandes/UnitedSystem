@@ -4,7 +4,8 @@ from bidict import bidict
 
 from ._base_grouping import BaseGrouping, GroupingContainer
 from ..._dataframe.column_key import ColumnKey
-from ..._dataframe.column_type import SCALAR_TYPE, LOWLEVEL_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
 from ..accessors._row_accessor import RowAccessor
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
@@ -60,7 +61,7 @@ class Segments(BaseGrouping[CK]):
         # Create segments based on boundaries
         self._create_segments_from_boundaries(segment_boundaries, categorical_column_keys)
 
-    def _find_segment_boundaries(self, all_group_keys: list[tuple[LOWLEVEL_TYPE, ...]]) -> list[int]:
+    def _find_segment_boundaries(self, all_group_keys: list[tuple[VALUE_TYPE, ...]]) -> list[int]:
         """Find indices where segment boundaries occur (when key values change)."""
         if not all_group_keys:
             return []
@@ -91,7 +92,7 @@ class Segments(BaseGrouping[CK]):
             segment_df = self._working_df.iloc[start_idx:end_idx].copy() # type: ignore
             
             # Get the key values for this segment (from first row)
-            segment_key: tuple[LOWLEVEL_TYPE, ...] = tuple(self._working_df.iloc[start_idx][col_info.internal_dataframe_column_name] for col_info in self._categorical_column_information.values()) # type: ignore
+            segment_key: tuple[VALUE_TYPE, ...] = tuple(self._working_df.iloc[start_idx][col_info.internal_dataframe_column_name] for col_info in self._categorical_column_information.values()) # type: ignore
             
             # Create GroupingContainer
             self._grouping_containers.append(GroupingContainer(
@@ -138,7 +139,7 @@ class Segments(BaseGrouping[CK]):
         return self.groupings()
     
     @property
-    def segment_keys(self) -> list[tuple[LOWLEVEL_TYPE, ...]]:
+    def segment_keys(self) -> list[tuple[VALUE_TYPE, ...]]:
         """
         Get the segment keys.
         
@@ -147,7 +148,7 @@ class Segments(BaseGrouping[CK]):
         """
         return self.categorical_key_values
     
-    def get_segment_by_key(self, segment_key: tuple[LOWLEVEL_TYPE, ...]) -> "UnitedDataframe[CK] | None":
+    def get_segment_by_key(self, segment_key: tuple[VALUE_TYPE, ...]) -> "UnitedDataframe[CK] | None":
         """
         Get a specific segment by its key.
         
@@ -163,7 +164,7 @@ class Segments(BaseGrouping[CK]):
         except ValueError:
             return None
     
-    def get_segment_by_index(self, index: int) -> "tuple[tuple[LOWLEVEL_TYPE, ...], UnitedDataframe[CK]] | None":
+    def get_segment_by_index(self, index: int) -> "tuple[tuple[VALUE_TYPE, ...], UnitedDataframe[CK]] | None":
         """
         Get a specific segment by its index.
         
