@@ -1,6 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
-from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, Sequence
+from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, Sequence, TYPE_CHECKING
 from .._units_and_dimension.dimension import Dimension
 from .._units_and_dimension.unit import Unit
 from .._scalars.united_scalar import UnitedScalar
@@ -12,7 +12,11 @@ import h5py
 import pandas as pd
 from pandas._typing import Dtype
 from .._units_and_dimension.named_quantity import NamedQuantity
+
 from .._utils.value_type import VALUE_TYPE
+if TYPE_CHECKING:
+    from .int_array import IntArray
+    from .float_array import FloatArray
 
 UAT = TypeVar("UAT", bound="BaseUnitedArray[Any, Any, Any]")
 UST = TypeVar("UST", bound=UnitedScalar[Any, Any])
@@ -325,6 +329,9 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
                 return type(self)(array, self.dimension, self._display_unit) # type: ignore
     
     @overload    
+    def __mul__(self, other: Union["IntArray", "FloatArray"]) -> UAT:
+        ...
+    @overload    
     def __mul__(self, other: int|float|complex) -> UAT:
         ...
     @overload
@@ -333,8 +340,14 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
     @overload
     def __mul__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> UAT:
         ...
-    def __mul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> UAT:
-        if isinstance(other, UnitedScalar):
+    def __mul__(self, other: Union["IntArray", "FloatArray", int, float, complex, UST, "BaseUnitedArray[UAT, UST, PT]"]) -> UAT:
+        if isinstance(other, IntArray):
+            array: np.ndarray = self.canonical_np_array * other.canonical_np_array
+            return type(self)(array, dimension, self._display_unit) # type: ignore
+        elif isinstance(other, FloatArray):
+            array: np.ndarray = self.canonical_np_array * other.canonical_np_array
+            return type(self)(array, self.dimension, self._display_unit) # type: ignore
+        elif isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array * other.canonical_value
             dimension: Dimension = self.dimension * other.dimension
             return type(self)(array, dimension, None) # type: ignore
@@ -346,6 +359,9 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             array: np.ndarray = self.canonical_np_array.__mul__(other)
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
 
+    @overload
+    def __rmul__(self, other: Union["IntArray", "FloatArray"]) -> UAT:
+        ...
     @overload    
     def __rmul__(self, other: int|float|complex) -> UAT:
         ...
@@ -355,9 +371,12 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
     @overload
     def __rmul__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> UAT:
         ...
-    def __rmul__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> UAT:
+    def __rmul__(self, other: Union["IntArray", "FloatArray", int, float, complex, UST, "BaseUnitedArray[UAT, UST, PT]"]) -> UAT:
         return self.__mul__(other)
     
+    @overload
+    def __truediv__(self, other: Union["IntArray", "FloatArray"]) -> UAT:
+        ...
     @overload
     def __truediv__(self, other: int|float|complex) -> UAT:
         ...
@@ -367,8 +386,14 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
     @overload
     def __truediv__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> UAT:
         ...
-    def __truediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> UAT:
-        if isinstance(other, UnitedScalar):
+    def __truediv__(self, other: Union["IntArray", "FloatArray", int, float, complex, UST, "BaseUnitedArray[UAT, UST, PT]"]) -> UAT:
+        if isinstance(other, IntArray):
+            array: np.ndarray = self.canonical_np_array / other.canonical_np_array
+            return type(self)(array, self.dimension, self._display_unit) # type: ignore
+        elif isinstance(other, FloatArray):
+            array: np.ndarray = self.canonical_np_array / other.canonical_np_array
+            return type(self)(array, self.dimension, self._display_unit) # type: ignore
+        elif isinstance(other, UnitedScalar):
             array: np.ndarray = self.canonical_np_array / other.canonical_value
             dimension: Dimension = self.dimension / other.dimension
             return type(self)(array, dimension, None) # type: ignore
@@ -380,6 +405,9 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             array: np.ndarray = self.canonical_np_array.__truediv__(other)
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
     
+    @overload
+    def __rtruediv__(self, other: Union["IntArray", "FloatArray"]) -> UAT:
+        ...
     @overload    
     def __rtruediv__(self, other: int|float|complex) -> UAT:
         ...
@@ -389,15 +417,21 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
     @overload
     def __rtruediv__(self, other: "BaseUnitedArray[UAT, UST, PT]") -> UAT:
         ...
-    def __rtruediv__(self, other: int|float|complex|UST|"BaseUnitedArray[UAT, UST, PT]") -> UAT:
-        if isinstance(other, UnitedScalar):
+    def __rtruediv__(self, other: Union["IntArray", "FloatArray", int, float, complex, UST, "BaseUnitedArray[UAT, UST, PT]"]) -> UAT:
+        if isinstance(other, IntArray):
+            array: np.ndarray = other.canonical_np_array / self.canonical_np_array
+            return type(self)(array, self.dimension, self._display_unit.invert()) # type: ignore
+        elif isinstance(other, FloatArray):
+            array: np.ndarray = other.canonical_np_array / self.canonical_np_array
+            return type(self)(array, self.dimension, self._display_unit.invert()) # type: ignore
+        elif isinstance(other, UnitedScalar):
             array: np.ndarray = other.canonical_value / self.canonical_np_array
             dimension: Dimension = other.dimension / self.dimension
-            return type(self)(array, dimension, None) # type: ignore
+            return type(self)(array, dimension, self._display_unit) # type: ignore
         elif isinstance(other, BaseUnitedArray):
             array: np.ndarray = other.canonical_np_array / self.canonical_np_array
             dimension: Dimension = other.dimension / self.dimension
-            return type(self)(array, dimension, None) # type: ignore
+            return type(self)(array, dimension, self._display_unit) # type: ignore
         else:
             array: np.ndarray = other / self.canonical_np_array
             zero_dim: Dimension = (type(self.dimension)).dimensionless_dimension()
