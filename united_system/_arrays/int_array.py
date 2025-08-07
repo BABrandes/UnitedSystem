@@ -1,6 +1,11 @@
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, overload, Union
 from .non_united_array import NonUnitedArray
 import numpy as np
+
+if TYPE_CHECKING:
+    from .real_united_array import RealUnitedArray
+    from .._scalars.real_united_scalar import RealUnitedScalar
 
 @dataclass(frozen=True, slots=True, init=False)
 class IntArray(NonUnitedArray[int, "IntArray"]):
@@ -41,10 +46,37 @@ class IntArray(NonUnitedArray[int, "IntArray"]):
         """Subtract two arrays element-wise."""
         return IntArray(other.canonical_np_array - self.canonical_np_array)
     
+    @overload
+    def __mul__(self, other: int|float|complex) -> "IntArray":
+        ...
+    @overload
     def __mul__(self, other: "IntArray") -> "IntArray":
+        ...
+    @overload
+    def __mul__(self, other: "RealUnitedScalar") -> "RealUnitedArray":
+        ...
+    def __mul__(self, other: Union[int, float, complex, "IntArray", "RealUnitedScalar"]) -> Union["IntArray", "RealUnitedArray"]:
         """Multiply two arrays element-wise."""
-        return IntArray(self.canonical_np_array * other.canonical_np_array)
+        from .real_united_array import RealUnitedArray
+        from .._scalars.real_united_scalar import RealUnitedScalar
+        if isinstance(other, IntArray):
+            return IntArray(self.canonical_np_array * other.canonical_np_array)
+        elif isinstance(other, RealUnitedScalar):
+            return RealUnitedArray(self.canonical_np_array * other.canonical_value, other.dimension, other.unit)
+        elif isinstance(other, float) or isinstance(other, int) or isinstance(other, complex): # type: ignore
+            return IntArray(self.canonical_np_array * other)
+        else:
+            raise ValueError(f"Invalid type: {type(other)}")
     
+    @overload
+    def __rmul__(self, other: int|float|complex) -> "IntArray":
+        ...
+    @overload
     def __rmul__(self, other: "IntArray") -> "IntArray":
+        ...
+    @overload
+    def __rmul__(self, other: "RealUnitedScalar") -> "RealUnitedArray":
+        ...
+    def __rmul__(self, other: Union[int, float, complex, "IntArray", "RealUnitedScalar"]) -> Union["IntArray", "RealUnitedArray"]:
         """Multiply two arrays element-wise."""
-        return IntArray(self.canonical_np_array * other.canonical_np_array)
+        return self.__mul__(other)

@@ -12,7 +12,7 @@ storage and basic operations.
 from typing import Any, Sequence, Optional
 import numpy as np
 from pandas import Timestamp
-from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
+from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE, IntArray, FloatArray, RealUnitedScalar
 from .test_dataframe import TestColumnKey
 
 class TestNonUnitedArrays:
@@ -185,6 +185,323 @@ class TestNonUnitedArrays:
         
         print("\n✅ Constructor issue documented!")
 
+    def test_int_array_arithmetic(self):
+        """Test comprehensive arithmetic operations for IntArray."""
+        print("\n🔢 Testing IntArray arithmetic operations...")
+        
+        # Create test arrays using numpy arrays (workaround for constructor issue)
+        a_data = np.array([1, 2, 3, 4])
+        b_data = np.array([5, 6, 7, 8])
+        
+        # Test class methods
+        print("\n📊 Testing class methods...")
+        ones_array = IntArray.ones(3)
+        zeros_array = IntArray.zeros(3)
+        
+        assert len(ones_array) == 3
+        assert len(zeros_array) == 3
+        assert ones_array.canonical_np_array.tolist() == [1, 1, 1]
+        assert zeros_array.canonical_np_array.tolist() == [0, 0, 0]
+        print("✅ ones() and zeros() work correctly")
+        
+        # Test addition
+        print("\n➕ Testing addition...")
+        a = IntArray(a_data)
+        b = IntArray(b_data)
+        
+        result_add = a + b
+        expected_add = [6, 8, 10, 12]
+        assert result_add.canonical_np_array.tolist() == expected_add
+        print(f"✅ Addition: {a_data} + {b_data} = {result_add.canonical_np_array.tolist()}")
+        
+        # Test reverse addition
+        result_radd = b + a
+        assert result_radd.canonical_np_array.tolist() == expected_add
+        print("✅ Reverse addition works")
+        
+        # Test subtraction
+        print("\n➖ Testing subtraction...")
+        result_sub = b - a
+        expected_sub = [4, 4, 4, 4]
+        assert result_sub.canonical_np_array.tolist() == expected_sub
+        print(f"✅ Subtraction: {b_data} - {a_data} = {result_sub.canonical_np_array.tolist()}")
+        
+        # Test reverse subtraction
+        result_rsub = a - b
+        expected_rsub = [-4, -4, -4, -4]
+        assert result_rsub.canonical_np_array.tolist() == expected_rsub
+        print("✅ Reverse subtraction works")
+        
+        # Test multiplication with IntArray
+        print("\n✖️ Testing multiplication with IntArray...")
+        result_mul = a * b
+        expected_mul = [5, 12, 21, 32]
+        assert result_mul.canonical_np_array.tolist() == expected_mul
+        print(f"✅ IntArray multiplication: {a_data} * {b_data} = {result_mul.canonical_np_array.tolist()}")
+        
+        # Test multiplication with scalar
+        print("\n🔢 Testing multiplication with scalar...")
+        result_mul_scalar = a * 2
+        expected_mul_scalar = [2, 4, 6, 8]
+        assert result_mul_scalar.canonical_np_array.tolist() == expected_mul_scalar
+        print(f"✅ Scalar multiplication: {a_data} * 2 = {result_mul_scalar.canonical_np_array.tolist()}")
+        
+        # Test reverse multiplication with scalar
+        result_rmul_scalar = 3 * a
+        expected_rmul_scalar = [3, 6, 9, 12]
+        assert result_rmul_scalar.canonical_np_array.tolist() == expected_rmul_scalar
+        print("✅ Reverse scalar multiplication works")
+        
+        # Test multiplication with RealUnitedScalar
+        print("\n📏 Testing multiplication with RealUnitedScalar...")
+        scalar = RealUnitedScalar(2.0, Unit("m"))
+        result_mul_scalar_unit = a * scalar
+        expected_mul_scalar_unit = [2.0, 4.0, 6.0, 8.0]
+        assert result_mul_scalar_unit.canonical_np_array.tolist() == expected_mul_scalar_unit
+        assert str(result_mul_scalar_unit.unit) == "m"
+        print(f"✅ RealUnitedScalar multiplication: {a_data} * {scalar} = {result_mul_scalar_unit.canonical_np_array.tolist()} {result_mul_scalar_unit.unit}")
+        
+        # Test error cases
+        print("\n❌ Testing error cases...")
+        try:
+            a * "invalid" # type: ignore
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "Invalid type" in str(e)
+            print("✅ Correctly raised ValueError for invalid type")
+        
+        print("🎉 IntArray arithmetic test completed!")
+
+    def test_float_array_arithmetic(self):
+        """Test comprehensive arithmetic operations for FloatArray."""
+        print("\n🔢 Testing FloatArray arithmetic operations...")
+        
+        # Create test arrays using numpy arrays (workaround for constructor issue)
+        a_data = np.array([1.5, 2.5, 3.5, 4.5])
+        b_data = np.array([0.5, 1.5, 2.5, 3.5])
+        int_data = np.array([2, 3, 4, 5])
+        
+        # Test class methods
+        print("\n📊 Testing class methods...")
+        ones_array = FloatArray.ones(3)
+        zeros_array = FloatArray.zeros(3)
+        
+        assert len(ones_array) == 3
+        assert len(zeros_array) == 3
+        assert ones_array.canonical_np_array.tolist() == [1.0, 1.0, 1.0]
+        assert zeros_array.canonical_np_array.tolist() == [0.0, 0.0, 0.0]
+        print("✅ ones() and zeros() work correctly")
+        
+        # Test addition with FloatArray
+        print("\n➕ Testing addition with FloatArray...")
+        a = FloatArray(a_data)
+        b = FloatArray(b_data)
+        
+        result_add = a + b
+        expected_add = [2.0, 4.0, 6.0, 8.0]
+        assert result_add.canonical_np_array.tolist() == expected_add
+        print(f"✅ FloatArray addition: {a_data} + {b_data} = {result_add.canonical_np_array.tolist()}")
+        
+        # Test addition with IntArray
+        print("\n🔢 Testing addition with IntArray...")
+        int_array = IntArray(int_data)
+        result_add_int = a + int_array
+        expected_add_int = [3.5, 5.5, 7.5, 9.5]
+        assert result_add_int.canonical_np_array.tolist() == expected_add_int
+        print(f"✅ IntArray addition: {a_data} + {int_data} = {result_add_int.canonical_np_array.tolist()}")
+        
+        # Test reverse addition
+        result_radd = b + a
+        assert result_radd.canonical_np_array.tolist() == expected_add
+        print("✅ Reverse addition works")
+        
+        # Test subtraction
+        print("\n➖ Testing subtraction...")
+        result_sub = a - b
+        expected_sub = [1.0, 1.0, 1.0, 1.0]
+        assert result_sub.canonical_np_array.tolist() == expected_sub
+        print(f"✅ Subtraction: {a_data} - {b_data} = {result_sub.canonical_np_array.tolist()}")
+        
+        # Test reverse subtraction
+        result_rsub = b - a
+        expected_rsub = [-1.0, -1.0, -1.0, -1.0]
+        assert result_rsub.canonical_np_array.tolist() == expected_rsub
+        print("✅ Reverse subtraction works")
+        
+        # Test multiplication with FloatArray
+        print("\n✖️ Testing multiplication with FloatArray...")
+        result_mul = a * b
+        expected_mul = [0.75, 3.75, 8.75, 15.75]
+        assert result_mul.canonical_np_array.tolist() == expected_mul
+        print(f"✅ FloatArray multiplication: {a_data} * {b_data} = {result_mul.canonical_np_array.tolist()}")
+        
+        # Test multiplication with IntArray
+        print("\n🔢 Testing multiplication with IntArray...")
+        result_mul_int = a * int_array
+        expected_mul_int = [3.0, 7.5, 14.0, 22.5]
+        assert result_mul_int.canonical_np_array.tolist() == expected_mul_int
+        print(f"✅ IntArray multiplication: {a_data} * {int_data} = {result_mul_int.canonical_np_array.tolist()}")
+        
+        # Test multiplication with scalar
+        print("\n🔢 Testing multiplication with scalar...")
+        result_mul_scalar = a * 2.0
+        expected_mul_scalar = [3.0, 5.0, 7.0, 9.0]
+        assert result_mul_scalar.canonical_np_array.tolist() == expected_mul_scalar
+        print(f"✅ Scalar multiplication: {a_data} * 2.0 = {result_mul_scalar.canonical_np_array.tolist()}")
+        
+        # Test reverse multiplication with scalar
+        result_rmul_scalar = 3.0 * a
+        expected_rmul_scalar = [4.5, 7.5, 10.5, 13.5]
+        assert result_rmul_scalar.canonical_np_array.tolist() == expected_rmul_scalar
+        print("✅ Reverse scalar multiplication works")
+        
+        # Test multiplication with RealUnitedScalar
+        print("\n📏 Testing multiplication with RealUnitedScalar...")
+        scalar = RealUnitedScalar(2.0, Unit("m"))
+        result_mul_scalar_unit = a * scalar
+        expected_mul_scalar_unit = [3.0, 5.0, 7.0, 9.0]
+        assert result_mul_scalar_unit.canonical_np_array.tolist() == expected_mul_scalar_unit
+        assert str(result_mul_scalar_unit.unit) == "m"
+        print(f"✅ RealUnitedScalar multiplication: {a_data} * {scalar} = {result_mul_scalar_unit.canonical_np_array.tolist()} {result_mul_scalar_unit.unit}")
+        
+        # Test division with FloatArray
+        print("\n➗ Testing division with FloatArray...")
+        result_div = a / b
+        expected_div = [3.0, 1.6666666666666667, 1.4, 1.2857142857142858]
+        assert np.allclose(result_div.canonical_np_array, expected_div)
+        print(f"✅ FloatArray division: {a_data} / {b_data} ≈ {result_div.canonical_np_array.tolist()}")
+        
+        # Test division with IntArray
+        print("\n🔢 Testing division with IntArray...")
+        result_div_int = a / int_array
+        expected_div_int = [0.75, 0.8333333333333334, 0.875, 0.9]
+        assert np.allclose(result_div_int.canonical_np_array, expected_div_int)
+        print(f"✅ IntArray division: {a_data} / {int_data} ≈ {result_div_int.canonical_np_array.tolist()}")
+        
+        # Test division with scalar
+        print("\n🔢 Testing division with scalar...")
+        result_div_scalar = a / 2.0
+        expected_div_scalar = [0.75, 1.25, 1.75, 2.25]
+        assert result_div_scalar.canonical_np_array.tolist() == expected_div_scalar
+        print(f"✅ Scalar division: {a_data} / 2.0 = {result_div_scalar.canonical_np_array.tolist()}")
+        
+        # Test reverse division with scalar
+        print("\n🔢 Testing reverse division with scalar...")
+        result_rdiv_scalar = 10.0 / a
+        expected_rdiv_scalar = [6.666666666666667, 4.0, 2.857142857142857, 2.2222222222222223]
+        assert np.allclose(result_rdiv_scalar.canonical_np_array, expected_rdiv_scalar)
+        print(f"✅ Reverse scalar division: 10.0 / {a_data} ≈ {result_rdiv_scalar.canonical_np_array.tolist()}")
+        
+        # Test division with RealUnitedScalar
+        print("\n📏 Testing division with RealUnitedScalar...")
+        result_div_scalar_unit = a / scalar
+        expected_div_scalar_unit = [0.75, 1.25, 1.75, 2.25]
+        assert result_div_scalar_unit.canonical_np_array.tolist() == expected_div_scalar_unit
+        assert str(result_div_scalar_unit.unit) == "m"
+        print(f"✅ RealUnitedScalar division: {a_data} / {scalar} = {result_div_scalar_unit.canonical_np_array.tolist()} {result_div_scalar_unit.unit}")
+        
+        # Test reverse division with RealUnitedScalar
+        print("\n📏 Testing reverse division with RealUnitedScalar...")
+        result_rdiv_scalar_unit = scalar / a
+        expected_rdiv_scalar_unit = [1.3333333333333333, 0.8, 0.5714285714285714, 0.4444444444444444]
+        assert np.allclose(result_rdiv_scalar_unit.canonical_np_array, expected_rdiv_scalar_unit)
+        assert str(result_rdiv_scalar_unit.unit) == "m"
+        print(f"✅ Reverse RealUnitedScalar division: {scalar} / {a_data} ≈ {result_rdiv_scalar_unit.canonical_np_array.tolist()} {result_rdiv_scalar_unit.unit}")
+        
+        # Test power operation
+        print("\n💪 Testing power operation...")
+        result_pow = a ** b
+        expected_pow = [1.22474487, 3.95284708, 22.91765149, 193.30531631]
+        assert np.allclose(result_pow.canonical_np_array, expected_pow)
+        print(f"✅ Power operation: {a_data} ** {b_data} ≈ {result_pow.canonical_np_array.tolist()}")
+        
+        # Test power with IntArray
+        print("\n🔢 Testing power with IntArray...")
+        result_pow_int = a ** int_array
+        expected_pow_int = [2.25, 15.625, 150.0625, 1845.28125]
+        assert np.allclose(result_pow_int.canonical_np_array, expected_pow_int)
+        print(f"✅ IntArray power: {a_data} ** {int_data} ≈ {result_pow_int.canonical_np_array.tolist()}")
+        
+        # Test error cases
+        print("\n❌ Testing error cases...")
+        try:
+            a * "invalid" # type: ignore
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "Invalid type" in str(e)
+            print("✅ Correctly raised ValueError for invalid type")
+        
+        try:
+            a / "invalid" # type: ignore
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "Invalid type" in str(e)
+            print("✅ Correctly raised ValueError for invalid division type")
+        
+        print("🎉 FloatArray arithmetic test completed!")
+
+    def test_array_edge_cases(self):
+        """Test edge cases and special scenarios for arithmetic operations."""
+        print("\n🔍 Testing arithmetic edge cases...")
+        
+        # Test empty arrays
+        print("\n📭 Testing empty arrays...")
+        empty_int = IntArray.zeros(0)
+        empty_float = FloatArray.zeros(0)
+        
+        assert len(empty_int) == 0
+        assert len(empty_float) == 0
+        print("✅ Empty arrays work correctly")
+        
+        # Test single element arrays
+        print("\n🔢 Testing single element arrays...")
+        single_int = IntArray(np.array([42]))
+        FloatArray(np.array([3.14]))
+        
+        result_single = single_int * 2
+        assert result_single.canonical_np_array.tolist() == [84]
+        print("✅ Single element arithmetic works")
+        
+        # Test zero division handling
+        print("\n⚠️ Testing zero division handling...")
+        zero_array = FloatArray(np.array([0.0, 1.0, 2.0]))
+        non_zero_array = FloatArray(np.array([1.0, 2.0, 3.0]))
+        
+        # This should work and produce inf for division by zero
+        result_zero_div = non_zero_array / zero_array
+        assert np.isinf(result_zero_div.canonical_np_array[0])
+        assert result_zero_div.canonical_np_array[1] == 2.0
+        assert result_zero_div.canonical_np_array[2] == 1.5
+        print("✅ Zero division handled correctly (inf for division by zero)")
+        
+        # Test very large numbers
+        print("\n🔢 Testing very large numbers...")
+        large_array = IntArray(np.array([1000000, 2000000, 3000000]))
+        result_large = large_array * 2
+        expected_large = [2000000, 4000000, 6000000]
+        assert result_large.canonical_np_array.tolist() == expected_large
+        print("✅ Large number arithmetic works")
+        
+        # Test negative numbers
+        print("\n➖ Testing negative numbers...")
+        neg_array = IntArray(np.array([-1, -2, -3]))
+        pos_array = IntArray(np.array([1, 2, 3]))
+        
+        result_neg = neg_array + pos_array
+        expected_neg = [0, 0, 0]
+        assert result_neg.canonical_np_array.tolist() == expected_neg
+        print("✅ Negative number arithmetic works")
+        
+        # Test floating point precision
+        print("\n🔢 Testing floating point precision...")
+        small_array = FloatArray(np.array([0.1, 0.2, 0.3]))
+        result_small = small_array * 3
+        expected_small = [0.3, 0.6, 0.9]
+        assert np.allclose(result_small.canonical_np_array, expected_small)
+        print("✅ Floating point precision maintained")
+        
+        print("🎉 Edge cases test completed!")
+
 
 def run_non_united_array_tests():
     """Run the simplified non-united array tests."""
@@ -199,6 +516,9 @@ def run_non_united_array_tests():
         test_class.test_dataframe_data_operations_without_array_extraction,
         test_class.test_array_type_inference,
         test_class.test_constructor_issue_documentation,
+        test_class.test_int_array_arithmetic,
+        test_class.test_float_array_arithmetic,
+        test_class.test_array_edge_cases,
     ]
     
     passed = 0

@@ -137,6 +137,10 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         ...
     def __truediv__(self, other: Union["RealUnitedScalar", float, int]) -> "RealUnitedScalar":
         """Divide scalars or scalar by number."""
+        # Check if other is an array type - if so, let the array handle it
+        if hasattr(other, 'canonical_np_array'):
+            return NotImplemented
+        
         if hasattr(other, 'canonical_value') and hasattr(other, 'dimension'):
             new_dimension: "Dimension" = self.dimension / other.dimension # type: ignore
             value: float = other.canonical_value # type: ignore
