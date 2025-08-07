@@ -13,7 +13,10 @@ from typing import Any, Sequence, Optional
 import numpy as np
 from pandas import Timestamp
 from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
-from .test_dataframe import TestColumnKey
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_dataframe import TestColumnKey
 
 class TestNonUnitedArrays:
     """Test class demonstrating non-united array functionality and documenting issues."""

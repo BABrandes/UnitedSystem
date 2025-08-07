@@ -11,7 +11,10 @@ from typing import Optional, Sequence, Any
 
 from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
 
-from .test_dataframe import TestColumnKey
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from test_dataframe import TestColumnKey
 
 class TestUnitedDataframeSerialization:
     """Test serialization of UnitedDataframe objects."""
