@@ -4,8 +4,8 @@ A comprehensive Python library for handling physical units, dimensions, and unit
 
 ## Features
 
-- **Physical Units & Dimensions**: Full support for SI units, derived units, and custom unit definitions
-- **United Scalars**: Type-safe scalar values with units (real and complex)
+- **Physical Units & Dimensions**: Full support for SI units, derived units, and dimensional analysis
+- **United Scalars**: Type-safe scalar values with units (real numbers)
 - **United Arrays**: NumPy-compatible arrays with unit support
 - **United DataFrames**: Pandas-compatible dataframes with unit-aware columns
 - **HDF5 Serialization**: Efficient storage and retrieval of united data structures
@@ -55,17 +55,31 @@ meter = Unit("m")
 second = Unit("s")
 kilogram = Unit("kg")
 
-# Create united scalars
-distance = RealUnitedScalar(100.0, meter)
-time = RealUnitedScalar(10.0, second)
-mass = RealUnitedScalar(5.0, kilogram)
+# Create united scalars (multiple ways)
+distance = RealUnitedScalar.create_from_value_and_unit(100.0, meter)
+time = RealUnitedScalar.create_from_value_and_unit(10.0, second)
+mass = RealUnitedScalar.create_from_value_and_unit(5.0, kilogram)
 
-# Arithmetic operations
+# Alternative creation using multiplication
+length = 5.0 * Unit("m")
+velocity = 10.0 * Unit("m/s")
+
+# Arithmetic operations with automatic unit handling
 velocity = distance / time  # 10.0 m/s
 momentum = mass * velocity  # 50.0 kg⋅m/s
 
+# Complex unit arithmetic examples
+energy = 6.0 * Unit("kJ")  # 6000.0 J
+time_interval = 3.0 * Unit("s")  # 3.0 s
+power = energy / time_interval  # 2000.0 W (2 kW)
+
+# More examples
+force = 10.0 * Unit("N")  # 10.0 N
+distance_moved = 5.0 * Unit("m")  # 5.0 m
+work_done = force * distance_moved  # 50.0 J
+
 # Unit conversion
-velocity_kmh = velocity.to(Unit("km/h"))  # 36.0 km/h
+velocity_kmh = velocity.in_unit(Unit("km/h"))  # 36.0 km/h
 ```
 
 ### Working with Arrays
@@ -74,23 +88,30 @@ velocity_kmh = velocity.to(Unit("km/h"))  # 36.0 km/h
 from united_system import RealUnitedArray, Unit
 import numpy as np
 
-# Create united arrays
-positions = RealUnitedArray([1.0, 2.0, 3.0], Unit("m"))
-velocities = RealUnitedArray([10.0, 20.0, 30.0], Unit("m/s"))
+# Create united arrays (multiple ways)
+positions = RealUnitedArray([1.0, 2.0, 3.0], Unit("m"))  # Using Unit object
+velocities = RealUnitedArray([10.0, 20.0, 30.0], "m/s")  # Using string
+masses = [1.0, 2.0, 3.0] * Unit("kg")  # Using multiplication
 
-# Array operations
-accelerations = velocities / RealUnitedScalar(2.0, Unit("s"))  # [5.0, 10.0, 15.0] m/s²
+# Array operations with automatic unit handling
+accelerations = velocities / RealUnitedScalar.create_from_value_and_unit(2.0, Unit("s"))  # [5.0, 10.0, 15.0] m/s²
 
-# Broadcasting
+# Broadcasting with proper unit arithmetic
 time_array = RealUnitedArray([1.0, 2.0, 3.0], Unit("s"))
 displacements = velocities * time_array  # [10.0, 40.0, 90.0] m
+
+# Complex array calculations
+energies = RealUnitedArray([6.0, 12.0, 18.0], "kJ")  # [6000.0, 12000.0, 18000.0] J
+times = RealUnitedArray([2.0, 3.0, 6.0], "s")
+powers = energies / times  # [3000.0, 4000.0, 3000.0] W
 ```
 
 ### DataFrames with Units
 
 ```python
-from united_system import UnitedDataframe, Unit, ColumnType
+from united_system import UnitedDataframe, Unit, DataframeColumnType
 from united_system import RealUnitedArray, IntArray, StringArray
+from united_system import DataframeColumnKey
 
 # Create united arrays for dataframe columns
 positions = RealUnitedArray([1.0, 2.0, 3.0], Unit("m"))
@@ -100,21 +121,24 @@ ids = IntArray([1, 2, 3])
 names = StringArray(["A", "B", "C"])
 
 # Create dataframe
-df = UnitedDataframe({
-    "id": ids,
-    "name": names,
-    "position": positions,
-    "velocity": velocities,
-    "mass": masses
+df = UnitedDataframe.create_from_data({
+    DataframeColumnKey("id"): (DataframeColumnType.INTEGER_64, None, ids),
+    DataframeColumnKey("name"): (DataframeColumnType.STRING, None, names),
+    DataframeColumnKey("position"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), positions),
+    DataframeColumnKey("velocity"): (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), velocities),
+    DataframeColumnKey("mass"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), masses)
 })
 
 # Access united columns
-print(df["position"].unit)  # Unit("m")
-print(df["velocity"].unit)  # Unit("m/s")
+print(df[DataframeColumnKey("position")].unit)  # Unit("m")
+print(df[DataframeColumnKey("velocity")].unit)  # Unit("m/s")
 
-# Perform calculations
-df["momentum"] = df["mass"] * df["velocity"]  # kg⋅m/s
-df["kinetic_energy"] = 0.5 * df["mass"] * df["velocity"]**2  # kg⋅m²/s²
+# Perform calculations with automatic unit handling
+df[DataframeColumnKey("momentum")] = df[DataframeColumnKey("mass")] * df[DataframeColumnKey("velocity")]  # kg⋅m/s
+df[DataframeColumnKey("kinetic_energy")] = 0.5 * df[DataframeColumnKey("mass")] * df[DataframeColumnKey("velocity")]**2  # kg⋅m²/s²
+
+# Complex calculations with proper units
+df[DataframeColumnKey("power")] = df[DataframeColumnKey("kinetic_energy")] / (2.0 * Unit("s"))  # W
 ```
 
 ### Serialization
@@ -129,10 +153,10 @@ with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
 
 try:
     # Save to HDF5
-    df.to_hdf5(filename, "data")
+    df.to_hdf5(filename, key="data")
     
     # Load from HDF5
-    loaded_df = UnitedDataframe.from_hdf5(filename, "data")
+    loaded_df = UnitedDataframe.from_hdf5(filename, key="data", column_key_type=DataframeColumnKey)
     
     # Verify data integrity
     assert df.equals(loaded_df)
@@ -141,25 +165,10 @@ finally:
 
 # JSON serialization
 json_data = df.to_json()
-loaded_df = UnitedDataframe.from_json(json_data)
+loaded_df = UnitedDataframe.from_json(json_data, column_key_type=DataframeColumnKey)
 ```
 
 ## Advanced Features
-
-### Custom Units
-
-```python
-from united_system import Unit, NamedQuantity
-
-# Define custom units
-custom_force = Unit("custom_N", NamedQuantity.FORCE)
-custom_energy = Unit("custom_J", NamedQuantity.ENERGY)
-
-# Use in calculations
-force = RealUnitedScalar(100.0, custom_force)
-distance = RealUnitedScalar(5.0, Unit("m"))
-work = force * distance  # 500.0 custom_N⋅m
-```
 
 ### Dimension Analysis
 
@@ -175,17 +184,23 @@ assert Unit("m/s").dimension == velocity_dim
 assert Unit("N").dimension == force_dim
 ```
 
-### Complex Units
+### Named Quantities
 
 ```python
-from united_system import ComplexUnitedScalar, Unit
+from united_system import NamedQuantity, Unit
 
-# Complex values with units
-complex_voltage = ComplexUnitedScalar(3 + 4j, Unit("V"))
-complex_current = ComplexUnitedScalar(2 + 1j, Unit("A"))
+# Use predefined named quantities
+force = RealUnitedScalar.create_from_value_and_unit(100.0, Unit("N"))
+distance = RealUnitedScalar.create_from_value_and_unit(5.0, Unit("m"))
+work = force * distance  # 500.0 N⋅m
 
-# Complex arithmetic
-complex_power = complex_voltage * complex_current  # (2+11j) V⋅A
+# Alternative creation using multiplication
+force_alt = 100.0 * Unit("N")
+distance_alt = 5.0 * Unit("m")
+
+# Access named quantities
+assert NamedQuantity.FORCE.unit == Unit("N")
+assert NamedQuantity.ENERGY.unit == Unit("J")
 ```
 
 ## Documentation
@@ -283,4 +298,3 @@ If you use UnitedSystem in your research, please cite:
 - Inspired by the need for type-safe unit handling in scientific computing
 - Built on top of NumPy and Pandas for efficient numerical operations
 - Uses HDF5 for efficient data storage and exchange
-# Trigger CI run
