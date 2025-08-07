@@ -283,3 +283,4 @@ If you use UnitedSystem in your research, please cite:
 - Inspired by the need for type-safe unit handling in scientific computing
 - Built on top of NumPy and Pandas for efficient numerical operations
 - Uses HDF5 for efficient data storage and exchange
+# Trigger CI run
