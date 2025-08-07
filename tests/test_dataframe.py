@@ -38,9 +38,6 @@ def run_instantiation_tests():
     """Run all instantiation tests and report results."""
     print("🧪 Running UnitedDataframe instantiation tests...")
 
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from test_dataframe_core import TestUnitedDataframeCore
     from test_dataframe_serialization import TestUnitedDataframeSerialization
     from test_dataframe_operations import TestUnitedDataframeOperations

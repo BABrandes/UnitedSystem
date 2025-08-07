@@ -16,9 +16,6 @@ from pandas import Timestamp
 from typing import Sequence, Optional
 
 from united_system import VALUE_TYPE, Dimension, SCALAR_TYPE, UnitedDataframe, DataframeColumnType, Unit, StringArray, RealUnitedScalar, RealUnitedArray, IntArray, ComplexArray
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from test_dataframe import TestColumnKey
 
 class TestUnitedDataframeOperations:
