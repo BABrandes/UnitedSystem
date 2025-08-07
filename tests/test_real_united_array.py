@@ -4,7 +4,6 @@ import pytest
 import numpy as np
 from united_system import RealUnitedArray, RealUnitedScalar, Dimension, Unit, NamedQuantity
 
-
 class TestRealUnitedArrayCore:
     """Test core functionality of RealUnitedArray."""
     
