@@ -228,6 +228,90 @@ class TestUnitedDataframeOperations:
         
         print("🎉 Row operations test completed successfully!")
 
+    def test_row_find_index_by_item(self):
+        """Test row_find_by_item across types, units, not-found, invalid, and read-only."""
+        print("\n🔎 Testing row_find_by_item...")
+
+        now1: Timestamp = Timestamp("2024-01-01")
+        now2: Timestamp = Timestamp("2024-01-02")
+
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("strings"): (DataframeColumnType.STRING, None, ["A", "B", "A", "C"]),
+            TestColumnKey("reals"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [1.0, 2.0, 3.0, 1.0]),
+            TestColumnKey("integers"): (DataframeColumnType.INTEGER_64, None, [10, 20, 10, 30]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, [True, False, True, False]),
+            TestColumnKey("timestamp"): (DataframeColumnType.TIMESTAMP, None, [now1, now2, now1, now2]),
+        }
+
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
+
+        # String matches (duplicates)
+        print("\n🧵 String matches...")
+        string_idx = df.row_find_index_by_item(TestColumnKey("strings"), "A")
+        assert string_idx == [0, 2]
+        print(f"✅ Found 'A' at rows: {string_idx}")
+
+        # Real with unit: united scalar in same unit
+        print("\n📏 Real with unit (same unit)...")
+        real_idx_same = df.row_find_index_by_item(TestColumnKey("reals"), RealUnitedScalar(1.0, Unit("m")))
+        assert real_idx_same == [0, 3]
+        print(f"✅ Found 1.0 m at rows: {real_idx_same}")
+
+        # Real with unit: united scalar with convertible unit
+        print("\n📐 Real with unit (convertible unit)...")
+        real_idx_conv = df.row_find_index_by_item(TestColumnKey("reals"), RealUnitedScalar(0.001, Unit("km")))
+        assert real_idx_conv == [0, 3]
+        print(f"✅ Found 0.001 km (==1.0 m) at rows: {real_idx_conv}")
+
+        # Real primitive float (no unit scalar) should still match
+        print("\n🔢 Real primitive matches...")
+        real_idx_prim = df.row_find_index_by_item(TestColumnKey("reals"), 1.0)
+        assert real_idx_prim == [0, 3]
+        print(f"✅ Found primitive 1.0 at rows: {real_idx_prim}")
+
+        # Integer matches
+        print("\n🔢 Integer matches...")
+        int_idx = df.row_find_index_by_item(TestColumnKey("integers"), 10)
+        assert int_idx == [0, 2]
+        print(f"✅ Found 10 at rows: {int_idx}")
+
+        # Boolean matches
+        print("\n✅ Boolean matches...")
+        bool_idx = df.row_find_index_by_item(TestColumnKey("active"), True)
+        assert bool_idx == [0, 2]
+        print(f"✅ Found True at rows: {bool_idx}")
+
+        # Timestamp matches
+        print("\n⏱️ Timestamp matches...")
+        ts_idx = df.row_find_index_by_item(TestColumnKey("timestamp"), now1)
+        assert ts_idx == [0, 2]
+        print(f"✅ Found {now1} at rows: {ts_idx}")
+
+        # Not found
+        print("\n❓ Not found case...")
+        none_idx = df.row_find_index_by_item(TestColumnKey("strings"), "Z")
+        assert none_idx == []
+        print("✅ No matches returned correctly")
+
+        # Invalid value type should raise
+        print("\n❌ Invalid type handling...")
+        try:
+            df.row_find_index_by_item(TestColumnKey("strings"), {"bad": 1})  # type: ignore[arg-type]
+            assert False, "Should have raised ValueError for invalid value type"
+        except ValueError as e:
+            assert "Invalid value type" in str(e)
+            print("✅ Correctly raised ValueError for invalid value type")
+
+        # Read-only mode should still allow searching
+        print("\n🔒 Read-only mode search...")
+        ro_df = df.copy()
+        ro_df.set_read_only(True)
+        ro_idx = ro_df.row_find_index_by_item(TestColumnKey("strings"), "A")
+        assert ro_idx == [0, 2]
+        print("✅ Search works in read-only mode")
+
+        print("🎉 row_find_by_item test completed successfully!")
+
     def test_cell_operations_comprehensive(self):
         """Test individual cell operations: get and set cell values."""
         print("\n🔧 Testing comprehensive cell operations...")

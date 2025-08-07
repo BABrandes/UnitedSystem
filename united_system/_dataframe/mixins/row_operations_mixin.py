@@ -10,7 +10,7 @@ import pandas as pd
 from typing import TYPE_CHECKING, Sequence
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._utils.value_type import VALUE_TYPE
+from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
 from ..._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
 
 if TYPE_CHECKING:
@@ -286,3 +286,34 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             self._row_remove(0, self._number_of_rows())
+
+    def _row_find_index_by_item(self, column_key: CK, value: VALUE_TYPE|SCALAR_TYPE) -> list[int]:
+        """
+        Internal: Find all row indices where the value in the specified column matches the given value. (no lock)
+
+        Args:
+            column_key (CK): The column key to search in
+            value (VALUE_TYPE|SCALAR_TYPE): The value to search for
+
+        Returns:
+            list[int]: List of row indices where the value matches
+        """
+              
+        if isinstance(value, SCALAR_TYPE_RUNTIME):
+            _value: VALUE_TYPE = self._column_types[column_key].get_value_for_dataframe(value, self._column_units[column_key])
+        elif isinstance(value, VALUE_TYPE_RUNTIME):
+            assert isinstance(value, VALUE_TYPE)
+            _value: VALUE_TYPE = value
+        else:
+            raise ValueError(f"Invalid value type: {type(value)}")
+
+        _row_indices: list[int] = self._internal_dataframe[self._internal_dataframe[self._internal_dataframe_column_names[column_key]] == _value].index.tolist() # type: ignore
+
+        return _row_indices
+    
+    def row_find_index_by_item(self, column_key: CK, value: VALUE_TYPE|SCALAR_TYPE) -> list[int]:
+        """
+        Find all row indices where the value in the specified column matches the given value.
+        """
+        with self._rlock:
+            return self._row_find_index_by_item(column_key, value)
