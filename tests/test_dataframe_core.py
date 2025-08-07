@@ -12,7 +12,7 @@ from typing import Optional, Sequence
 from united_system import VALUE_TYPE, Dimension, Unit, UnitedDataframe, DataframeColumnType
 
 # Import TestColumnKey from the main test module
-from tests.test_dataframe import TestColumnKey
+from .test_dataframe import TestColumnKey
 
 class TestUnitedDataframeCore:
     """Test basic core functionality of UnitedDataframe objects."""

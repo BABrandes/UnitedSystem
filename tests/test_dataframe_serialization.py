@@ -11,7 +11,7 @@ from typing import Optional, Sequence, Any
 
 from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
 
-from tests.test_dataframe import TestColumnKey
+from .test_dataframe import TestColumnKey
 
 class TestUnitedDataframeSerialization:
     """Test serialization of UnitedDataframe objects."""

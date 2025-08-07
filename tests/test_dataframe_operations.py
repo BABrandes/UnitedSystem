@@ -16,7 +16,7 @@ from pandas import Timestamp
 from typing import Sequence, Optional
 
 from united_system import VALUE_TYPE, Dimension, SCALAR_TYPE, UnitedDataframe, DataframeColumnType, Unit, StringArray, RealUnitedScalar, RealUnitedArray, IntArray, ComplexArray
-from tests.test_dataframe import TestColumnKey
+from .test_dataframe import TestColumnKey
 
 class TestUnitedDataframeOperations:
     """Test class for UnitedDataframe operations."""

@@ -38,9 +38,9 @@ def run_instantiation_tests():
     """Run all instantiation tests and report results."""
     print("🧪 Running UnitedDataframe instantiation tests...")
 
-    from tests.test_dataframe_core import TestUnitedDataframeCore
-    from tests.test_dataframe_serialization import TestUnitedDataframeSerialization
-    from tests.test_dataframe_operations import TestUnitedDataframeOperations
+    from .test_dataframe_core import TestUnitedDataframeCore
+    from .test_dataframe_serialization import TestUnitedDataframeSerialization
+    from .test_dataframe_operations import TestUnitedDataframeOperations
     
     test_class_core = TestUnitedDataframeCore()
     test_class_serialization = TestUnitedDataframeSerialization()
