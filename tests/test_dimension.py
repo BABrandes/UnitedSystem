@@ -13,8 +13,7 @@ Tests all functionality including:
 import pytest
 
 # Import the modules to test
-from united_system._units_and_dimension.dimension import Dimension, DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
-from united_system._units_and_dimension.named_quantity import NamedQuantity
+from united_system import Dimension, DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION, NamedQuantity
 
 
 class TestDimensionStringParsing:

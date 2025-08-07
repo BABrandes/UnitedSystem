@@ -6,10 +6,10 @@ This test suite systematically tests UnitedDataframe functionality to identify
 and debug any issues with the implementation.
 """
 
-from united_system._dataframe.united_dataframe import UnitedDataframe
-from united_system._units_and_dimension.unit import Unit
-from united_system._dataframe.column_type import ColumnType
-from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
+from pathlib import Path
+from typing import Optional, Sequence
+
+from united_system import VALUE_TYPE, Dimension, Unit, UnitedDataframe, DataframeColumnType
 
 # Import TestColumnKey from the main test module
 from tests.test_dataframe import TestColumnKey
@@ -30,17 +30,16 @@ class TestUnitedDataframeCore:
     def test_simple_numeric_dataframe_creation(self):
         """Test creating a UnitedDataframe with a simple numeric column."""
         try:
-            # Create using the constructor that takes column metadata
+            # Create using create_from_data instead of constructor
             test_key = TestColumnKey("test")
-            df = UnitedDataframe(
-                column_keys=[test_key],
-                column_types={test_key: ColumnType.REAL_NUMBER_64},
-                column_units={test_key: Unit("K")},
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                test_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [])
+            }
+            
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
             assert len(df) == 0  # Should have zero rows
             print("✅ Simple numeric dataframe creation successful")
-            assert df.coltypes[test_key] == ColumnType.REAL_NUMBER_64
+            assert df.coltypes[test_key] == DataframeColumnType.REAL_NUMBER_64
             assert df.units[test_key] == Unit("K")
         except Exception as e:
             print(f"❌ Simple numeric dataframe creation failed: {e}")
@@ -55,19 +54,12 @@ class TestUnitedDataframeCore:
             temp_col_key = TestColumnKey("temperature")
             temp_unit = Unit("K")
             
-            # Use create_dataframe_from_data to create dataframe with actual data
-            arrays = {
-                temp_col_key: [273.15, 300.0, 350.0]
+            # Use create_from_data to create dataframe with actual data
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                temp_col_key: (DataframeColumnType.REAL_NUMBER_64, temp_unit, [273.15, 300.0, 350.0])
             }
-            column_types = {temp_col_key: ColumnType.REAL_NUMBER_64}
-            column_units = {temp_col_key: temp_unit}
             
-            df = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays,
-                column_types=column_types,
-                column_units_or_dimensions=column_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
             
             assert len(df) == 3
             print("✅ Dataframe with data creation successful")
@@ -86,18 +78,13 @@ class TestUnitedDataframeCore:
             pressure_col_key = TestColumnKey("pressure")
             
             # Create with UnitedDataframe() constructor
-            df = UnitedDataframe(
-                column_keys=[temp_col_key, pressure_col_key],
-                column_types={
-                    temp_col_key: ColumnType.REAL_NUMBER_64,
-                    pressure_col_key: ColumnType.REAL_NUMBER_64
-                },
-                column_units={
-                    temp_col_key: Unit("K"),
-                    pressure_col_key: Unit("Pa")
-                },
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            # Create dataframe using create_from_data instead of constructor
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                temp_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), []),
+                pressure_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [])
+            }
+            
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
             
             # Test basic properties using PUBLIC API
             assert len(df.colkeys) == 2
@@ -105,7 +92,7 @@ class TestUnitedDataframeCore:
             assert pressure_col_key in df.colkeys
             
             # Test column types and units
-            assert df.coltypes[temp_col_key] == ColumnType.REAL_NUMBER_64
+            assert df.coltypes[temp_col_key] == DataframeColumnType.REAL_NUMBER_64
             assert df.units[temp_col_key] == Unit("K")
             
             print("✅ Dataframe column access successful")
@@ -122,25 +109,28 @@ class TestUnitedDataframeCore:
             # Create empty dataframe
             temp_col_key = TestColumnKey("temperature")
             
-            df = UnitedDataframe(
-                column_keys=[temp_col_key],
-                column_types={temp_col_key: ColumnType.REAL_NUMBER_64},
-                column_units={temp_col_key: Unit("K")},
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            # Create dataframe using create_from_data instead of constructor
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                temp_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [])
+            }
+            
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
             
             # Test data creation with arrays
             from united_system._scalars.real_united_scalar import RealUnitedScalar
             
             # Create some temperature data
-            temperatures = [
+            temperatures: list[RealUnitedScalar] = [
                 RealUnitedScalar(273.15, Unit("K")),
                 RealUnitedScalar(300.0, Unit("K")),
                 RealUnitedScalar(350.0, Unit("K"))
             ]
             
-            # This would test data addition, but let's first just verify the structure
-            print("✅ Dataframe data manipulation test structure successful")
+            df.row_add_items({temp_col_key: temperatures[0]})
+            df.row_add_items({temp_col_key: temperatures[1]})
+            df.row_add_items({temp_col_key: temperatures[2]})
+            
+            print(f"✅ Dataframe data manipulation test structure successful (created {len(temperatures)} temperature values)")
             
         except Exception as e:
             print(f"❌ Dataframe data manipulation failed: {e}")
@@ -186,39 +176,23 @@ class TestUnitedDataframeCore:
             is_valid_key = TestColumnKey("is_valid")
             notes_key = TestColumnKey("notes")
             
-            # Define column types
-            column_types = {
-                sample_id_key: ColumnType.STRING,
-                temperature_key: ColumnType.REAL_NUMBER_64,
-                pressure_key: ColumnType.REAL_NUMBER_64,
-                length_key: ColumnType.REAL_NUMBER_64,
-                is_valid_key: ColumnType.BOOL,
-                notes_key: ColumnType.STRING
+            # Create empty dataframe with complex structure using create_from_data
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                sample_id_key: (DataframeColumnType.STRING, None, []),
+                temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), []),
+                pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), []),
+                length_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m"), []),
+                is_valid_key: (DataframeColumnType.BOOL, None, []),
+                notes_key: (DataframeColumnType.STRING, None, [])
             }
             
-            # Define units (None for non-physical quantities)
-            column_units = {
-                sample_id_key: None,
-                temperature_key: Unit("K"),
-                pressure_key: Unit("Pa"),
-                length_key: Unit("m"),
-                is_valid_key: None,
-                notes_key: None
-            }
-            
-            # Create empty dataframe with complex structure using UnitedDataframe() constructor
-            df = UnitedDataframe(
-                column_keys=[sample_id_key, temperature_key, pressure_key, length_key, is_valid_key, notes_key],
-                column_types=column_types,
-                column_units=column_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
-            
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
+            assert len(df) == 0
             print(f"✅ Complex dataframe created with {len(df.colkeys)} columns")
             
             # Test column properties using PUBLIC API
             assert len(df.colkeys) == 6
-            assert df.coltypes[temperature_key] == ColumnType.REAL_NUMBER_64
+            assert df.coltypes[temperature_key] == DataframeColumnType.REAL_NUMBER_64
             assert df.units[temperature_key] == Unit("K")
             assert df.units[sample_id_key] is None
             print("✅ Column properties verified")
@@ -238,21 +212,16 @@ class TestUnitedDataframeCore:
             notes = ["Control", "Test A", "Invalid", "Test B", "Final"]
             
             # Create UnitedDataframe with data using PUBLIC API
-            arrays = {
-                sample_id_key: sample_ids,
-                temperature_key: temperatures,
-                pressure_key: pressures,
-                length_key: lengths,
-                is_valid_key: is_valid,
-                notes_key: notes
+            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                sample_id_key: (DataframeColumnType.STRING, None, sample_ids),
+                temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), temperatures),
+                pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), pressures),
+                length_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m"), lengths),
+                is_valid_key: (DataframeColumnType.BOOL, None, is_valid),
+                notes_key: (DataframeColumnType.STRING, None, notes)
             }
             
-            df_with_data = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays,
-                column_types=column_types,
-                column_units_or_dimensions=column_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df_with_data: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
             
             print(f"✅ Complex dataframe populated with {len(df_with_data)} rows")
             
@@ -312,7 +281,7 @@ class TestUnitedDataframeCore:
             # Test cell access operations (if available)
             try:
                 # Get a specific cell value
-                first_temp = df_with_data.cell_value_get(0, temperature_key)
+                first_temp = df_with_data.cell_get_value(0, temperature_key)
                 print(f"✅ Cell access works: First temperature = {first_temp}")
             except Exception as cell_error:
                 print(f"⚠️ Cell access not fully implemented: {cell_error}")
@@ -320,7 +289,7 @@ class TestUnitedDataframeCore:
             # Test statistical operations (if available)
             try:
                 # Try to get column statistics
-                temp_mean = df_with_data.column_mean(temperature_key)
+                temp_mean = df_with_data.column_get_mean(temperature_key)
                 print(f"✅ Statistics work: Temperature mean = {temp_mean}")
             except Exception as stats_error:
                 print(f"⚠️ Statistics not fully implemented: {stats_error}")
@@ -351,73 +320,45 @@ class TestUnitedDataframeCore:
             
             # Test 1: Physical quantity with units -> should use REAL_NUMBER_64
             print("\n📏 Testing physical quantities with units...")
-            arrays_with_units = {value_key: [1.5, 2.3, 3.7]}
-            column_types_with_units = {value_key: ColumnType.REAL_NUMBER_64}
-            column_units_with_units = {value_key: Unit("m/s")}
+            columns_with_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {value_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [1.5, 2.3, 3.7])}
             
-            df_with_units = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays_with_units,
-                column_types=column_types_with_units,
-                column_units_or_dimensions=column_units_with_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df_with_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_with_units)
             
             print(f"✅ Physical quantity: {df_with_units.coltypes[value_key]} with unit {df_with_units.units[value_key]}")
-            assert df_with_units.coltypes[value_key] == ColumnType.REAL_NUMBER_64
+            assert df_with_units.coltypes[value_key] == DataframeColumnType.REAL_NUMBER_64
             assert df_with_units.units[value_key] == Unit("m/s")
             
             # Test 2: Dimensionless quantity without units -> should use FLOAT_64
             print("\n📊 Testing dimensionless quantities without units...")
             ratio_key = TestColumnKey("ratio")
-            arrays_without_units = {ratio_key: [0.85, 1.25, 0.95]}
-            column_types_without_units = {ratio_key: ColumnType.FLOAT_64}
-            column_units_without_units = {ratio_key: None}
+            columns_without_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {ratio_key: (DataframeColumnType.FLOAT_64, None, [0.85, 1.25, 0.95])}
             
-            df_without_units = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays_without_units,
-                column_types=column_types_without_units,
-                column_units_or_dimensions=column_units_without_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df_without_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_without_units)
             
             print(f"✅ Dimensionless quantity: {df_without_units.coltypes[ratio_key]} with unit {df_without_units.units[ratio_key]}")
-            assert df_without_units.coltypes[ratio_key] == ColumnType.FLOAT_64
+            assert df_without_units.coltypes[ratio_key] == DataframeColumnType.FLOAT_64
             assert df_without_units.units[ratio_key] is None
             
             # Test 3: Complex physical quantity with units -> should use COMPLEX_NUMBER_128
             print("\n🔢 Testing complex quantities with units...")
             impedance_key = TestColumnKey("impedance")
-            arrays_complex_units = {impedance_key: [1.0+2.0j, 3.0-1.5j, 0.5+4.2j]}
-            column_types_complex_units = {impedance_key: ColumnType.COMPLEX_NUMBER_128}
-            column_units_complex_units = {impedance_key: Unit("Ω")}
+            columns_complex_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {impedance_key: (DataframeColumnType.COMPLEX_NUMBER_128, Unit("Ω"), [1.0+2.0j, 3.0-1.5j, 0.5+4.2j])}
             
-            df_complex_units = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays_complex_units,
-                column_types=column_types_complex_units,
-                column_units_or_dimensions=column_units_complex_units,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df_complex_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_complex_units)
             
             print(f"✅ Complex physical quantity: {df_complex_units.coltypes[impedance_key]} with unit {df_complex_units.units[impedance_key]}")
-            assert df_complex_units.coltypes[impedance_key] == ColumnType.COMPLEX_NUMBER_128
+            assert df_complex_units.coltypes[impedance_key] == DataframeColumnType.COMPLEX_NUMBER_128
             assert df_complex_units.units[impedance_key] == Unit("Ω")
             
             # Test 4: Complex dimensionless quantity without units -> should use COMPLEX_128
             print("\n🔄 Testing complex dimensionless quantities without units...")
             transform_key = TestColumnKey("transform_coefficient")
-            arrays_complex_raw = {transform_key: [2.0+1.0j, -1.0+3.0j, 0.0-2.0j]}
-            column_types_complex_raw = {transform_key: ColumnType.COMPLEX_128}
-            column_units_complex_raw = {transform_key: None}
+            columns_complex_raw: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {transform_key: (DataframeColumnType.COMPLEX_128, None, [2.0+1.0j, -1.0+3.0j, 0.0-2.0j])}
             
-            df_complex_raw = UnitedDataframe.create_dataframe_from_data(
-                arrays=arrays_complex_raw,
-                column_types=column_types_complex_raw,
-                column_units_or_dimensions=column_units_complex_raw,
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df_complex_raw: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_complex_raw)
             
             print(f"✅ Complex dimensionless quantity: {df_complex_raw.coltypes[transform_key]} with unit {df_complex_raw.units[transform_key]}")
-            assert df_complex_raw.coltypes[transform_key] == ColumnType.COMPLEX_128
+            assert df_complex_raw.coltypes[transform_key] == DataframeColumnType.COMPLEX_128
             assert df_complex_raw.units[transform_key] is None
             
             # Test 5: Verify HDF5 round-trip preserves the distinction
@@ -427,15 +368,15 @@ class TestUnitedDataframeCore:
             import os
             
             with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file:
-                hdf5_path = tmp_file.name
+                hdf5_path: Path = Path(tmp_file.name)
             
             try:
                 # Save and load each type
-                test_cases = [
-                    (df_with_units, "physical_with_units", ColumnType.REAL_NUMBER_64, Unit("m/s")),
-                    (df_without_units, "dimensionless", ColumnType.FLOAT_64, None),
-                    (df_complex_units, "complex_with_units", ColumnType.COMPLEX_NUMBER_128, Unit("Ω")),
-                    (df_complex_raw, "complex_dimensionless", ColumnType.COMPLEX_128, None)
+                test_cases: list[tuple[UnitedDataframe[TestColumnKey], str, DataframeColumnType, Unit|None]] = [
+                    (df_with_units, "physical_with_units", DataframeColumnType.REAL_NUMBER_64, Unit("m/s")),
+                    (df_without_units, "dimensionless", DataframeColumnType.FLOAT_64, None),
+                    (df_complex_units, "complex_with_units", DataframeColumnType.COMPLEX_NUMBER_128, Unit("Ω")),
+                    (df_complex_raw, "complex_dimensionless", DataframeColumnType.COMPLEX_128, None)
                 ]
                 
                 for original_df, key_name, expected_type, expected_unit in test_cases:
@@ -443,12 +384,12 @@ class TestUnitedDataframeCore:
                     original_df.to_hdf5(hdf5_path, key=key_name)
                     
                     # Load from HDF5
-                    loaded_df = UnitedDataframe.from_hdf5(hdf5_path, key=key_name)
+                    loaded_df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].from_hdf5(hdf5_path, key=key_name, column_key_type=TestColumnKey)
                     
                     # Verify type and unit preservation
                     loaded_key = list(loaded_df.colkeys)[0]
-                    loaded_type = loaded_df.coltypes[loaded_key]
-                    loaded_unit = loaded_df.units[loaded_key]
+                    loaded_type: DataframeColumnType = loaded_df.coltypes[loaded_key]
+                    loaded_unit: Unit|None = loaded_df.units[loaded_key]
                     
                     print(f"  ✅ {key_name}: {loaded_type} with unit {loaded_unit} (preserved correctly)")
                     assert loaded_type == expected_type, f"Type mismatch for {key_name}: {loaded_type} != {expected_type}"

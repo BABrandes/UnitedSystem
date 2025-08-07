@@ -7,12 +7,15 @@ including JSON, CSV, HDF5, and pickle formats.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import Any, Dict, Union, TYPE_CHECKING, Type
+from typing import Any, Dict, Union, TYPE_CHECKING, Type, Optional
 import json
 import pickle
 from pathlib import Path
 import h5py
 
+from ..column_type import ColumnType
+from ..._units_and_dimension.dimension import Dimension
+from ..._units_and_dimension.unit import Unit
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 
@@ -49,7 +52,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return json_data
         
     @classmethod
-    def from_json(cls, data: dict[str, Any], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
+    def from_json(cls, data: dict[str, Any], column_key_type: Type[CK], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK]=SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
 
         """
         Load dataframe from JSON format.
@@ -62,7 +65,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         import pandas as pd
 
         df: pd.DataFrame = pd.read_json(data["dataframe"], orient="records") # type: ignore
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df) # type: ignore
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df, column_key_type=column_key_type, internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter) # type: ignore
         return united_dataframe  # type: ignore
 
     # ----------- CSV Serialization ------------
@@ -105,44 +108,88 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- HDF5 Serialization ------------
 
-    def to_hdf5(self, group: Union[h5py.Group, tuple[str, h5py.Group]], **kwargs: Any) -> None:
+    def to_hdf5(self, group: Union[h5py.Group, Path, tuple[str, h5py.Group]], **kwargs: Any) -> None:
         """
         Serialize dataframe to HDF5 format.
 
         Args:
-            group (Union[h5py.Group, tuple[str, h5py.Group]]): h5py Group to save to. If a tuple is provided, the first element is the key and the second element is the parent h5py Group.
+            group (Union[h5py.Group, Path, tuple[str, h5py.Group]]): h5py Group to save to. If a tuple is provided, the first element is the key and the second element is the parent h5py Group. If a Path is provided, it is interpreted as a file path and a new file is created.
             **kwargs: Additional arguments passed to pandas.DataFrame.to_hdf()
         """
         with self._rlock:
+            key: str = kwargs.pop("key", "dataframe")
+            
+            # Convert pandas extension arrays to numpy arrays for HDF5 compatibility
+            df_for_hdf5 = self._internal_dataframe.copy()
+            for col in df_for_hdf5.columns:
+                if hasattr(df_for_hdf5[col].dtype, 'numpy_dtype'):
+                    # Convert extension dtype to numpy dtype
+                    df_for_hdf5[col] = df_for_hdf5[col].astype(df_for_hdf5[col].dtype.numpy_dtype) # type: ignore
+            
+            if isinstance(group, Path):
+                # Use pandas HDF5 interface directly to avoid file locking issues
+                df_for_hdf5.to_hdf(str(group), key=key, **kwargs)
+                return
+
             if isinstance(group, tuple):
                 group_name, parent = group
                 if group_name in parent:
                     raise ValueError(f"The key {group_name} already exists in {parent.name}") #type: ignore
                 group = parent.create_group(group_name) #type: ignore
 
+            # For h5py Group, use the file path approach
             file_path: str = group.file.filename
-            key: str = kwargs.pop("key", "dataframe")
             group_name: str = str(group.name)  #type: ignore
             full_key: str = group_name + "/" + key
 
-            self._internal_dataframe.to_hdf(file_path, key=full_key, **kwargs)
+            df_for_hdf5.to_hdf(file_path, key=full_key, **kwargs)
 
     @classmethod
     def from_hdf5(
         cls,
-        group: Union[h5py.Group, tuple[str, h5py.Group]],
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
+        group: Union[h5py.Group, Path, tuple[str, h5py.Group]],
+        column_key_type: Type[CK],
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
         **kwargs: Any
     ) -> "UnitedDataframe[CK]":
         """
         Load dataframe from HDF5 format.
         
         Args:
-            group (Union[h5py.Group, tuple[str, h5py.Group]]): h5py Group to load from. If a tuple is provided, the first element is the key and the second element is the parent h5py Group.
+            group (Union[h5py.Group, Path, tuple[str, h5py.Group]]): h5py Group to load from. If a tuple is provided, the first element is the key and the second element is the parent h5py Group. If a Path is provided, it is interpreted as a file path and the file is opened.
             internal_dataframe_column_name_formatter: Formatter for internal column names
             **kwargs: Additional arguments passed to pandas.read_hdf()
         """
         import pandas as pd
+
+        key: str = kwargs.pop("key", "dataframe")
+
+        if isinstance(group, Path):
+            # Use pandas HDF5 interface directly to avoid file locking issues
+            df: pd.DataFrame = pd.read_hdf(str(group), key=key, **kwargs) # type: ignore
+            assert isinstance(df, pd.DataFrame)
+
+            # Reconstruct column metadata from the pandas DataFrame
+            # The column names should contain the metadata we need
+            columns: dict[CK, tuple[ColumnType, str, Optional[Unit|Dimension]]|tuple[ColumnType, str]] = {}
+            
+            for col_name in df.columns:
+                # Parse the internal column name to extract metadata    
+                # This assumes the column name formatter creates names that can be parsed back                
+                column_key, unit = internal_dataframe_column_name_formatter.retrieve_from_internal_dataframe_column_name(col_name, column_key_type)
+                
+                # Infer column type from pandas dtype
+                column_type: ColumnType = ColumnType.from_dtype(df[col_name].dtype, has_unit=(unit is not None)) # type: ignore
+                
+                columns[column_key] = (column_type, col_name, unit)
+            
+            united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(
+                dataframe=df,
+                columns=columns,
+                column_key_type=column_key_type,
+                internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter
+            )  # type: ignore
+            return united_dataframe
 
         if isinstance(group, tuple):
             parent_group: h5py.Group = group[1]
@@ -152,19 +199,19 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError(f"The key {key_string} is not a h5py Group.")
             group = group_
 
+        # For h5py Group, use the file path approach
         file_path: str = group.file.filename
-        key: str = kwargs.pop("key", "dataframe")
         group_name: str = str(group.name) #type: ignore
         full_key: str = group_name + "/" + key
 
         df: pd.DataFrame = pd.read_hdf(file_path, key=full_key, **kwargs) # type: ignore
         assert isinstance(df, pd.DataFrame)
 
-        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(# type: ignore
             dataframe=df,
             internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter
         )  # type: ignore
-        return united_dataframe
+        return united_dataframe # type: ignore
 
     # ----------- Pickle Serialization ------------
 

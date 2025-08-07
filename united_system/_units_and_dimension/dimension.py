@@ -487,7 +487,7 @@ class Dimension:
                 raise NotImplementedError("Multiplication of a dimension with a scalar and log dimensions is not implemented.")
             return Dimension._construct(self._proper_exponents, new_log_dimensions)
 
-        elif isinstance(other, Dimension): # type: ignore
+        elif isinstance(other, type(self)):
 
             # Multiply proper exponents        
             subscripts: set[str] = set(self._proper_exponents.keys()) | set(other._proper_exponents.keys())
@@ -857,7 +857,7 @@ class Dimension:
             length = Dimension("L")
             assert mass != length
         """
-        if not isinstance(other, Dimension):
+        if not isinstance(other, type(self)):
             return False
         if self._proper_exponents.keys() != other._proper_exponents.keys():
             return False
@@ -878,7 +878,7 @@ class Dimension:
         Checks if two dimensions are not equal.
         This is the case if they have different subscripts or have different proper exponents or log dimensions.
         """
-        if not isinstance(other, Dimension):
+        if not isinstance(other, type(self)):
             return True
         return not self.__eq__(other)
     
@@ -1076,7 +1076,7 @@ class Dimension:
                 other = other.dimension
             elif isinstance(other, HasUnit):
                 other = other.dimension
-            elif isinstance(other, "Dimension"): # type: ignore
+            elif isinstance(other, self.__class__):
                 pass
             else:
                 raise ValueError(f"Invalid dimension: {other}")
@@ -1535,7 +1535,7 @@ class Dimension:
         from .unit import Unit
         from .named_quantity import NamedQuantity
         
-        if isinstance(obj, Dimension):
+        if isinstance(obj, Dimension):  # This is a static method, so we can use the class name
             return obj
         elif isinstance(obj, Unit):
             return obj.dimension

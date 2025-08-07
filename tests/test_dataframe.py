@@ -6,20 +6,21 @@ This test suite systematically tests UnitedDataframe functionality to identify
 and debug any issues with the implementation.
 """
 
-from united_system._dataframe.column_key import ColumnKey
 from typing import Any
 
-class TestColumnKey(ColumnKey):
+from united_system import DataframeColumnKey
+
+class TestColumnKey(DataframeColumnKey):
     """Test column key."""
     
     def __init__(self, name: str):
         self.name = name
 
-    def to_string(self) -> str:
+    def to_united_dataframe_string(self) -> str:
         return self.name
     
     @classmethod
-    def from_string(cls, string: str) -> 'TestColumnKey':
+    def from_united_dataframe_string(cls, string: str) -> 'TestColumnKey':
         return cls(string)
     
     def __eq__(self, other: Any) -> bool:

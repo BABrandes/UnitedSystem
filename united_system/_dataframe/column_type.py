@@ -54,7 +54,7 @@ from .._arrays.timestamp_array import TimestampArray
 from .._units_and_dimension.has_unit_protocol import HasUnit
 from .._arrays.base_array import BaseArray
 from .._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
-from .._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME
+from .._utils.scalar_type import SCALAR_TYPE
 from .._utils.array_type import ARRAY_TYPE
 
 class ColumnTypeInformation(NamedTuple):
@@ -441,33 +441,30 @@ class ColumnType(Enum):
             >>> value = column_type.get_value_for_dataframe(RealUnitedScalar(5.0, Unit("km")), unit)
             >>> print(value)  # 5000.0 (converted from km to m)
         """
-        if isinstance(scalar_or_value, SCALAR_TYPE_RUNTIME):
-            assert isinstance(scalar_or_value, SCALAR_TYPE)
-
+        # Check if this is a united scalar (has canonical_value)
+        if hasattr(scalar_or_value, 'canonical_value'):
             if scalar_or_value.canonical_value == self.value.missing_values_retrieved: # type: ignore
                 if self.value.missing_values_in_dataframe is None:
                     raise ValueError(f"The column type {self} must not have missing values in dataframe.")
                 return self.value.missing_values_in_dataframe
 
-            else:
-                match self:
-
-                    case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                        if not isinstance(scalar_or_value, RealUnitedScalar):
-                            raise ValueError(f"Value {scalar_or_value} is not a RealUnitedScalar.")
-                        if unit_in_dataframe is None:
-                            raise ValueError(f"Unit in dataframe is required for RealUnitedScalar.")
-                        return unit_in_dataframe.from_canonical_value(scalar_or_value.canonical_value)
-                    
-                    case ColumnType.COMPLEX_NUMBER_128:
-                        if not isinstance(scalar_or_value, ComplexUnitedScalar):
-                            raise ValueError(f"Value {scalar_or_value} is not a ComplexUnitedScalar.")
-                        if unit_in_dataframe is None:
-                            raise ValueError(f"Unit in dataframe is required for ComplexUnitedScalar.")
-                        raise NotImplementedError(f"ComplexUnitedScalar is not implemented.")
-                    
-                    case _:
-                        raise NotImplementedError(f"Scalar {scalar_or_value} is not implemented.")
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    if not isinstance(scalar_or_value, RealUnitedScalar):
+                        raise ValueError(f"Value {scalar_or_value} is not a RealUnitedScalar.")
+                    if unit_in_dataframe is None:
+                        raise ValueError(f"Unit in dataframe is required for RealUnitedScalar.")
+                    return unit_in_dataframe.from_canonical_value(scalar_or_value.canonical_value)
+                
+                case ColumnType.COMPLEX_NUMBER_128:
+                    if not isinstance(scalar_or_value, ComplexUnitedScalar):
+                        raise ValueError(f"Value {scalar_or_value} is not a ComplexUnitedScalar.")
+                    if unit_in_dataframe is None:
+                        raise ValueError(f"Unit in dataframe is required for ComplexUnitedScalar.")
+                    raise NotImplementedError(f"ComplexUnitedScalar is not implemented.")
+                
+                case _:
+                    raise NotImplementedError(f"Scalar {scalar_or_value} is not implemented.")
                     
         elif isinstance(scalar_or_value, VALUE_TYPE_RUNTIME):
             assert isinstance(scalar_or_value, VALUE_TYPE)
@@ -566,7 +563,8 @@ class ColumnType(Enum):
         dtype: Dtype = self.value.dataframe_storage_type
 
         def create_series_from_np_array(np_array: np.ndarray) -> "pd.Series[Any]":
-            if np.isnan(np_array).any():
+            # Only check for NaN values if the type supports it (numeric types)
+            if self.is_numeric and np.isnan(np_array).any():
                 if self.value.missing_values_in_dataframe is None:
                     raise ValueError(f"The column type {self} must not have missing values in dataframe.")
                 np_array = np.where(np.isnan(np_array), self.value.missing_values_in_dataframe, np_array)
@@ -970,7 +968,7 @@ class ColumnType(Enum):
         if pandas_series.isna().any() and self.value.missing_values_in_numpy_array is None: # type: ignore[reportUnknownReturnType]
             raise ValueError(f"The column type {self} must not have missing values in dataframe as missing values in the numpy array are not allowed.")
     
-        numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, fill_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
+        numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, na_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
         
         match self:
             case ColumnType.REAL_NUMBER_64|ColumnType.REAL_NUMBER_32:
@@ -1035,9 +1033,15 @@ class ColumnType(Enum):
             >>> print(type(array))  # <class 'RealUnitedArray'>
         """
 
-        numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, fill_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
-        if np.isnan(numpy_array).any() and self.value.missing_values_retrieved is None:
+        # Only check for missing values if the data actually contains missing values
+        if pandas_series.isna().any() and self.value.missing_values_in_numpy_array is None: # type: ignore[reportUnknownReturnType]
             raise ValueError(f"The column type {self} must not have missing values in dataframe as missing values for the respective array type are not allowed.")
+        
+        # Only pass na_value if it's not None
+        if self.value.missing_values_in_numpy_array is None:
+            numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, copy=True) # type: ignore[reportUnknownReturnType]
+        else:
+            numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, na_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
         
         if not self.has_unit and unit_in_dataframe is not None:
             raise ValueError(f"Unit in dataframe is not allowed for this column type.")
@@ -1106,7 +1110,7 @@ class ColumnType(Enum):
         if not self.has_unit and source_and_target_unit is not None:
                 raise ValueError(f"Unit in dataframe is not allowed for this column type.")
         
-        numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, fill_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
+        numpy_array: np.ndarray[Any, Any] = pandas_series.to_numpy(dtype=self.numpy_storage_type, na_value=self.value.missing_values_in_numpy_array, copy=True) # type: ignore[reportUnknownReturnType]
         
         match self:
             case ColumnType.REAL_NUMBER_64|ColumnType.REAL_NUMBER_32:
@@ -1490,48 +1494,67 @@ class ColumnType(Enum):
                 else:
                     return False
                 
-    def check_value_type(self, value_type: type|object) -> bool:
+    def check_value_type(self, value: type|object) -> bool:
         """
-        Check if a value type is compatible with this column type.
+        Check if a value is compatible with this column type.
         
-        This method verifies whether a given value type matches the expected
+        This method verifies whether a given value matches the expected
         value type for this column type.
         
         Args:
-            value_type (type|object): The value type to check for compatibility.
-                Can be a type object or an instance (in which case its class is used).
+            value (type|object): The value to check for compatibility.
+                Can be a type object or an instance.
         
         Returns:
-            bool: True if the value type is compatible with this column type, False otherwise.
+            bool: True if the value is compatible with this column type, False otherwise.
         
         Example:
             >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_value_type(float)
+            >>> is_compatible = column_type.check_value_type(3.14)
             >>> print(is_compatible)  # True
             
             >>> column_type = ColumnType.STRING
-            >>> is_compatible = column_type.check_value_type(str)
+            >>> is_compatible = column_type.check_value_type("hello")
             >>> print(is_compatible)  # True
         """
-        if not isinstance(value_type, type):
-            value_type = value_type.__class__
-        match self:
-            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return isinstance(value_type, float)
-            case ColumnType.COMPLEX_NUMBER_128:
-                return isinstance(value_type, complex)
-            case ColumnType.STRING:
-                return isinstance(value_type, str)
-            case ColumnType.BOOL:
-                return isinstance(value_type, bool)
-            case ColumnType.TIMESTAMP:
-                return isinstance(value_type, Timestamp)
-            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return isinstance(value_type, int)
-            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return isinstance(value_type, float)
-            case ColumnType.COMPLEX_128:
-                return isinstance(value_type, complex)
+        # If it's a type, check if it's the correct type
+        if isinstance(value, type):
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    return value == float
+                case ColumnType.COMPLEX_NUMBER_128:
+                    return value == complex
+                case ColumnType.STRING:
+                    return value == str
+                case ColumnType.BOOL:
+                    return value == bool
+                case ColumnType.TIMESTAMP:
+                    return value == Timestamp
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    return value == int
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    return value == float
+                case ColumnType.COMPLEX_128:
+                    return value == complex
+        else:
+            # If it's a value, check if it's of the correct type
+            match self:
+                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                    return isinstance(value, float)
+                case ColumnType.COMPLEX_NUMBER_128:
+                    return isinstance(value, complex)
+                case ColumnType.STRING:
+                    return isinstance(value, str)
+                case ColumnType.BOOL:
+                    return isinstance(value, bool)
+                case ColumnType.TIMESTAMP:
+                    return isinstance(value, Timestamp)
+                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                    return isinstance(value, int)
+                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                    return isinstance(value, float)
+                case ColumnType.COMPLEX_128:
+                    return isinstance(value, complex)
 
     def check_scalar_type(self, value_type: type|object) -> bool:
         """

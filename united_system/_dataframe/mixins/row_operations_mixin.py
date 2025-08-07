@@ -67,7 +67,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         empty_rows = pd.DataFrame(index=range(len(self._internal_dataframe), len(self._internal_dataframe) + number_of_rows), columns=self._internal_dataframe.columns)  
         self._internal_dataframe = pd.concat([self._internal_dataframe, empty_rows], ignore_index=True) 
 
-    def _row_set_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def _row_set_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
 
@@ -87,7 +87,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             else:
                 self._cell_set_value(row_index, column_key, value) # type: ignore
 
-    def _row_set_ordered_values(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def _row_set_ordered_items(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Internal: Set rows with values at a specific index. (no lock)
         The values are expected to be correctly ordered according to the column keys.
@@ -144,7 +144,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             
             self._row_add_empty(number_of_rows)
 
-    def row_set_ordered_values(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_set_ordered_items(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Set rows with values at a specific index. The values are expected to be correctly ordered according to the column keys.
 
@@ -159,9 +159,9 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_set_ordered_values(row_index, values)
+            self._row_set_ordered_items(row_index, values)
 
-    def row_add_ordered_values(self, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_add_ordered_items(self, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Add rows with values to the end of the dataframe. The values are expected to be correctly ordered according to the column keys.
         """
@@ -170,14 +170,15 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             self._row_add_empty(1)
-            self._row_set_ordered_values(len(self)-1, values)
+            self._row_set_ordered_items(self._number_of_rows()-1, values)
 
-    def row_add_values(self, values: dict[CK, Sequence[VALUE_TYPE|SCALAR_TYPE] | dict[CK, VALUE_TYPE|SCALAR_TYPE]]) -> None:
+
+    def row_add_items(self, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Add rows with values to the end of the dataframe.
         
         Args:
-            values (dict[CK, Sequence[Any] | dict[CK, Any]]): Dictionary mapping column keys to lists of values or single values
+            values (dict[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of values or single values
             
         Raises:
             ValueError: If the dataframe is read-only or values are invalid
@@ -188,7 +189,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
 
             self._row_add_empty(1)
-            self._row_set_values(len(self)-1, values) # type: ignore
+            self._row_set_items(self._number_of_rows()-1, values)
 
     def row_insert_empty(self, row_index: int) -> None:
         """
@@ -201,7 +202,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
             self._row_insert_empty(row_index)
 
-    def row_insert_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_insert_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Insert rows with values at a specific index.
         """
@@ -210,9 +211,9 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             self._row_insert_empty(row_index)
-            self._row_set_values(row_index, values)
+            self._row_set_items(row_index, values)
 
-    def row_set_values(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_set_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Replace rows with values at a specific index.
         """
@@ -221,7 +222,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_set_values(row_index, values)
+            self._row_set_items(row_index, values)
 
     def row_clear(self, row_index_start_inclusive: int, number_of_rows: int) -> None:
         """
@@ -232,10 +233,10 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            if row_index_start_inclusive < 0 or row_index_start_inclusive >= len(self._internal_dataframe):
+            if row_index_start_inclusive < 0 or row_index_start_inclusive >= self._number_of_rows():
                 raise ValueError(f"Start row index {row_index_start_inclusive} is out of bounds for insertion.")
             
-            if number_of_rows < 0 or row_index_start_inclusive + number_of_rows > len(self._internal_dataframe):
+            if number_of_rows < 0 or row_index_start_inclusive + number_of_rows > self._number_of_rows():
                 raise ValueError(f"Number of rows {number_of_rows} is out of bounds for insertion.")
             
             # Clear each row using proper missing value handling
@@ -256,7 +257,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if row_index_start_inclusive < 0 or row_index_start_inclusive >= row_index_stop_exclusive:
                 raise ValueError(f"Row index start {row_index_start_inclusive} is out of bounds.")
             
-            if row_index_stop_exclusive < 0 or row_index_stop_exclusive > len(self._internal_dataframe):
+            if row_index_stop_exclusive < 0 or row_index_stop_exclusive > self._number_of_rows():
                 raise ValueError(f"Row index stop {row_index_stop_exclusive} is out of bounds.")
             
             self._row_remove(row_index_start_inclusive, row_index_stop_exclusive)
@@ -271,7 +272,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             # Clear all rows using proper missing value handling
-            for row_index in range(len(self._internal_dataframe)):
+            for row_index in range(self._number_of_rows()):
                 for column_key in self._column_keys:
                     self._cell_set_missing(row_index, column_key)
 
@@ -284,4 +285,4 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_remove(0, len(self._internal_dataframe))
+            self._row_remove(0, self._number_of_rows())

@@ -53,7 +53,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         return len(self._column_keys)
     
     @property
-    def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter:
+    def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter[CK]:
         """
         Get the internal dataframe column name formatter.
         """
@@ -164,7 +164,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return self._get_internal_dataframe_column_names(column_key)
 
     @staticmethod
-    def column_key_to_string(column_key: CK, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, column_unit: Optional[Unit]) -> str:
+    def column_key_to_string(column_key: CK, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK], column_unit: Optional[Unit]) -> str:
         """
         Public: Convert a column key to string. (with lock)
         """
@@ -396,7 +396,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     def append(self, *others: "UnitedDataframe[CK]") -> "UnitedDataframe[CK]":
         """
-        Append a dataframe to the current dataframe. The units of the columns may be different, but they must be compatible.
+        Appends dataframes to the current dataframe. The units of the columns may be different, but they must be compatible.
         If the units are effectively the same, this method will be much faster than if the units are different.
 
         Args:

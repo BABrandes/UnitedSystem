@@ -9,16 +9,11 @@ direct array construction, but the dataframe system works fine for data
 storage and basic operations.
 """
 
-from typing import Any
+from typing import Any, Sequence, Optional
 import numpy as np
 from pandas import Timestamp
-from united_system._units_and_dimension.unit import Unit
-from united_system._units_and_dimension.dimension import Dimension
+from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
 from tests.test_dataframe import TestColumnKey
-from united_system._dataframe.united_dataframe import UnitedDataframe
-from united_system._dataframe.column_type import ColumnType
-from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
-
 
 class TestNonUnitedArrays:
     """Test class demonstrating non-united array functionality and documenting issues."""
@@ -28,13 +23,13 @@ class TestNonUnitedArrays:
         print("\n🧪 Testing dataframe creation with different array types...")
         
         # Test all array types through dataframe creation
-        test_cases: list[tuple[str, list[Any], ColumnType]] = [
-            ("StringArray", ["hello", "world", "test"], ColumnType.STRING),
-            ("FloatArray", [1.1, 2.2, 3.3], ColumnType.FLOAT_64),
-            ("IntArray", [10, 20, 30], ColumnType.INTEGER_64),
-            ("BoolArray", [True, False, True], ColumnType.BOOL),
-            ("ComplexArray", [1+1j, 2+2j, 3+3j], ColumnType.COMPLEX_128),
-            ("TimestampArray", [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')], ColumnType.TIMESTAMP)
+        test_cases: list[tuple[str, list[Any], DataframeColumnType]] = [
+            ("StringArray", ["hello", "world", "test"], DataframeColumnType.STRING),
+            ("FloatArray", [1.1, 2.2, 3.3], DataframeColumnType.FLOAT_64),
+            ("IntArray", [10, 20, 30], DataframeColumnType.INTEGER_64),
+            ("BoolArray", [True, False, True], DataframeColumnType.BOOL),
+            ("ComplexArray", [1+1j, 2+2j, 3+3j], DataframeColumnType.COMPLEX_128),
+            ("TimestampArray", [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')], DataframeColumnType.TIMESTAMP)
         ]
         
         for array_name, data, col_type in test_cases:
@@ -42,12 +37,7 @@ class TestNonUnitedArrays:
             
             try:
                 # Create dataframe - this should work
-                df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
-                    arrays={TestColumnKey("test"): data},
-                    column_types={TestColumnKey("test"): col_type},
-                    column_units_or_dimensions={TestColumnKey("test"): None},
-                    internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-                )
+                df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns={TestColumnKey("test"): (col_type, None, data)})
                 
                 assert len(df) == 3
                 assert len(df.colkeys) == 1
@@ -92,21 +82,16 @@ class TestNonUnitedArrays:
             TestColumnKey("active"): [True, False, True],
             TestColumnKey("timestamps"): [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')]
         }
-        column_types: dict[TestColumnKey, ColumnType] = {
-            TestColumnKey("names"): ColumnType.STRING,
-            TestColumnKey("scores"): ColumnType.FLOAT_64,
-            TestColumnKey("count"): ColumnType.INTEGER_64,
-            TestColumnKey("active"): ColumnType.BOOL,
-            TestColumnKey("timestamps"): ColumnType.TIMESTAMP
+
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("names"): (DataframeColumnType.STRING, None, arrays[TestColumnKey("names")]),
+            TestColumnKey("scores"): (DataframeColumnType.FLOAT_64, None, arrays[TestColumnKey("scores")]),
+            TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, arrays[TestColumnKey("count")]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, arrays[TestColumnKey("active")]),
+            TestColumnKey("timestamps"): (DataframeColumnType.TIMESTAMP, None, arrays[TestColumnKey("timestamps")])
         }
-        column_units: dict[TestColumnKey, Unit|Dimension|None] = {key: None for key in arrays.keys()}
         
-        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
-            arrays=arrays, # type: ignore
-            column_types=column_types,
-            column_units_or_dimensions=column_units,
-            internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         print(f"✅ Created mixed dataframe: {len(df)} rows, {len(df.colkeys)} columns")
         
@@ -119,8 +104,8 @@ class TestNonUnitedArrays:
         print("✅ Column key access works")
         
         # Test column types
-        assert df.coltypes[TestColumnKey("names")] == ColumnType.STRING
-        assert df.coltypes[TestColumnKey("scores")] == ColumnType.FLOAT_64
+        assert df.coltypes[TestColumnKey("names")] == DataframeColumnType.STRING
+        assert df.coltypes[TestColumnKey("scores")] == DataframeColumnType.FLOAT_64
         print("✅ Column type access works")
         
         # Test dataframe length
@@ -151,22 +136,17 @@ class TestNonUnitedArrays:
         print("\n🔍 Testing array type inference...")
         
         # Test type inference without extraction
-        inference_tests: list[tuple[str, list[Any], ColumnType, str]] = [
-            ("strings", ["a", "b", "c"], ColumnType.STRING, "StringArray"),
-            ("floats", [1.1, 2.2, 3.3], ColumnType.FLOAT_64, "FloatArray"),
-            ("integers", [1, 2, 3], ColumnType.INTEGER_64, "IntArray"),
-            ("booleans", [True, False, True], ColumnType.BOOL, "BoolArray"),
-            ("complex", [1+1j, 2+2j, 3+3j], ColumnType.COMPLEX_128, "ComplexArray"),
-            ("timestamps", [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')], ColumnType.TIMESTAMP, "TimestampArray")
+        inference_tests: list[tuple[str, list[Any], DataframeColumnType, str]] = [
+            ("strings", ["a", "b", "c"], DataframeColumnType.STRING, "StringArray"),
+            ("floats", [1.1, 2.2, 3.3], DataframeColumnType.FLOAT_64, "FloatArray"),
+            ("integers", [1, 2, 3], DataframeColumnType.INTEGER_64, "IntArray"),
+            ("booleans", [True, False, True], DataframeColumnType.BOOL, "BoolArray"),
+            ("complex", [1+1j, 2+2j, 3+3j], DataframeColumnType.COMPLEX_128, "ComplexArray"),
+            ("timestamps", [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')], DataframeColumnType.TIMESTAMP, "TimestampArray")
         ]
         
         for name, data, expected_type, expected_array in inference_tests:
-            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_dataframe_from_data(
-                arrays={TestColumnKey("col"): data},
-                column_types={TestColumnKey("col"): expected_type},
-                column_units_or_dimensions={TestColumnKey("col"): None},
-                internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-            )
+            df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns={TestColumnKey("col"): (expected_type, None, data)})
             
             actual_type = df.coltypes[TestColumnKey("col")]
             assert actual_type == expected_type

@@ -125,7 +125,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             dimension = dimension_or_unit
             canonical_np_array = np_array
         
-        super().__init__(canonical_np_array)
+        object.__setattr__(self, "canonical_np_array", canonical_np_array)
         object.__setattr__(self, "dimension", dimension)
         object.__setattr__(self, "_display_unit", unit)
 

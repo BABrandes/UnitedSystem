@@ -9,7 +9,7 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 
 from typing import overload, TYPE_CHECKING, Any, Union
 from collections.abc import Sequence
-from ..._dataframe.column_key import ColumnKey
+from ..column_key import ColumnKey
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
 from ..._utils.scalar_type import SCALAR_TYPE, SCALAR_TYPE_RUNTIME

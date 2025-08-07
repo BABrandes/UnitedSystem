@@ -1,4 +1,5 @@
 from typing import TypeAlias
+from .._arrays.base_array import BaseArray
 from .._arrays.real_united_array import RealUnitedArray
 from .._arrays.complex_united_array import ComplexUnitedArray
 from .._arrays.string_array import StringArray
@@ -11,4 +12,4 @@ from .._arrays.complex_array import ComplexArray
 
 ARRAY_TYPE: TypeAlias = RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray
 
-ARRAY_TYPE_RUNTIME: tuple[type, ...] = (RealUnitedArray, ComplexUnitedArray, StringArray, IntArray, FloatArray, BoolArray, TimestampArray, ComplexArray)
+ARRAY_TYPE_RUNTIME: tuple[type, ...] = (BaseArray,)

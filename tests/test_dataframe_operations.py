@@ -12,19 +12,11 @@ This test suite systematically tests UnitedDataframe CRUD operations including:
 
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from pandas import Timestamp
+from typing import Sequence, Optional
 
+from united_system import VALUE_TYPE, Dimension, SCALAR_TYPE, UnitedDataframe, DataframeColumnType, Unit, StringArray, RealUnitedScalar, RealUnitedArray, IntArray, ComplexArray
 from tests.test_dataframe import TestColumnKey
-from united_system._dataframe.united_dataframe import UnitedDataframe
-from united_system._dataframe.column_type import ColumnType
-from united_system._units_and_dimension.unit import Unit
-from united_system._arrays.real_united_array import RealUnitedArray
-from united_system._arrays.int_array import IntArray
-from united_system._arrays.string_array import StringArray
-from united_system._arrays.complex_array import ComplexArray
-from united_system._scalars.real_united_scalar import RealUnitedScalar
-from united_system._dataframe.internal_dataframe_name_formatter import SimpleInternalDataFrameNameFormatter
-
 
 class TestUnitedDataframeOperations:
     """Test class for UnitedDataframe operations."""
@@ -37,27 +29,13 @@ class TestUnitedDataframeOperations:
         print("\n📊 Testing dataframe creation with data...")
         
         # Create dataframe with initial data using the constructor approach
-        arrays = {
-            TestColumnKey("sample_id"): ["A", "B", "C"],
-            TestColumnKey("temperature"): [20.0, 25.0, 30.0],
-            TestColumnKey("count"): [1, 2, 3]
-        }
-        column_types = {
-            TestColumnKey("sample_id"): ColumnType.STRING,
-            TestColumnKey("temperature"): ColumnType.REAL_NUMBER_64,
-            TestColumnKey("count"): ColumnType.INTEGER_64
-        }
-        column_units = {
-            TestColumnKey("sample_id"): None,
-            TestColumnKey("temperature"): Unit("°C"),
-            TestColumnKey("count"): None
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("sample_id"): (DataframeColumnType.STRING, None, ["A", "B", "C"]),
+            TestColumnKey("temperature"): (DataframeColumnType.REAL_NUMBER_64, Unit("°C"), [20.0, 25.0, 30.0]),
+            TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [1, 2, 3])
         }
         
-        df: UnitedDataframe[TestColumnKey] = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         assert len(df.colkeys) == 3
         assert len(df) == 3
@@ -77,7 +55,7 @@ class TestUnitedDataframeOperations:
         
         # Test column types
         temp_type = df.coltypes[TestColumnKey("temperature")]
-        assert temp_type == ColumnType.REAL_NUMBER_64
+        assert temp_type == DataframeColumnType.REAL_NUMBER_64
         print(f"✅ Temperature type: {temp_type}")
         
         # Test columns with/without units
@@ -90,31 +68,14 @@ class TestUnitedDataframeOperations:
         
         # Test 3: Create a new dataframe with an additional column (instead of adding to existing)
         print("\n➕ Testing dataframe creation with additional column...")
-        arrays_with_bool = {
-            TestColumnKey("sample_id"): ["A", "B", "C"],
-            TestColumnKey("temperature"): [20.0, 25.0, 30.0],
-            TestColumnKey("count"): [1, 2, 3],
-            TestColumnKey("active"): [True, False, True]
-        }
-        column_types_with_bool = {
-            TestColumnKey("sample_id"): ColumnType.STRING,
-            TestColumnKey("temperature"): ColumnType.REAL_NUMBER_64,
-            TestColumnKey("count"): ColumnType.INTEGER_64,
-            TestColumnKey("active"): ColumnType.BOOL
-        }
-        column_units_with_bool = {
-            TestColumnKey("sample_id"): None,
-            TestColumnKey("temperature"): Unit("°C"),
-            TestColumnKey("count"): None,
-            TestColumnKey("active"): None
+        columns_with_bool: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("sample_id"): (DataframeColumnType.STRING, None, ["A", "B", "C"]),
+            TestColumnKey("temperature"): (DataframeColumnType.REAL_NUMBER_64, Unit("°C"), [20.0, 25.0, 30.0]),
+            TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [1, 2, 3]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, [True, False, True])
         }
         
-        df_with_bool = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays_with_bool,
-            column_types=column_types_with_bool,
-            column_units_or_dimensions=column_units_with_bool,
-            internal_dataframe_column_name_formatter=SimpleInternalDataFrameNameFormatter()
-        )
+        df_with_bool: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_with_bool)
         
         assert len(df_with_bool.colkeys) == 4
         assert TestColumnKey("active") in df_with_bool.colkeys
@@ -155,7 +116,7 @@ class TestUnitedDataframeOperations:
         try:
             # Try to add existing column
             duplicate_data = StringArray(np.array(["D", "E", "F"]))
-            df.column_add(TestColumnKey("id"), duplicate_data, ColumnType.STRING, None)
+            df.column_add(TestColumnKey("id"), duplicate_data, DataframeColumnType.STRING, None)
             assert False, "Should have raised ValueError"
         except ValueError as e:
             print(f"✅ Correctly caught duplicate column error: {e}")
@@ -174,24 +135,12 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive row operations...")
         
         # Create initial dataframe with data
-        arrays = {
-            TestColumnKey("id"): ["A", "B"],
-            TestColumnKey("value"): [10.0, 20.0]
-        }
-        column_types = {
-            TestColumnKey("id"): ColumnType.STRING,
-            TestColumnKey("value"): ColumnType.REAL_NUMBER_64
-        }
-        column_units = {
-            TestColumnKey("id"): None,
-            TestColumnKey("value"): Unit("m")
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("id"): (DataframeColumnType.STRING, None, ["A", "B"]),
+            TestColumnKey("value"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [10.0, 20.0])
         }
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         assert len(df) == 2
         print("✅ Initial dataframe: 2 rows, 2 columns")
@@ -204,44 +153,47 @@ class TestUnitedDataframeOperations:
         
         # Test 2: Add rows with values
         print("\n📝 Testing row_add_values...")
-        new_values = {
-            TestColumnKey("id"): ["E", "F"],
-            TestColumnKey("value"): [RealUnitedScalar(50.0, Unit("m")), RealUnitedScalar(60.0, Unit("m"))]
+        new_values_1: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+            TestColumnKey("id"): "E",
+            TestColumnKey("value"): RealUnitedScalar(50.0, Unit("m"))
         }
-        df.row_add_values(new_values)
+        new_values_2: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+            TestColumnKey("id"): "G",
+            TestColumnKey("value"): RealUnitedScalar(70.0, Unit("m"))
+        }
+        df.row_add_items(new_values_1)
+        df.row_add_items(new_values_2)
         assert len(df) == 6
         print("✅ Added 2 rows with values successfully")
         
         # Test 3: Insert empty rows
         print("\n⬇️ Testing row_insert_empty...")
-        df.row_insert_empty(1, 1)  # Insert 1 empty row at index 1
+        df.row_insert_empty(1)  # Insert 1 empty row at index 1
         assert len(df) == 7
         print("✅ Inserted 1 empty row at index 1 successfully")
         
         # Test 4: Insert rows with values
         print("\n📋 Testing row_insert_values...")
-        insert_values = {
-            TestColumnKey("id"): ["X"],
-            TestColumnKey("value"): [RealUnitedScalar(35.0, Unit("m"))]
+        insert_values: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+            TestColumnKey("id"): "X",
+            TestColumnKey("value"): RealUnitedScalar(35.0, Unit("m"))
         }
-        df.row_insert_values(2, insert_values)
+        df.row_insert_items(2, insert_values)
         assert len(df) == 8
         print("✅ Inserted 1 row with values at index 2 successfully")
         
         # Test 5: Set row values (replace)
         print("\n🔄 Testing row_set_values...")
-        replace_values = {
-            TestColumnKey("id"): ["Y"],
-            TestColumnKey("value"): [RealUnitedScalar(99.0, Unit("m"))]
+        replace_values: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+            TestColumnKey("id"): "Y",
+            TestColumnKey("value"): RealUnitedScalar(99.0, Unit("m"))
         }
-        df.row_set_values(0, replace_values)
+        df.row_set_items(0, replace_values)
         
         # Verify the change
         first_row = df.row_get_as_dict(0)
-        # Handle both scalar objects (with get_value()) and raw values
-        id_value = first_row[TestColumnKey("id")]
-        actual_value = id_value.get_value() if hasattr(id_value, 'get_value') else id_value
-        assert actual_value == "Y"
+        id_value: SCALAR_TYPE = first_row[TestColumnKey("id")]
+        assert id_value == "Y"
         print("✅ Row values replaced successfully")
         
         # Test 6: Clear specific rows
@@ -280,30 +232,14 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive cell operations...")
         
         # Create dataframe with mixed data types
-        arrays = {
-            TestColumnKey("text"): ["Hello", "World", "Test"],
-            TestColumnKey("length"): [1.5, 2.5, 3.5],
-            TestColumnKey("count"): [10, 20, 30],
-            TestColumnKey("active"): [True, False, True]
-        }
-        column_types = {
-            TestColumnKey("text"): ColumnType.STRING,
-            TestColumnKey("length"): ColumnType.REAL_NUMBER_64,
-            TestColumnKey("count"): ColumnType.INTEGER_64,
-            TestColumnKey("active"): ColumnType.BOOL
-        }
-        column_units = {
-            TestColumnKey("text"): None,
-            TestColumnKey("length"): Unit("m"),
-            TestColumnKey("count"): None,
-            TestColumnKey("active"): None
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("text"): (DataframeColumnType.STRING, None, ["Hello", "World", "Test"]),
+            TestColumnKey("length"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [1.5, 2.5, 3.5]),
+            TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [10, 20, 30]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, [True, False, True])
         }
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         print("✅ Created test dataframe: 3 rows, 4 columns")
         
@@ -311,24 +247,20 @@ class TestUnitedDataframeOperations:
         print("\n📖 Testing cell_get_value...")
         
         text_value = df.cell_get_value(0, TestColumnKey("text"))
-        actual_text = text_value.get_value() if hasattr(text_value, 'get_value') else text_value
-        assert actual_text == "Hello"
-        print(f"✅ Text cell [0]: {actual_text}")
+        assert text_value == "Hello"
+        print(f"✅ Text cell [0]: {text_value}")
         
-        length_value = df.cell_get_value(1, TestColumnKey("length"))
-        assert length_value.value() == 2.5
-        assert str(length_value.unit) == "m"
-        print(f"✅ Length cell [1]: {length_value.value()} {length_value.unit}")
+        length_value = df.cell_get_scalar(1, TestColumnKey("length"))
+        assert length_value == RealUnitedScalar(2.5, Unit("m"))
+        print(f"✅ Length cell [1]: {length_value}")
         
         count_value = df.cell_get_value(2, TestColumnKey("count"))
-        actual_count = count_value.get_value() if hasattr(count_value, 'get_value') else count_value
-        assert actual_count == 30
-        print(f"✅ Count cell [2]: {actual_count}")
+        assert count_value == 30
+        print(f"✅ Count cell [2]: {count_value}")
         
         bool_value = df.cell_get_value(0, TestColumnKey("active"))
-        actual_bool = bool_value.get_value() if hasattr(bool_value, 'get_value') else bool_value
-        assert actual_bool == True
-        print(f"✅ Boolean cell [0]: {actual_bool}")
+        assert bool_value == True
+        print(f"✅ Boolean cell [0]: {bool_value}")
         
         # Test 2: Set cell values
         print("\n✏️ Testing cell_set_value...")
@@ -339,17 +271,16 @@ class TestUnitedDataframeOperations:
         
         # Verify change
         updated_text = df.cell_get_value(0, TestColumnKey("text"))
-        actual_text = updated_text.get_value() if hasattr(updated_text, 'get_value') else updated_text
-        assert actual_text == "Modified"
+        assert updated_text == "Modified"
         print("✅ Updated text cell successfully")
         
         # Set numeric value with unit
-        new_length = RealUnitedScalar(4.5, Unit("m"))
-        df.cell_set_value(1, TestColumnKey("length"), new_length)
+        new_length: SCALAR_TYPE = RealUnitedScalar(4.5, Unit("m"))
+        df.cell_set_scalar(1, TestColumnKey("length"), new_length)
         
         # Verify change
-        updated_length = df.cell_get_value(1, TestColumnKey("length"))
-        assert updated_length.value() == 4.5
+        updated_length = df.cell_get_scalar(1, TestColumnKey("length"))
+        assert updated_length == RealUnitedScalar(4.5, Unit("m"))
         print("✅ Updated length cell successfully")
         
         # Set integer value
@@ -358,8 +289,7 @@ class TestUnitedDataframeOperations:
         
         # Verify change
         updated_count = df.cell_get_value(2, TestColumnKey("count"))
-        actual_count = updated_count.get_value() if hasattr(updated_count, 'get_value') else updated_count
-        assert actual_count == 99
+        assert updated_count == 99
         print("✅ Updated count cell successfully")
         
         # Set boolean value
@@ -368,8 +298,7 @@ class TestUnitedDataframeOperations:
         
         # Verify change
         updated_bool = df.cell_get_value(0, TestColumnKey("active"))
-        actual_bool = updated_bool.get_value() if hasattr(updated_bool, 'get_value') else updated_bool
-        assert actual_bool == False
+        assert updated_bool == False
         print("✅ Updated boolean cell successfully")
         
         # Test 3: Error cases
@@ -396,30 +325,14 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive data retrieval...")
         
         # Create test dataframe
-        arrays = {
-            TestColumnKey("strings"): ["A", "B", "C", "D"],
-            TestColumnKey("reals"): [1.1, 2.2, 3.3, 4.4],
-            TestColumnKey("integers"): [10, 20, 30, 40],
-            TestColumnKey("complex_vals"): [1+2j, 3+4j, 5+6j, 7+8j]
-        }
-        column_types = {
-            TestColumnKey("strings"): ColumnType.STRING,
-            TestColumnKey("reals"): ColumnType.REAL_NUMBER_64,
-            TestColumnKey("integers"): ColumnType.INTEGER_64,
-            TestColumnKey("complex_vals"): ColumnType.COMPLEX_128
-        }
-        column_units = {
-            TestColumnKey("strings"): None,
-            TestColumnKey("reals"): Unit("kg"),
-            TestColumnKey("integers"): None,
-            TestColumnKey("complex_vals"): None
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("strings"): (DataframeColumnType.STRING, None, ["A", "B", "C", "D"]),
+            TestColumnKey("reals"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.1, 2.2, 3.3, 4.4]),
+            TestColumnKey("integers"): (DataframeColumnType.INTEGER_64, None, [10, 20, 30, 40]),
+            TestColumnKey("complex_vals"): (DataframeColumnType.COMPLEX_128, None, [1+2j, 3+4j, 5+6j, 7+8j])
         }
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         print("✅ Created test dataframe: 4 rows, 4 columns with mixed types")
         
@@ -469,12 +382,12 @@ class TestUnitedDataframeOperations:
         # Test 3: Get as Pandas Series
         print("\n🐼 Testing column_get_as_pd_series...")
         
-        string_series = df.column_get_as_pd_series(TestColumnKey("strings"))
+        string_series: pd.Series[str] = df.column_get_as_pd_series(TestColumnKey("strings")) # type: ignore
         assert isinstance(string_series, pd.Series)
         assert list(string_series) == ["A", "B", "C", "D"]
         print(f"✅ String Pandas Series: {list(string_series)}")
         
-        real_series = df.column_get_as_pd_series(TestColumnKey("reals"))
+        real_series: pd.Series[float] = df.column_get_as_pd_series(TestColumnKey("reals")) # type: ignore
         assert isinstance(real_series, pd.Series)
         assert np.allclose(real_series, [1.1, 2.2, 3.3, 4.4])
         print(f"✅ Real Pandas Series: {list(real_series)}")
@@ -494,7 +407,7 @@ class TestUnitedDataframeOperations:
         print(f"✅ Sliced integer NumPy array [0:2]: {list(sliced_numpy)}")
         
         # Get slice as pandas series
-        sliced_series = df.column_get_as_pd_series(TestColumnKey("strings"), slice=slice(2, 4))
+        sliced_series: pd.Series[str] = df.column_get_as_pd_series(TestColumnKey("strings"), slice=slice(2, 4)) # type: ignore
         assert list(sliced_series) == ["C", "D"]
         print(f"✅ Sliced string Pandas Series [2:4]: {list(sliced_series)}")
         
@@ -520,40 +433,18 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive metadata access...")
         
         # Create test dataframe with diverse metadata
-        now = datetime.now()
-        arrays = {
-            TestColumnKey("mass"): [1.0, 2.0],
-            TestColumnKey("length"): [10.0, 20.0],
-            TestColumnKey("voltage"): [1+0j, 2+0j],
-            TestColumnKey("name"): ["A", "B"],
-            TestColumnKey("count"): [5, 10],
-            TestColumnKey("active"): [True, False],
-            TestColumnKey("timestamp"): [now, now]
-        }
-        column_types = {
-            TestColumnKey("mass"): ColumnType.REAL_NUMBER_64,
-            TestColumnKey("length"): ColumnType.REAL_NUMBER_32,
-            TestColumnKey("voltage"): ColumnType.COMPLEX_NUMBER_128,
-            TestColumnKey("name"): ColumnType.STRING,
-            TestColumnKey("count"): ColumnType.INTEGER_32,
-            TestColumnKey("active"): ColumnType.BOOL,
-            TestColumnKey("timestamp"): ColumnType.TIMESTAMP
-        }
-        column_units = {
-            TestColumnKey("mass"): Unit("kg"),
-            TestColumnKey("length"): Unit("cm"),
-            TestColumnKey("voltage"): Unit("V"),
-            TestColumnKey("name"): None,
-            TestColumnKey("count"): None,
-            TestColumnKey("active"): None,
-            TestColumnKey("timestamp"): None
+        now: Timestamp = Timestamp.now()
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("mass"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.0, 2.0]),
+            TestColumnKey("length"): (DataframeColumnType.REAL_NUMBER_32, Unit("cm"), [10.0, 20.0]),
+            TestColumnKey("voltage"): (DataframeColumnType.COMPLEX_NUMBER_128, Unit("V"), [1+0j, 2+0j]),
+            TestColumnKey("name"): (DataframeColumnType.STRING, None, ["A", "B"]),
+            TestColumnKey("count"): (DataframeColumnType.INTEGER_32, None, [5, 10]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, [True, False]),
+            TestColumnKey("timestamp"): (DataframeColumnType.TIMESTAMP, None, [now, now])
         }
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         print("✅ Created test dataframe: 2 rows, 7 columns with diverse metadata")
         
@@ -593,31 +484,31 @@ class TestUnitedDataframeOperations:
         print("\n🔤 Testing column types access...")
         
         mass_type = df.coltypes[TestColumnKey("mass")]
-        assert mass_type == ColumnType.REAL_NUMBER_64
+        assert mass_type == DataframeColumnType.REAL_NUMBER_64
         print(f"✅ Mass type: {mass_type}")
         
         length_type = df.coltypes[TestColumnKey("length")]
-        assert length_type == ColumnType.REAL_NUMBER_32
+        assert length_type == DataframeColumnType.REAL_NUMBER_32
         print(f"✅ Length type: {length_type}")
         
         voltage_type = df.coltypes[TestColumnKey("voltage")]
-        assert voltage_type == ColumnType.COMPLEX_NUMBER_128
+        assert voltage_type == DataframeColumnType.COMPLEX_NUMBER_128
         print(f"✅ Voltage type: {voltage_type}")
         
         name_type = df.coltypes[TestColumnKey("name")]
-        assert name_type == ColumnType.STRING
+        assert name_type == DataframeColumnType.STRING
         print(f"✅ Name type: {name_type}")
         
         count_type = df.coltypes[TestColumnKey("count")]
-        assert count_type == ColumnType.INTEGER_32
+        assert count_type == DataframeColumnType.INTEGER_32
         print(f"✅ Count type: {count_type}")
         
         active_type = df.coltypes[TestColumnKey("active")]
-        assert active_type == ColumnType.BOOL
+        assert active_type == DataframeColumnType.BOOL
         print(f"✅ Active type: {active_type}")
         
         timestamp_type = df.coltypes[TestColumnKey("timestamp")]
-        assert timestamp_type == ColumnType.TIMESTAMP
+        assert timestamp_type == DataframeColumnType.TIMESTAMP
         print(f"✅ Timestamp type: {timestamp_type}")
         
         # Test 4: Columns categorized by units
@@ -689,15 +580,9 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing read-only mode comprehensive...")
         
         # Create test dataframe
-        arrays = {TestColumnKey("test"): ["A", "B"]}
-        column_types = {TestColumnKey("test"): ColumnType.STRING}
-        column_units = {TestColumnKey("test"): None}
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {TestColumnKey("test"): (DataframeColumnType.STRING, None, ["A", "B"])}
         
-        df = UnitedDataframe.create_dataframe_from_data(
-            arrays=arrays,
-            column_types=column_types,
-            column_units_or_dimensions=column_units
-        )
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
         # Convert to read-only
         read_only_df = df.copy()
@@ -714,9 +599,8 @@ class TestUnitedDataframeOperations:
         data = read_only_df.column_get_as_array(TestColumnKey("test"))
         assert data.canonical_np_array.tolist() == ["A", "B"]
         
-        cell_value = read_only_df.cell_get_value(0, TestColumnKey("test"))
-        actual_cell_value = cell_value.get_value() if hasattr(cell_value, 'get_value') else cell_value
-        assert actual_cell_value == "A"
+        cell_value: VALUE_TYPE = read_only_df.cell_get_value(0, TestColumnKey("test"))
+        assert cell_value == "A"
         
         print("✅ Read operations work correctly in read-only mode")
         
@@ -724,7 +608,7 @@ class TestUnitedDataframeOperations:
         print("\n❌ Testing write operations on read-only dataframe...")
         
         operations_to_test = [
-            ("column_add", lambda: read_only_df.column_add(TestColumnKey("new"), StringArray(np.array(["X", "Y"])), ColumnType.STRING, None)),
+            ("column_add", lambda: read_only_df.column_add(TestColumnKey("new"), StringArray(np.array(["X", "Y"])), DataframeColumnType.STRING, None)),
             ("column_remove", lambda: read_only_df.column_remove(TestColumnKey("test"))),
             ("column_set_values", lambda: read_only_df.column_set_values(TestColumnKey("test"), StringArray(np.array(["X", "Y"])))),
             ("row_add_empty", lambda: read_only_df.row_add_empty(1)),

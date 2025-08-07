@@ -14,7 +14,7 @@ from readerwriterlock import rwlock
 from .mixins import *
 from .mixins.dataframe_protocol import CK
 from .column_type import ColumnType
-from .internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER
+from .internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from .._units_and_dimension.unit import Unit
 from .._units_and_dimension.dimension import Dimension
 
@@ -60,6 +60,149 @@ class UnitedDataframe(
     
     This class is the main entry point for users and combines all the mixins
     to provide a complete dataframe solution.
+    
+    ============================================================================
+    TYPE PATTERNS & RETURN VALUES
+    ============================================================================
+    
+    The dataframe follows consistent type patterns for all operations:
+    
+    📊 GET OPERATIONS (Return Types):
+    - cell_get_value() → VALUE_TYPE
+    - cell_get_scalar() → SCALAR_TYPE  
+    - cell_get_scalars() → list[SCALAR_TYPE]
+    - cell_get_array() → ARRAY_TYPE
+    - column_get_as_array() → ARRAY_TYPE
+    - column_get_as_pd_series() → pd.Series
+    - column_get_as_numpy_array() → np.ndarray
+    - row_get_as_dict() → dict[CK, SCALAR_TYPE]
+    - row_get_head() → list[dict[CK, SCALAR_TYPE]]
+    - row_get_tail() → list[dict[CK, SCALAR_TYPE]]
+    
+    📝 SET OPERATIONS (Parameter Types):
+    - cell_set_value(value: VALUE_TYPE)
+    - cell_set_scalar(value: SCALAR_TYPE)
+    - cell_set_scalars(scalars: Sequence[SCALAR_TYPE])
+    - row_set_items(values: dict[CK, VALUE_TYPE|SCALAR_TYPE])
+    - row_add_items(values: dict[CK, VALUE_TYPE|SCALAR_TYPE])
+    - column_set_values(array: ARRAY_TYPE)
+    
+    🔢 STATISTICAL OPERATIONS:
+    - column_get_min() → NUMERIC_SCALAR_TYPE
+    - column_get_max() → NUMERIC_SCALAR_TYPE
+    - column_get_mean() → NUMERIC_SCALAR_TYPE
+    - column_get_std() → NUMERIC_SCALAR_TYPE
+    - column_get_sum() → NUMERIC_SCALAR_TYPE
+    - column_get_median() → NUMERIC_SCALAR_TYPE
+    - column_get_unique() → list[SCALAR_TYPE]
+    
+    ============================================================================
+    ACCESS PATTERNS
+    ============================================================================
+    
+    🎯 MAGIC METHODS:
+    - df[column_key] → ColumnAccessor
+    - df[row_index] → RowAccessor  
+    - df[column_key, row_index] → VALUE_TYPE
+    - df[row_index, column_key] → VALUE_TYPE
+    - df[slice] → UnitedDataframe (row filtering)
+    - df[column_keys] → UnitedDataframe (column selection)
+    - df[boolean_mask] → UnitedDataframe (boolean filtering)
+    
+    📋 ITERATION:
+    - for row in df: → iterate over rows
+    - for column in df.columns: → iterate over columns
+    - for unit in df.units: → iterate over units
+    - for dimension in df.dimensions: → iterate over dimensions
+    
+    ============================================================================
+    CONSTRUCTION PATTERNS
+    ============================================================================
+    
+    🏗️ CREATION METHODS:
+    - UnitedDataframe.create_empty() → Empty dataframe with structure
+    - UnitedDataframe.create_from_data() → From data dictionaries
+    - UnitedDataframe.create_from_dataframe() → From pandas DataFrame
+    
+    📊 COLUMN TYPES SUPPORTED:
+    - REAL_NUMBER_32/64 (with units)
+    - FLOAT_32/64 (dimensionless)
+    - COMPLEX_NUMBER_128 (with units)
+    - COMPLEX_128 (dimensionless)
+    - INTEGER_8/16/32/64
+    - BOOL
+    - STRING
+    - TIMESTAMP
+    
+    ============================================================================
+    SERIALIZATION SUPPORT
+    ============================================================================
+    
+    💾 FORMATS:
+    - HDF5 (.h5) - Full fidelity with units
+    - Pickle (.pkl) - Python serialization
+    - JSON - Basic data export
+    - CSV - Tabular data export
+    
+    ============================================================================
+    THREAD SAFETY
+    ============================================================================
+    
+    🔒 LOCKING:
+    - Read operations: _rlock (shared)
+    - Write operations: _wlock (exclusive)
+    - Context manager: with df: (write lock)
+    
+    ============================================================================
+    UNITS & DIMENSIONS
+    ============================================================================
+    
+    📏 UNIT SUPPORT:
+    - Physical quantities: m/s, kg, Pa, etc.
+    - Complex units: km/h, µW/mm², MΩ*Hz^0.5
+    - Unit conversions: automatic
+    - Dimension tracking: M, L, T, etc.
+    
+    ============================================================================
+    ADVANCED FEATURES
+    ============================================================================
+    
+    🔍 FILTERING & MASKING:
+    - Boolean masks
+    - Complex conditions
+    - Row/column filtering
+    
+    📈 GROUPBY OPERATIONS:
+    - Group by columns
+    - Aggregations
+    - Split-apply-combine
+    
+    🎨 JUPYTER SUPPORT:
+    - Rich HTML display
+    - Interactive tables
+    - Unit-aware formatting
+    
+    ============================================================================
+    EXAMPLES
+    ============================================================================
+    
+    # Create dataframe with units
+    df = UnitedDataframe.create_from_data({
+        TestColumnKey("velocity"): (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [1.5, 2.3, 3.7]),
+        TestColumnKey("mass"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [10.0, 15.0, 20.0])
+    })
+    
+    # Access patterns
+    velocity = df[TestColumnKey("velocity")]  # ColumnAccessor
+    first_row = df[0]  # RowAccessor
+    cell_value = df[TestColumnKey("velocity"), 0]  # VALUE_TYPE
+    
+    # Statistical operations
+    mean_velocity = df.column_get_mean(TestColumnKey("velocity"))  # NUMERIC_SCALAR_TYPE
+    
+    # Serialization
+    df.to_hdf5("data.h5")  # Save with units
+    df_loaded = UnitedDataframe.from_hdf5("data.h5")  # Load with units
     """
 
     def __init__(
@@ -71,7 +214,7 @@ class UnitedDataframe(
             dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> None:
         """
@@ -85,7 +228,7 @@ class UnitedDataframe(
             column_keys: dict[CK, ColumnType] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -99,7 +242,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -113,7 +256,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -127,7 +270,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -141,7 +284,7 @@ class UnitedDataframe(
             column_keys: Sequence[CK] = [],
             column_types: dict[CK, ColumnType] = {},
             column_units: dict[CK, Optional[Unit|Dimension]] = {},
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -158,7 +301,7 @@ class UnitedDataframe(
             dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SIMPLE_INTERNAL_DATAFRAME_NAME_FORMATTER,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -226,7 +369,7 @@ class UnitedDataframe(
             column_keys: Sequence[CK],
             column_types: dict[CK, ColumnType],
             column_units: dict[CK, Optional[Unit]],
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter,
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
             copy_dataframe: bool = False,
             rename_dataframe_columns: bool = False

@@ -67,7 +67,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         self._internal_dataframe_column_names[column_key] = internal_column_name
         self._internal_dataframe[internal_column_name] = column_type.get_pd_series_for_dataframe(np.empty(len(self._internal_dataframe)), unit) # type: ignore
 
-    def column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Unit) -> None:
+    def column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Optional[Unit] = None) -> None:
         """
         Add a new column to the dataframe.
 
@@ -190,7 +190,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         # Replace in internal dataframe
         internal_column_name: str = self._internal_dataframe_column_names[column_key]
-        self._internal_dataframe[internal_column_name] = self._column_types[column_key].get_values_for_dataframe(array, self._column_units[column_key]) # type: ignore
+        self._internal_dataframe[internal_column_name] = self._column_types[column_key].get_pd_series_for_dataframe(array, self._column_units[column_key], None) # type: ignore
 
     def column_rename(self, current_column_key: CK, new_column_key: CK):
         """
