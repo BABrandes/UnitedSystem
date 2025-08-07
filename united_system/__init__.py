@@ -27,6 +27,7 @@ from ._utils.scalar_type import SCALAR_TYPE
 from ._utils.array_type import ARRAY_TYPE
 from ._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ._units_and_dimension.dimension import DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
+from ._arrays.base_array import create_array
 
 
 __all__ = [
@@ -53,7 +54,8 @@ __all__ = [
     'InternalDataFrameColumnNameFormatter',
     'SimpleInternalDataFrameNameFormatter',
     'DIMENSIONLESS_DIMENSION',
-    'ANGLE_DIMENSION'
+    'ANGLE_DIMENSION',
+    'create_array'
 ]
 __version__ = '0.1.1'
 __author__ = 'Benedikt Axel Brandes'

@@ -1,4 +1,4 @@
-from typing import Iterator, Generic, TypeVar, Any, overload
+from typing import Iterator, Generic, TypeVar, Any, overload, Optional
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .._arrays.base_united_array import BaseUnitedArray
 from .._utils.value_type import VALUE_TYPE
 from .._utils.scalar_type import SCALAR_TYPE
+from .._utils.array_type import ARRAY_TYPE
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 IT = TypeVar("IT", bound=SCALAR_TYPE)
@@ -162,3 +163,60 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
         Concatenate multiple arrays into a single array.
         """
         ...
+
+@overload
+def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int) -> ARRAY_TYPE:
+    ...
+@overload
+def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optional[type[AT]]) -> AT:
+    ...
+def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optional[type[AT]] = None) -> ARRAY_TYPE|AT:
+    
+    from .._scalars.real_united_scalar import RealUnitedScalar
+    from .._scalars.complex_united_scalar import ComplexUnitedScalar
+    from pandas import Timestamp
+
+    array: np.ndarray = np.array([item] * size)
+
+    if isinstance(item, bool):
+        from .bool_array import BoolArray
+        if expected_type is not None and expected_type is not BoolArray:
+            raise ValueError(f"Expected type {expected_type} but got {BoolArray}. You can use the create_array function to create an array of a specific type.")
+        return BoolArray(array)
+    elif isinstance(item, float):
+        from .float_array import FloatArray
+        if expected_type is not None and expected_type is not FloatArray:
+            raise ValueError(f"Expected type {expected_type} but got {FloatArray}. You can use the create_array function to create an array of a specific type.")
+        return FloatArray(array)
+    elif isinstance(item, int):
+        from .int_array import IntArray
+        if expected_type is not None and expected_type is not IntArray:
+            raise ValueError(f"Expected type {expected_type} but got {IntArray}. You can use the create_array function to create an array of a specific type.")
+        return IntArray(array)
+    elif isinstance(item, complex):
+        from .complex_array import ComplexArray
+        if expected_type is not None and expected_type is not ComplexArray:
+            raise ValueError(f"Expected type {expected_type} but got {ComplexArray}. You can use the create_array function to create an array of a specific type.")
+        return ComplexArray(array)
+    elif isinstance(item, str):
+        from .string_array import StringArray
+        if expected_type is not None and expected_type is not StringArray:
+            raise ValueError(f"Expected type {expected_type} but got {StringArray}. You can use the create_array function to create an array of a specific type.")
+        return StringArray(array)
+    elif isinstance(item, Timestamp):
+        from .timestamp_array import TimestampArray
+        if expected_type is not None and expected_type is not TimestampArray:
+            raise ValueError(f"Expected type {expected_type} but got {TimestampArray}. You can use the create_array function to create an array of a specific type.")
+        return TimestampArray(array)
+    elif isinstance(item, RealUnitedScalar):
+        from .real_united_array import RealUnitedArray
+        if expected_type is not None and expected_type is not RealUnitedArray:
+            raise ValueError(f"Expected type {expected_type} but got {RealUnitedArray}. You can use the create_array function to create an array of a specific type.")
+        return RealUnitedArray(array)
+    elif isinstance(item, ComplexUnitedScalar): # type: ignore
+        from .complex_united_array import ComplexUnitedArray # type: ignore
+        if expected_type is not None and expected_type is not ComplexUnitedArray:
+            raise ValueError(f"Expected type {expected_type} but got {ComplexUnitedArray}. You can use the create_array function to create an array of a specific type.")
+        raise NotImplementedError("ComplexUnitedArray is not implemented")
+    else:
+        raise ValueError(f"Invalid type: {type(item)}")
