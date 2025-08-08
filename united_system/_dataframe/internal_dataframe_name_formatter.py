@@ -1,11 +1,9 @@
-from typing import Optional, Protocol, Type, Generic, TypeVar
+from typing import Optional, Protocol, Type
 from .._units_and_dimension.unit import Unit
 from .._dataframe.column_key import ColumnKey
 from dataclasses import dataclass
 
-CK = TypeVar("CK", bound=ColumnKey|str)
-
-class InternalDataFrameColumnNameFormatter(Protocol, Generic[CK]):
+class InternalDataFrameColumnNameFormatter(Protocol):
     """
     Protocol for creating and retrieving internal dataframe column names.
     The column key is the key of the column in the UnitedDataframe, the unit is the unit of the column.
@@ -13,15 +11,15 @@ class InternalDataFrameColumnNameFormatter(Protocol, Generic[CK]):
     """
 
     @classmethod
-    def create_internal_dataframe_column_name(cls, column_key: CK, unit: Optional[Unit]) -> str:
+    def create_internal_dataframe_column_name(cls, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:
         ...
     @classmethod
-    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, column_key_type: Type[CK]) -> tuple[CK, Optional[Unit]]:
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, column_key_type: Type[ColumnKey|str]) -> tuple[ColumnKey|str, Optional[Unit]]:
         ...
 
 # Concrete implementation of the protocol
 @dataclass
-class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter[CK]):
+class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter):
     """
     Simple implementation of the InternalDataFrameColumnNameFormatter protocol.
     It creates and retrieves internal dataframe column names in the format "<column_key> [<unit>]" or "<column_key> [-]" if the unit is None.
@@ -30,7 +28,7 @@ class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter[
     """
 
     @classmethod
-    def create_internal_dataframe_column_name(cls, column_key: CK, unit: Optional[Unit]) -> str:
+    def create_internal_dataframe_column_name(cls, column_key: ColumnKey|str, unit: Optional[Unit]) -> str:
         if isinstance(column_key, str):
             column_key_str: str = column_key
         else:
@@ -38,7 +36,7 @@ class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter[
         return f"{column_key_str} [{unit}]" if unit != None else f"{column_key_str} [-]"
     
     @classmethod
-    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, column_key_type: Type[CK]) -> tuple[CK, Optional[Unit]]:
+    def retrieve_from_internal_dataframe_column_name(cls, internal_dataframe_column_name: str, column_key_type: Type[ColumnKey|str]) -> tuple[ColumnKey|str, Optional[Unit]]:
         # Find the indices of '[' and ']' in the internal_dataframe_column_name, looking from the end of the string
         internal_dataframe_column_name = internal_dataframe_column_name.strip()
         index_bracket_close: int = internal_dataframe_column_name.rfind(']')
@@ -54,8 +52,8 @@ class SimpleInternalDataFrameNameFormatter(InternalDataFrameColumnNameFormatter[
         else:
             unit: Optional[Unit] = Unit(unit_str)
         if column_key_type == str:
-            column_key: CK = column_key_str # type: ignore
+            column_key: ColumnKey|str = column_key_str # type: ignore
         else:
-            column_key: CK = column_key_type.from_united_dataframe_string(column_key_str) # type: ignore
+            column_key: ColumnKey|str = column_key_type.from_united_dataframe_string(column_key_str) # type: ignore
 
-        return column_key, unit
+        return column_key, unit # type: ignore
