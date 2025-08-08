@@ -1,4 +1,4 @@
-from typing import TypeAlias, TYPE_CHECKING
+from typing import TypeAlias, TYPE_CHECKING, Any
 from .._arrays.base_array import BaseArray
 
 if TYPE_CHECKING:
@@ -13,5 +13,8 @@ if TYPE_CHECKING:
 
 
 ARRAY_TYPE: TypeAlias = "RealUnitedArray|ComplexUnitedArray|StringArray|IntArray|FloatArray|BoolArray|TimestampArray|ComplexArray"
-
 ARRAY_TYPE_RUNTIME: tuple[type, ...] = (BaseArray,)
+
+@staticmethod
+def is_array(item: Any) -> bool:
+    return isinstance(item, ARRAY_TYPE_RUNTIME)
