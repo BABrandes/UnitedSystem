@@ -710,3 +710,82 @@ class TestUnitedDataframeOperations:
                 print(f"✅ {op_name} correctly blocked in read-only mode")
         
         print("🎉 Read-only mode test completed successfully!")
+
+    def test_dataframe_get_of_unique_rows(self):
+        """Test deduplicating rows using dataframe_get_of_unique_rows."""
+        print("\n🔁 Testing dataframe_get_of_unique_rows...")
+
+        # Create dataframe with 4 columns and 8 rows with diverse duplicates
+        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            TestColumnKey("category"): (DataframeColumnType.STRING, None, ["A", "A", "B", "B", "C", "C", "A", "B"]),
+            TestColumnKey("value"): (DataframeColumnType.INTEGER_64, None, [10, 10, 20, 20, 30, 30, 10, 20]),
+            TestColumnKey("weight"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.5, 1.5, 2.5, 2.5, 3.5, 3.5, 1.5, 2.5]),
+            TestColumnKey("active"): (DataframeColumnType.BOOL, None, [True, True, False, False, True, True, True, False]),
+        }
+
+        df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
+
+        # Case 1: Unique by all columns (default)
+        print("\n✅ Unique by all columns (default)...")
+        unique_all = df.dataframe_get_of_unique_rows()
+        assert len(unique_all) == 3  # (A,10,1.5,True), (B,20,2.5,False), (C,30,3.5,True) - all others are duplicates
+        assert unique_all.row_get_as_dict(0)[TestColumnKey("category")] == "A"
+        assert unique_all.row_get_as_dict(0)[TestColumnKey("value")] == 10
+        # Check that weight is a float value (the unit is preserved in the dataframe structure)
+        weight_value = unique_all.row_get_as_dict(0)[TestColumnKey("weight")]
+        assert weight_value == 1.5  # The value is stored as float, unit is in column metadata
+        assert unique_all.row_get_as_dict(0)[TestColumnKey("active")] == True
+        assert unique_all.row_get_as_dict(1)[TestColumnKey("category")] == "B"
+        assert unique_all.row_get_as_dict(1)[TestColumnKey("value")] == 20
+        assert unique_all.row_get_as_dict(1)[TestColumnKey("weight")] == 2.5
+        assert unique_all.row_get_as_dict(1)[TestColumnKey("active")] == False
+        assert unique_all.row_get_as_dict(2)[TestColumnKey("category")] == "C"
+        assert unique_all.row_get_as_dict(2)[TestColumnKey("value")] == 30
+        assert unique_all.row_get_as_dict(2)[TestColumnKey("weight")] == 3.5
+        assert unique_all.row_get_as_dict(2)[TestColumnKey("active")] == True
+        print("✅ Default unique keeps first occurrences across all columns")
+
+        # Case 2: Unique by subset of columns (category only)
+        print("\n✅ Unique by subset of columns (category only)...")
+        unique_category = df.dataframe_get_of_unique_rows(TestColumnKey("category"))
+        assert len(unique_category) == 3  # First A, first B, first C
+        assert unique_category.row_get_as_dict(0)[TestColumnKey("category")] == "A"
+        assert unique_category.row_get_as_dict(1)[TestColumnKey("category")] == "B"
+        assert unique_category.row_get_as_dict(2)[TestColumnKey("category")] == "C"
+        # Should keep first occurrences, thus corresponding values are the first seen per category
+        assert unique_category.row_get_as_dict(0)[TestColumnKey("value")] == 10
+        assert unique_category.row_get_as_dict(1)[TestColumnKey("value")] == 20
+        assert unique_category.row_get_as_dict(2)[TestColumnKey("value")] == 30
+        print("✅ Subset unique works and preserves row order (first occurrences)")
+
+        # Case 3: Unique by multiple columns (category + value)
+        print("\n✅ Unique by multiple columns (category + value)...")
+        unique_multi = df.dataframe_get_of_unique_rows(TestColumnKey("category"), TestColumnKey("value"))
+        assert len(unique_multi) == 3  # (A,10), (B,20), (C,30)
+        assert unique_multi.row_get_as_dict(0)[TestColumnKey("category")] == "A"
+        assert unique_multi.row_get_as_dict(0)[TestColumnKey("value")] == 10
+        assert unique_multi.row_get_as_dict(1)[TestColumnKey("category")] == "B"
+        assert unique_multi.row_get_as_dict(1)[TestColumnKey("value")] == 20
+        assert unique_multi.row_get_as_dict(2)[TestColumnKey("category")] == "C"
+        assert unique_multi.row_get_as_dict(2)[TestColumnKey("value")] == 30
+        print("✅ Multi-column unique works correctly")
+
+        # Case 4: Unique by numeric column with units
+        print("\n✅ Unique by numeric column with units (weight)...")
+        unique_weight = df.dataframe_get_of_unique_rows(TestColumnKey("weight"))
+        assert len(unique_weight) == 3  # 1.5kg, 2.5kg, 3.5kg
+        assert unique_weight.row_get_as_dict(0)[TestColumnKey("weight")] == 1.5
+        assert unique_weight.row_get_as_dict(1)[TestColumnKey("weight")] == 2.5
+        assert unique_weight.row_get_as_dict(2)[TestColumnKey("weight")] == 3.5
+        print("✅ Unit-aware unique works correctly")
+
+        # Case 5: Invalid column key should raise
+        print("\n❌ Testing invalid column key handling...")
+        try:
+            _ = df.dataframe_get_of_unique_rows(TestColumnKey("nonexistent"))
+            assert False, "Should have raised ValueError for nonexistent column key"
+        except ValueError as e:
+            assert "does not exist" in str(e)
+            print(f"✅ Correctly raised error for invalid key: {e}")
+
+        print("🎉 dataframe_get_of_unique_rows test completed successfully!")

@@ -10,6 +10,7 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 from typing import TYPE_CHECKING, Sequence, Optional, Tuple
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._units_and_dimension.unit import Unit
+import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -88,10 +89,48 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
         Check if the dataframe contains any missing values
         """
-        return self._internal_dataframe.isna().any().any() # type: ignore
+        with self._rlock:
+            return self._internal_dataframe.isna().any().any() # type: ignore
     
     def dataframe_contains_inf(self) -> bool:
         """
         Check if the dataframe contains any infinite values
         """
-        return self._internal_dataframe.isin([np.inf, -np.inf]).any().any() # type: ignore
+        with self._rlock:
+            return self._internal_dataframe.isin([np.inf, -np.inf]).any().any() # type: ignore
+    
+    def dataframe_get_of_unique_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
+        """
+        Get a new dataframe with only unique rows.
+
+        Args:
+            column_keys (CK): The column keys to use for the unique rows.
+
+        Returns:
+            UnitedDataframe[CK]: A new dataframe with only unique rows.
+        """
+        with self._rlock:
+            # Interpret provided kwargs values as the subset of column keys.
+            # If none were provided, use all column keys.
+            if len(column_keys) == 0:
+                subset_keys: list[CK] = list(self._column_keys)
+            else:
+                subset_keys = list(column_keys)
+
+            # Validate provided column keys
+            for ck in subset_keys:
+                if ck not in self._column_keys:
+                    raise ValueError(f"Column key {ck} does not exist in the dataframe.")
+
+            # Map to internal dataframe column names
+            internal_columns: list[str] = [self._get_internal_dataframe_column_name(ck) for ck in subset_keys]
+
+            # Drop duplicates keeping the first occurrence, returning only unique rows
+            deduplicated_df: pd.DataFrame = self._internal_dataframe.drop_duplicates(subset=internal_columns, keep="first", inplace=False)  # type: ignore
+            
+            # Reset the index to have consecutive indices starting from 0
+            deduplicated_df = deduplicated_df.reset_index(drop=True)
+
+            # Create a new dataframe instance with the same schema and the deduplicated data
+            return self._create_with_replaced_internal_dataframe(deduplicated_df, copy_dataframe=False)
+            

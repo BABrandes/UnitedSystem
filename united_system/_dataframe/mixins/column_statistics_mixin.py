@@ -95,14 +95,14 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def column_get_unique(self, column_key: CK, expected_type: type[ST]) -> list[ST]: ...
     def column_get_unique(self, column_key: CK, expected_type: type[ST]|None = None) -> list[ST]|list[SCALAR_TYPE]:
         """
-        Get the maximum value in a column.
+        Get the unique values in a column.
         
         Args:
             column_key (CK): The column key
-            expected_type (type[ST]): The expected type of the maximum value
+            expected_type (type[ST]): The expected type of the unique values
             
         Returns:
-            NUMERIC_SCALAR_TYPE: The maximum value
+            list[ST]: The unique values
         """
         with self._rlock:
             if not self._colkey_is_numeric(column_key):

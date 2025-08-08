@@ -8,10 +8,10 @@ import pandas as pd
 # Import moved to TYPE_CHECKING to avoid circular import
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from .._utils.array_type import ARRAY_TYPE
     from .._arrays.base_united_array import BaseUnitedArray
 from .._utils.value_type import VALUE_TYPE
 from .._utils.scalar_type import SCALAR_TYPE
-from .._utils.array_type import ARRAY_TYPE
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 IT = TypeVar("IT", bound=SCALAR_TYPE)
@@ -165,12 +165,12 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
         ...
 
 @overload
-def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int) -> ARRAY_TYPE:
+def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int) -> "ARRAY_TYPE":
     ...
 @overload
 def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optional[type[AT]]) -> AT:
     ...
-def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optional[type[AT]] = None) -> ARRAY_TYPE|AT:
+def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optional[type[AT]] = None) -> "ARRAY_TYPE|AT":
     
     from .._scalars.real_united_scalar import RealUnitedScalar
     from .._scalars.complex_united_scalar import ComplexUnitedScalar

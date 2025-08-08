@@ -36,11 +36,11 @@ class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     ################### Overloads #########################################################
 
     @overload
-    def __setitem__(self, key: CK, value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
+    def __setitem__(self, key: CK, value: "ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series") -> None: ... # type: ignore[no-any-return]
     @overload
     def __setitem__(self, key: int, value: dict[CK, VALUE_TYPE] | dict[CK, SCALAR_TYPE]) -> None: ...
     @overload
-    def __setitem__(self, key: Sequence[CK], value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
+    def __setitem__(self, key: Sequence[CK], value: "ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series") -> None: ... # type: ignore[no-any-return]
     @overload
     def __setitem__(self, key: slice, value: dict[CK, VALUE_TYPE] | dict[CK, SCALAR_TYPE]) -> None: ...
     @overload
@@ -52,9 +52,9 @@ class AccessorSetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @overload
     def __setitem__(self, key: tuple[CK, int], value: SCALAR_TYPE) -> None: ...
     @overload
-    def __setitem__(self, key: tuple[CK, slice], value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
+    def __setitem__(self, key: tuple[CK, slice], value: "ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series") -> None: ... # type: ignore[no-any-return]
     @overload
-    def __setitem__(self, key: tuple[slice, CK], value: ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series) -> None: ... # type: ignore[no-any-return]
+    def __setitem__(self, key: tuple[slice, CK], value: "ARRAY_TYPE | Sequence[VALUE_TYPE] | Sequence[SCALAR_TYPE] | np.ndarray | pd.Series") -> None: ... # type: ignore[no-any-return]
     @overload
     def __setitem__(self, key: tuple[Sequence[CK], int], value: dict[CK, VALUE_TYPE] | dict[CK, SCALAR_TYPE]) -> None: ...
     @overload
