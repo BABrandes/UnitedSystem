@@ -1236,6 +1236,20 @@ class Unit:
     # Other
 ########################################################
 
+    @overload
+    @classmethod
+    def get_value(cls, item: VALUE_TYPE|SCALAR_TYPE, unit: Optional["Unit"]=None) -> VALUE_TYPE:
+        """
+        Get a value from an item and unit in a very flexible way.
+        """
+        ...
+    @overload
+    @classmethod
+    def get_value(cls, item: None, unit: Optional["Unit"]=None) -> None:
+        """
+        Get a value from an item and unit in a very flexible way.
+        """
+        ...
     @classmethod
     def get_value(cls, item: Optional[VALUE_TYPE|SCALAR_TYPE], unit: Optional["Unit"]=None) -> Optional[VALUE_TYPE]:
         """
