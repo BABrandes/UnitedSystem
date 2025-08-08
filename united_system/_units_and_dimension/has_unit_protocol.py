@@ -1,4 +1,4 @@
-from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING
+from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING, Union
 from abc import abstractmethod
 
 if TYPE_CHECKING:
@@ -22,3 +22,11 @@ class HasUnit(Protocol):
     @property
     @abstractmethod
     def unit(self) -> "Unit": ...
+
+    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit"]) -> bool:
+        """
+        Check if the dimension is compatible with other dimensions.
+        Two dimensions are compatible if they have the same subscripts
+        and the same proper exponents.
+        """
+        return Dimension.are_compatible(self.dimension, *others)

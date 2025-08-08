@@ -1058,6 +1058,48 @@ class Dimension:
 # Compatibility
 ################################################################################
 
+    @classmethod
+    def are_compatible(cls, *others: Optional[Union["Dimension", "Unit", HasUnit]]) -> bool:
+        """
+        Check if the dimension is compatible with other dimensions.
+        Two dimensions are compatible if they have the same subscripts
+        and the same proper exponents.
+
+        Args:
+            *others: Other dimensions to check compatibility with
+        
+        Returns:
+            True if compatible, False otherwise (If zero or one are provided, it is always True)
+        """
+
+        if len(others) <= 1:
+            return True
+
+        # Check if all are None
+        if all(other is None for other in others):
+            return True
+        
+        # Check if any are None
+        if any(other is None for other in others):
+            return False
+        
+        assert others[0] is not None
+        first_item: Union["Dimension", "Unit", HasUnit] = others[0]        
+        for other in others[1:]:
+            assert other is not None
+            if isinstance(first_item, Unit):
+                if not first_item.compatible_to(other):
+                    return False
+            elif isinstance(first_item, HasUnit):
+                if not first_item.compatible_to(other):
+                    return False
+            elif isinstance(first_item, "Dimension"): # type: ignore
+                if not first_item.compatible_to(other):
+                    return False
+            else:
+                raise ValueError(f"Invalid item: {first_item}")
+        return True
+
     def compatible_to(self, *others: Union["Dimension", "Unit", HasUnit]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.

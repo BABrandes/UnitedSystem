@@ -658,6 +658,13 @@ class Unit:
     # Compatibility and comparison
 ########################################################
 
+    @classmethod
+    def are_compatible(cls, *others: Optional[Union["Unit", Dimension, HasUnit]]) -> bool:
+        """
+        Check if this unit is compatible with another unit or dimension.
+        """        
+        return Dimension.are_compatible(*others)
+
     def compatible_to(self, *others: Union["Unit", Dimension, HasUnit]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.

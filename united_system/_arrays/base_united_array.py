@@ -616,9 +616,9 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return type(self)(self.canonical_np_array, self.dimension, unit)
     
-    def compatible_to(self, other: "BaseUnitedArray[UAT, UST, PT]") -> bool:
+    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit"]) -> bool:
         """Check if this array is compatible (same dimension) with another."""
-        return self.dimension == other.dimension
+        return self.dimension.compatible_to(*others)
 
     def format(self, unit: Optional[Unit] = None, decimals: int = 3) -> str:
         """Format the array with optional unit specification."""
