@@ -7,7 +7,7 @@ setting, and dimension management.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Mapping
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._units_and_dimension.dimension import Dimension
 from ..._units_and_dimension.unit import Unit

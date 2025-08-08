@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Tuple, Callable, cast, TYPE_CHECKING
+from typing import Generic, TypeVar, Tuple, Callable, cast, TYPE_CHECKING, Mapping
 from collections.abc import Sequence
 from bidict import bidict
 import pandas as pd
@@ -24,7 +24,7 @@ CK = TypeVar("CK", bound="ColumnKey|str")
 class GroupingContainer(Generic[CK]):
     parent_united_dataframe: "UnitedDataframe[CK]"
     dataframe: pd.DataFrame
-    internal_dataframe_column_names: biMapping[CK, str]
+    internal_dataframe_column_names: bidict[CK, str]
     available_column_keys: list[CK]
     available_column_types: Mapping[CK, ColumnType]
     available_column_units: Mapping[CK, Unit|None]
@@ -102,9 +102,9 @@ class BaseGrouping(Generic[CK]):
         # Initialize grouping infrastructure
         self._grouping_containers: list[GroupingContainer[CK]] = []
         self._available_column_keys: list[CK] = []
-        self._rowfun_result_column_information: Mapping[CK, ColumnInformation] = {}
-        self._categorical_column_information: Mapping[CK, ColumnInformation] = {}
-        self._available_column_information: Mapping[CK, ColumnInformation] = {}
+        self._rowfun_result_column_information: dict[CK, ColumnInformation] = {}
+        self._categorical_column_information: dict[CK, ColumnInformation] = {}
+        self._available_column_information: dict[CK, ColumnInformation] = {}
         
         # Create working copy of dataframe
         self._working_df: pd.DataFrame = dataframe._internal_dataframe.copy(deep=False) # type: ignore
@@ -156,7 +156,7 @@ class BaseGrouping(Generic[CK]):
     ) -> None:
         """Evaluate row functions and store results."""
 
-        result_types: Mapping[CK, type[SCALAR_TYPE]] = {}        
+        result_types: dict[CK, type[SCALAR_TYPE]] = {}        
         first_evaluation: bool = False
         
         # Evaluate functions for each row
@@ -188,7 +188,7 @@ class BaseGrouping(Generic[CK]):
             self, 
             column_key: CK, 
             result: SCALAR_TYPE, 
-            result_types: Mapping[CK, type[SCALAR_TYPE]]
+            result_types: dict[CK, type[SCALAR_TYPE]]
     ) -> None:
         """Validate and record the first result of a function."""
 

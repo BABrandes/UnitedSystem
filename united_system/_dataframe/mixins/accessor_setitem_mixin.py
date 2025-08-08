@@ -7,7 +7,7 @@ iteration, indexing, and item assignment through magic methods.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import overload, TYPE_CHECKING, Any, Union
+from typing import overload, TYPE_CHECKING, Any, Union, Mapping
 from collections.abc import Sequence
 from ..column_key import ColumnKey
 from .dataframe_protocol import UnitedDataframeProtocol, CK

@@ -69,8 +69,10 @@ if TYPE_CHECKING:
     from .._arrays.real_united_array import RealUnitedArray
     from .._scalars.complex_united_scalar import ComplexUnitedScalar
     from .._arrays.complex_united_array import ComplexUnitedArray
-    from .._utils.value_type import VALUE_TYPE
-    from .._utils.scalar_type import SCALAR_TYPE
+
+# Runtime imports for type checking
+from .._utils.value_type import VALUE_TYPE
+from .._utils.scalar_type import SCALAR_TYPE
 
 EPSILON: float = 1e-12
 
