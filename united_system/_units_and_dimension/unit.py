@@ -69,6 +69,8 @@ if TYPE_CHECKING:
     from .._arrays.real_united_array import RealUnitedArray
     from .._scalars.complex_united_scalar import ComplexUnitedScalar
     from .._arrays.complex_united_array import ComplexUnitedArray
+    from .._utils.value_type import VALUE_TYPE
+    from .._utils.scalar_type import SCALAR_TYPE
 
 EPSILON: float = 1e-12
 
@@ -1227,6 +1229,50 @@ class Unit:
             2.5 / Unit("m") -> RealUnitedScalar(2.5, Unit("1/m"))
         """
         return (~self).__rmul__(other)
+
+########################################################
+    # Other
+########################################################
+
+    @classmethod
+    def get_value(cls, item: Optional[VALUE_TYPE|SCALAR_TYPE], unit: Optional["Unit"]=None) -> Optional[VALUE_TYPE]:
+        """
+        Get a value from an item and unit in a very flexible way.
+
+        Args:
+            item: The item to get the value from
+            unit: The unit to get the value from
+
+        Returns:
+            The value in the unit
+
+        Examples:
+            Unit.get_value(2.5, Unit("m")) -> 2.5
+            Unit.get_value(2.5, Unit("km")) -> 2500.0
+            Unit.get_value(2.5, Unit("km")) -> 2500.0
+            Unit.get_value(2.5, Unit("km")) -> 2500.0
+        """
+
+        match (item, unit):
+            case (None, None):
+                return None
+            case (None, _):
+                return None
+            case (_, None):
+                if isinstance(item, HasUnit):
+                    raise ValueError("Item has a unit, but no unit was provided")
+                else:
+                    return item
+            case (_, _):
+                if isinstance(item, HasUnit):
+                    if item.compatible_to(unit):
+                        return item.value_in_unit(unit)
+                    else:
+                        raise ValueError("Item is not compatible with the provided unit")
+                else:
+                    return item
+            case _: # type: ignore
+                raise ValueError("Invalid item and unit")
 
 ########################################################
     # Serialization
