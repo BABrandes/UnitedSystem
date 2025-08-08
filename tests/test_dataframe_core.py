@@ -7,7 +7,7 @@ and debug any issues with the implementation.
 """
 
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Mapping
 
 from united_system import VALUE_TYPE, Dimension, Unit, UnitedDataframe, DataframeColumnType
 
@@ -32,7 +32,7 @@ class TestUnitedDataframeCore:
         try:
             # Create using create_from_data instead of constructor
             test_key = TestColumnKey("test")
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 test_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [])
             }
             
@@ -55,7 +55,7 @@ class TestUnitedDataframeCore:
             temp_unit = Unit("K")
             
             # Use create_from_data to create dataframe with actual data
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_col_key: (DataframeColumnType.REAL_NUMBER_64, temp_unit, [273.15, 300.0, 350.0])
             }
             
@@ -79,7 +79,7 @@ class TestUnitedDataframeCore:
             
             # Create with UnitedDataframe() constructor
             # Create dataframe using create_from_data instead of constructor
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), []),
                 pressure_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [])
             }
@@ -110,7 +110,7 @@ class TestUnitedDataframeCore:
             temp_col_key = TestColumnKey("temperature")
             
             # Create dataframe using create_from_data instead of constructor
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_col_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [])
             }
             
@@ -177,7 +177,7 @@ class TestUnitedDataframeCore:
             notes_key = TestColumnKey("notes")
             
             # Create empty dataframe with complex structure using create_from_data
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, []),
                 temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), []),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), []),
@@ -212,7 +212,7 @@ class TestUnitedDataframeCore:
             notes = ["Control", "Test A", "Invalid", "Test B", "Final"]
             
             # Create UnitedDataframe with data using PUBLIC API
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, sample_ids),
                 temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), temperatures),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), pressures),
@@ -320,7 +320,7 @@ class TestUnitedDataframeCore:
             
             # Test 1: Physical quantity with units -> should use REAL_NUMBER_64
             print("\n📏 Testing physical quantities with units...")
-            columns_with_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {value_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [1.5, 2.3, 3.7])}
+            columns_with_units: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {value_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [1.5, 2.3, 3.7])}
             
             df_with_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_with_units)
             
@@ -331,7 +331,7 @@ class TestUnitedDataframeCore:
             # Test 2: Dimensionless quantity without units -> should use FLOAT_64
             print("\n📊 Testing dimensionless quantities without units...")
             ratio_key = TestColumnKey("ratio")
-            columns_without_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {ratio_key: (DataframeColumnType.FLOAT_64, None, [0.85, 1.25, 0.95])}
+            columns_without_units: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {ratio_key: (DataframeColumnType.FLOAT_64, None, [0.85, 1.25, 0.95])}
             
             df_without_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_without_units)
             
@@ -342,7 +342,7 @@ class TestUnitedDataframeCore:
             # Test 3: Complex physical quantity with units -> should use COMPLEX_NUMBER_128
             print("\n🔢 Testing complex quantities with units...")
             impedance_key = TestColumnKey("impedance")
-            columns_complex_units: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {impedance_key: (DataframeColumnType.COMPLEX_NUMBER_128, Unit("Ω"), [1.0+2.0j, 3.0-1.5j, 0.5+4.2j])}
+            columns_complex_units: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {impedance_key: (DataframeColumnType.COMPLEX_NUMBER_128, Unit("Ω"), [1.0+2.0j, 3.0-1.5j, 0.5+4.2j])}
             
             df_complex_units: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_complex_units)
             
@@ -353,7 +353,7 @@ class TestUnitedDataframeCore:
             # Test 4: Complex dimensionless quantity without units -> should use COMPLEX_128
             print("\n🔄 Testing complex dimensionless quantities without units...")
             transform_key = TestColumnKey("transform_coefficient")
-            columns_complex_raw: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {transform_key: (DataframeColumnType.COMPLEX_128, None, [2.0+1.0j, -1.0+3.0j, 0.0-2.0j])}
+            columns_complex_raw: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {transform_key: (DataframeColumnType.COMPLEX_128, None, [2.0+1.0j, -1.0+3.0j, 0.0-2.0j])}
             
             df_complex_raw: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns_complex_raw)
             

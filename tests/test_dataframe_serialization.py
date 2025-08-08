@@ -7,7 +7,7 @@ and debug any issues with the implementation.
 """
 
 from pathlib import Path
-from typing import Optional, Sequence, Any
+from typing import Optional, Sequence, Any, Mapping
 
 from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE
 
@@ -39,7 +39,7 @@ class TestUnitedDataframeSerialization:
                 notes_key: ["Note 1", "Note 2", "Note 3"]
             }
 
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, arrays[sample_id_key]),
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), arrays[temp_key]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), arrays[pressure_key]),
@@ -173,7 +173,7 @@ class TestUnitedDataframeSerialization:
             is_valid_key = TestColumnKey("is_valid")
             notes_key = TestColumnKey("notes")
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, ["EXP-001", "EXP-002", "EXP-003", "EXP-004"]),
                 temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325, 200000, 150000, 300000]),
@@ -266,7 +266,7 @@ class TestUnitedDataframeSerialization:
             
             # Create test dataframe
             temp_key = TestColumnKey("temperature")
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15, 373.15])
             }
             
@@ -337,7 +337,7 @@ class TestUnitedDataframeSerialization:
             timestamp_key = TestColumnKey("timestamp")            # TIMESTAMP
             
             # Create complex units with prefixes and subscripts
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 # REAL_NUMBER_64: km/h (velocity with prefix)
                 velocity_key: (DataframeColumnType.REAL_NUMBER_64, Unit("km/h"), [120.5, 85.3, 200.0, 0.0]),
                 
@@ -384,7 +384,7 @@ class TestUnitedDataframeSerialization:
             }
             
             # Define column types for ALL available types
-            column_types: dict[TestColumnKey, DataframeColumnType]   = {
+            column_types: Mapping[TestColumnKey, DataframeColumnType]   = {
                 velocity_key: DataframeColumnType.REAL_NUMBER_64,
                 area_ratio_key: DataframeColumnType.REAL_NUMBER_32,
                 impedance_key: DataframeColumnType.COMPLEX_NUMBER_128,
@@ -527,7 +527,7 @@ class TestUnitedDataframeSerialization:
             
             sample_ids = ["EXP-001", "EXP-002", "EXP-003", "EXP-004"]
 
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 timestamp_key: (DataframeColumnType.TIMESTAMP, None, timestamp_data),
                 sample_id_key: (DataframeColumnType.STRING, None, sample_ids)
             }   
@@ -636,7 +636,7 @@ class TestUnitedDataframeSerialization:
             temp_key = TestColumnKey("temperature")
             pressure_key = TestColumnKey("pressure")
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325.0, 150000.0, 200000.0])
             }
@@ -662,7 +662,7 @@ class TestUnitedDataframeSerialization:
             is_valid_key = TestColumnKey("is_valid")
             impedance_key = TestColumnKey("impedance")
 
-            complex_columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            complex_columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, ["EXP-001", "EXP-002", "EXP-003"]),
                 velocity_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [10.5, 15.2, 8.9]),
                 is_valid_key: (DataframeColumnType.BOOL, None, [True, False, True]),
@@ -744,7 +744,7 @@ class TestUnitedDataframeSerialization:
             # Create a larger dataframe
             large_temp_key = TestColumnKey("large_temperature")
             large_data = list(range(100))  # 100 data points
-            large_columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            large_columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 large_temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), large_data)
             }
             
@@ -786,11 +786,11 @@ class TestUnitedDataframeSerialization:
             temp_key = TestColumnKey("temperature")
             pressure_key = TestColumnKey("pressure")
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325.0, 150000.0, 200000.0, 250000.0])
             }
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325.0, 150000.0, 200000.0, 250000.0])
             }
@@ -890,7 +890,7 @@ class TestUnitedDataframeSerialization:
                     pd.Timestamp("2024-04-30 16:20:10")
                 ]
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, ["EXP-001", "EXP-002", "EXP-003", "EXP-004"]),
                 velocity_key: (DataframeColumnType.REAL_NUMBER_64, Unit("m/s"), [120.5, 85.3, 200.0, 156.7]),
                 impedance_key: (DataframeColumnType.COMPLEX_NUMBER_128, Unit("Ω"), [1.5+0.3j, 2.1-0.7j, 0.8+1.2j, 3.0+0j]),
@@ -985,7 +985,7 @@ class TestUnitedDataframeSerialization:
             pressure_key = TestColumnKey("pressure")
             sample_key = TestColumnKey("sample_id")
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15, 373.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325, 150000, 200000, 250000, 300000]),
                 sample_key: (DataframeColumnType.STRING, None, ["A", "B", "C", "D", "E"])
@@ -1083,7 +1083,7 @@ class TestUnitedDataframeSerialization:
             df_chunks: list[bytes] = []
             for i in range(3):
                 # Create slightly different dataframes
-                chunk_columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+                chunk_columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                     temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15 + i, 298.15 + i, 323.15 + i]),
                     pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325 + i*1000, 150000 + i*1000, 200000 + i*1000]),
                     sample_key: (DataframeColumnType.STRING, None, [f"A{i}", f"B{i}", f"C{i}"])
@@ -1104,7 +1104,7 @@ class TestUnitedDataframeSerialization:
             
             # Create a larger dataframe
             large_size = 1000
-            large_columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            large_columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15 + i*0.1 for i in range(large_size)]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325 + i*100 for i in range(large_size)]),
                 sample_key: (DataframeColumnType.STRING, None, [f"SAMPLE_{i:04d}" for i in range(large_size)])
@@ -1178,7 +1178,7 @@ class TestUnitedDataframeSerialization:
             impedance_key = TestColumnKey("impedance")
             valid_key = TestColumnKey("valid")
             
-            columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]] = {
+            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]] = {
                 sample_key: (DataframeColumnType.STRING, None, ["TEST-001", "TEST-002", "TEST-003"]),
                 velocity_key: (DataframeColumnType.REAL_NUMBER_64, Unit("km/h"), [120.5, 85.3, 200.0]),
                 impedance_key: (DataframeColumnType.COMPLEX_NUMBER_128, Unit("MΩ"), [1.5+0.3j, 2.1-0.7j, 0.8+1.2j]),

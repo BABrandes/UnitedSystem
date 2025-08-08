@@ -28,12 +28,12 @@ class UnitMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     # ----------- Retrievals: Units ------------
 
     @property
-    def units(self) -> dict[CK, Unit|None]:
+    def units(self) -> Mapping[CK, Unit|None]:
         """
         Get a copy of all units.
         
         Returns:
-            dict[CK, Unit|None]: A copy of the dictionary of display units
+            Mapping[CK, Unit|None]: A copy of the dictionary of display units
         """
         with self._rlock:
             return self._column_units.copy()

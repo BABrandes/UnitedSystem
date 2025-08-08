@@ -265,12 +265,12 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 column_names_to_check: list[str] = self._get_internal_dataframe_column_names(column_keys)
                 return BoolArray(~self._internal_dataframe[column_names_to_check].notna().all(axis=1)) # type: ignore
         
-    def mask_get_by_function(self, filter_func: Callable[[dict[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> BoolArray:
+    def mask_get_by_function(self, filter_func: Callable[[Mapping[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> BoolArray:
         """
         Return a boolean mask indicating which rows satisfy a custom function.
 
         Args:
-            filter_func (Callable[[dict[CK, SCALAR_TYPE]], bool]): Function that takes a row and returns True/False
+            filter_func (Callable[[Mapping[CK, SCALAR_TYPE]], bool]): Function that takes a row and returns True/False
 
         Returns:
             BoolArray: Boolean array where True indicates rows that satisfy the function

@@ -5,7 +5,7 @@ This is the primary class that users will interact with. It inherits from all
 the mixins to provide a complete dataframe implementation with units support.
 """
 
-from typing import Generic, Optional, Type, Tuple, overload
+from typing import Generic, Optional, Type, overload, Mapping
 from collections.abc import Sequence
 from types import TracebackType
 import pandas as pd
@@ -75,16 +75,16 @@ class UnitedDataframe(
     - column_get_as_array() → ARRAY_TYPE
     - column_get_as_pd_series() → pd.Series
     - column_get_as_numpy_array() → np.ndarray
-    - row_get_as_dict() → dict[CK, SCALAR_TYPE]
-    - row_get_head() → list[dict[CK, SCALAR_TYPE]]
-    - row_get_tail() → list[dict[CK, SCALAR_TYPE]]
+    - row_get_as_dict() → Mapping[CK, SCALAR_TYPE]
+    - row_get_head() → list[Mapping[CK, SCALAR_TYPE]]
+    - row_get_tail() → list[Mapping[CK, SCALAR_TYPE]]
     
     📝 SET OPERATIONS (Parameter Types):
     - cell_set_value(value: VALUE_TYPE)
     - cell_set_scalar(value: SCALAR_TYPE)
     - cell_set_scalars(scalars: Sequence[SCALAR_TYPE])
-    - row_set_items(values: dict[CK, VALUE_TYPE|SCALAR_TYPE])
-    - row_add_items(values: dict[CK, VALUE_TYPE|SCALAR_TYPE])
+    - row_set_items(values: Mapping[CK, VALUE_TYPE|SCALAR_TYPE])
+    - row_add_items(values: Mapping[CK, VALUE_TYPE|SCALAR_TYPE])
     - column_set_values(array: ARRAY_TYPE)
     
     🔢 STATISTICAL OPERATIONS:
@@ -208,12 +208,12 @@ class UnitedDataframe(
     def __init__(
             self,
             column_keys: Sequence[CK]|
-            dict[CK, ColumnType]|
-            dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]]|
-            dict[CK, Tuple[ColumnType, Optional[Unit]]]|
-            dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
-            column_types: Optional[dict[CK, ColumnType]] = None,
-            column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
+            Mapping[CK, ColumnType]|
+            Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension]]]|
+            Mapping[CK, tuple[ColumnType, Optional[Unit]]]|
+            Mapping[CK, tuple[ColumnType, Optional[Dimension]]] = {},
+            column_types: Optional[Mapping[CK, ColumnType]] = None,
+            column_units: Optional[Mapping[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> None:
@@ -225,7 +225,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, ColumnType] = {},
+            column_keys: Mapping[CK, ColumnType] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
@@ -239,7 +239,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]] = {},
+            column_keys: Mapping[CK, tuple[ColumnType, Optional[Unit]]] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
@@ -253,7 +253,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
+            column_keys: Mapping[CK, tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
@@ -267,7 +267,7 @@ class UnitedDataframe(
     @overload
     def __new__(
             cls,
-            column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]] = {},
+            column_keys: Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
@@ -282,8 +282,8 @@ class UnitedDataframe(
     def __new__(
             cls,
             column_keys: Sequence[CK] = [],
-            column_types: dict[CK, ColumnType] = {},
-            column_units: dict[CK, Optional[Unit|Dimension]] = {},
+            column_types: Mapping[CK, ColumnType] = {},
+            column_units: Mapping[CK, Optional[Unit|Dimension]] = {},
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
@@ -295,12 +295,12 @@ class UnitedDataframe(
     def __new__(
             cls,
             column_keys: Sequence[CK]|
-            dict[CK, ColumnType]|
-            dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]]|
-            dict[CK, Tuple[ColumnType, Optional[Unit]]]|
-            dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
-            column_types: Optional[dict[CK, ColumnType]] = None,
-            column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
+            Mapping[CK, ColumnType]|
+            Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension]]]|
+            Mapping[CK, tuple[ColumnType, Optional[Unit]]]|
+            Mapping[CK, tuple[ColumnType, Optional[Dimension]]] = {},
+            column_types: Optional[Mapping[CK, ColumnType]] = None,
+            column_units: Optional[Mapping[CK, Optional[Unit|Dimension]]] = None,
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
@@ -308,9 +308,9 @@ class UnitedDataframe(
         Create a new UnitedDataframe instance.
         """
 
-        _column_types: dict[CK, ColumnType] = {}
-        _column_units: dict[CK, Optional[Unit|Dimension]] = {}
-        if isinstance(column_keys, dict):
+        _column_types: Mapping[CK, ColumnType] = {}
+        _column_units: Mapping[CK, Optional[Unit|Dimension]] = {}
+        if isinstance(column_keys, Mapping):
             _column_keys: Sequence[CK] = list(column_keys.keys())
             if not column_types == None or not column_units == None:
                 raise ValueError("If column_keys is a dict, column_types and column_units must be None.")
@@ -331,11 +331,11 @@ class UnitedDataframe(
                 for key in _column_keys:
                     _column_units[key] = None
             else:
-                _column_units: dict[CK, Optional[Unit|Dimension]] = column_units
+                _column_units: Mapping[CK, Optional[Unit|Dimension]] = column_units
 
         # If column_keys are provided, create an empty dataframe with those columns
         if _column_keys:
-            column_units_or_dimensions: dict[CK, Optional[Unit | Dimension]] = {key: _column_units.get(key) for key in column_keys}
+            column_units_or_dimensions: Mapping[CK, Optional[Unit | Dimension]] = {key: _column_units.get(key) for key in column_keys}
             return cls.create_empty(
                 column_keys=list(_column_keys),
                 column_types=_column_types,
@@ -344,7 +344,7 @@ class UnitedDataframe(
             )
         else:
             # Empty dataframe case
-            units_for_dataframe: dict[CK, Optional[Unit]] = {}
+            units_for_dataframe: Mapping[CK, Optional[Unit]] = {}
             for key, value in _column_units.items():
                 if isinstance(value, Unit):
                     units_for_dataframe[key] = value
@@ -367,8 +367,8 @@ class UnitedDataframe(
             cls,
             dataframe: pd.DataFrame,
             column_keys: Sequence[CK],
-            column_types: dict[CK, ColumnType],
-            column_units: dict[CK, Optional[Unit]],
+            column_types: Mapping[CK, ColumnType],
+            column_units: Mapping[CK, Optional[Unit]],
             internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
             copy_dataframe: bool = False,
@@ -387,7 +387,7 @@ class UnitedDataframe(
         if len(column_keys) != len(column_units):
             raise ValueError(f"Number of column keys ({len(column_keys)}) does not match number of column units ({len(column_units)}).")
         
-        dataframe_column_names: dict[CK, str] = {}
+        dataframe_column_names: Mapping[CK, str] = {}
         for column_index, column_key in enumerate(column_keys):
             dataframe_column_names[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
             if dataframe_column_names[column_key] != dataframe.columns[column_index]:

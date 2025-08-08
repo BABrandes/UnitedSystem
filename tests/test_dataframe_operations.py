@@ -13,7 +13,7 @@ This test suite systematically tests UnitedDataframe CRUD operations including:
 import numpy as np
 import pandas as pd
 from pandas import Timestamp
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Mapping
 
 from united_system import VALUE_TYPE, Dimension, SCALAR_TYPE, UnitedDataframe, DataframeColumnType, Unit, StringArray, RealUnitedScalar, RealUnitedArray, IntArray, ComplexArray
 
@@ -30,7 +30,7 @@ class TestUnitedDataframeOperations:
         print("\n📊 Testing dataframe creation with data...")
         
         # Create dataframe with initial data using the constructor approach
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("sample_id"): (DataframeColumnType.STRING, None, ["A", "B", "C"]),
             TestColumnKey("temperature"): (DataframeColumnType.REAL_NUMBER_64, Unit("°C"), [20.0, 25.0, 30.0]),
             TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [1, 2, 3])
@@ -69,7 +69,7 @@ class TestUnitedDataframeOperations:
         
         # Test 3: Create a new dataframe with an additional column (instead of adding to existing)
         print("\n➕ Testing dataframe creation with additional column...")
-        columns_with_bool: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns_with_bool: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("sample_id"): (DataframeColumnType.STRING, None, ["A", "B", "C"]),
             TestColumnKey("temperature"): (DataframeColumnType.REAL_NUMBER_64, Unit("°C"), [20.0, 25.0, 30.0]),
             TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [1, 2, 3]),
@@ -136,7 +136,7 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive row operations...")
         
         # Create initial dataframe with data
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("id"): (DataframeColumnType.STRING, None, ["A", "B"]),
             TestColumnKey("value"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [10.0, 20.0])
         }
@@ -154,11 +154,11 @@ class TestUnitedDataframeOperations:
         
         # Test 2: Add rows with values
         print("\n📝 Testing row_add_values...")
-        new_values_1: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+        new_values_1: Mapping[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
             TestColumnKey("id"): "E",
             TestColumnKey("value"): RealUnitedScalar(50.0, Unit("m"))
         }
-        new_values_2: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+        new_values_2: Mapping[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
             TestColumnKey("id"): "G",
             TestColumnKey("value"): RealUnitedScalar(70.0, Unit("m"))
         }
@@ -175,7 +175,7 @@ class TestUnitedDataframeOperations:
         
         # Test 4: Insert rows with values
         print("\n📋 Testing row_insert_values...")
-        insert_values: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+        insert_values: Mapping[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
             TestColumnKey("id"): "X",
             TestColumnKey("value"): RealUnitedScalar(35.0, Unit("m"))
         }
@@ -185,7 +185,7 @@ class TestUnitedDataframeOperations:
         
         # Test 5: Set row values (replace)
         print("\n🔄 Testing row_set_values...")
-        replace_values: dict[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
+        replace_values: Mapping[TestColumnKey, VALUE_TYPE|SCALAR_TYPE] = {
             TestColumnKey("id"): "Y",
             TestColumnKey("value"): RealUnitedScalar(99.0, Unit("m"))
         }
@@ -235,7 +235,7 @@ class TestUnitedDataframeOperations:
         now1: Timestamp = Timestamp("2024-01-01")
         now2: Timestamp = Timestamp("2024-01-02")
 
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("strings"): (DataframeColumnType.STRING, None, ["A", "B", "A", "C"]),
             TestColumnKey("reals"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [1.0, 2.0, 3.0, 1.0]),
             TestColumnKey("integers"): (DataframeColumnType.INTEGER_64, None, [10, 20, 10, 30]),
@@ -317,7 +317,7 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive cell operations...")
         
         # Create dataframe with mixed data types
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("text"): (DataframeColumnType.STRING, None, ["Hello", "World", "Test"]),
             TestColumnKey("length"): (DataframeColumnType.REAL_NUMBER_64, Unit("m"), [1.5, 2.5, 3.5]),
             TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, [10, 20, 30]),
@@ -410,7 +410,7 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing comprehensive data retrieval...")
         
         # Create test dataframe
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("strings"): (DataframeColumnType.STRING, None, ["A", "B", "C", "D"]),
             TestColumnKey("reals"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.1, 2.2, 3.3, 4.4]),
             TestColumnKey("integers"): (DataframeColumnType.INTEGER_64, None, [10, 20, 30, 40]),
@@ -519,7 +519,7 @@ class TestUnitedDataframeOperations:
         
         # Create test dataframe with diverse metadata
         now: Timestamp = Timestamp.now()
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("mass"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.0, 2.0]),
             TestColumnKey("length"): (DataframeColumnType.REAL_NUMBER_32, Unit("cm"), [10.0, 20.0]),
             TestColumnKey("voltage"): (DataframeColumnType.COMPLEX_NUMBER_128, Unit("V"), [1+0j, 2+0j]),
@@ -665,7 +665,7 @@ class TestUnitedDataframeOperations:
         print("\n🔧 Testing read-only mode comprehensive...")
         
         # Create test dataframe
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {TestColumnKey("test"): (DataframeColumnType.STRING, None, ["A", "B"])}
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {TestColumnKey("test"): (DataframeColumnType.STRING, None, ["A", "B"])}
         
         df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].create_from_data(columns=columns)
         
@@ -716,7 +716,7 @@ class TestUnitedDataframeOperations:
         print("\n🔁 Testing dataframe_get_of_unique_rows...")
 
         # Create dataframe with 4 columns and 8 rows with diverse duplicates
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("category"): (DataframeColumnType.STRING, None, ["A", "A", "B", "B", "C", "C", "A", "B"]),
             TestColumnKey("value"): (DataframeColumnType.INTEGER_64, None, [10, 10, 20, 20, 30, 30, 10, 20]),
             TestColumnKey("weight"): (DataframeColumnType.REAL_NUMBER_64, Unit("kg"), [1.5, 1.5, 2.5, 2.5, 3.5, 3.5, 1.5, 2.5]),

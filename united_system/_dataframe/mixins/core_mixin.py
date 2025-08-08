@@ -4,7 +4,7 @@ Core functionality mixin for UnitedDataframe.
 Contains basic properties, initialization helpers, and core utility methods.
 """
 
-from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, Union, cast
+from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, Union, cast, Mapping
 from collections.abc import Sequence
 import pandas as pd
 import numpy as np
@@ -285,12 +285,12 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return self._create_with_replaced_internal_dataframe(self._internal_dataframe.tail(n), copy_dataframe=False)
         
     @overload
-    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, Union[str, Unit, tuple[str, Unit], tuple[Unit, str]]] = {}) -> pd.DataFrame:
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: Mapping[CK, Union[str, Unit, tuple[str, Unit], tuple[Unit, str]]] = {}) -> pd.DataFrame:
         ...
     @overload
     def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: Iterable[CK] = ()) -> pd.DataFrame:
         ...
-    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: dict[CK, str]|Iterable[CK] = {}) -> pd.DataFrame:
+    def get_pandas_dataframe(self, deepcopy: bool = True, column_keys: Mapping[CK, str]|Iterable[CK] = {}) -> pd.DataFrame:
         """
         Return a pandas dataframe with the specified column keys. The target column names can be provided as a dictionary.
 

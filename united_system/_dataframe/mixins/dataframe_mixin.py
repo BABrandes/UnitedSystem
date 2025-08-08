@@ -7,7 +7,7 @@ iteration, indexing, and item assignment through magic methods.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Sequence, Optional, Tuple
+from typing import TYPE_CHECKING, Sequence, Optional, Tuple, Mapping
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._units_and_dimension.unit import Unit
 import numpy as np
@@ -29,20 +29,20 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    def _dataframe_get_as_pd_dataframe(self, column_keys: Sequence[CK|Tuple[CK, Unit]]|dict[CK, Optional[Unit]]|None = None, deepcopy: bool = True) -> pd.DataFrame:
+    def _dataframe_get_as_pd_dataframe(self, column_keys: Sequence[CK|Tuple[CK, Unit]]|Mapping[CK, Optional[Unit]]|None = None, deepcopy: bool = True) -> pd.DataFrame:
         """
         Internal: Get the dataframe as a pandas dataframe. (no lock)
 
         Args:
-            column_keys (Sequence[CK|Tuple[CK, Unit]]|dict[CK, Optional[Unit]]|None): The column keys to get. If None, all columns are returned. If a dict or tuple in the sequence, the keys are the column keys to be returned and values are the units of the columns to be returned.
+            column_keys (Sequence[CK|Tuple[CK, Unit]]|Mapping[CK, Optional[Unit]]|None): The column keys to get. If None, all columns are returned. If a dict or tuple in the sequence, the keys are the column keys to be returned and values are the units of the columns to be returned.
             deepcopy (bool): Whether to copy the dataframe. Highly recommended!
 
         Returns:
             pd.DataFrame: The dataframe
         """
 
-        internal_dataframe_column_names_to_return: dict[CK, str] = {}
-        units_to_convert_with: dict[CK, Unit] = {}
+        internal_dataframe_column_names_to_return: Mapping[CK, str] = {}
+        units_to_convert_with: Mapping[CK, Unit] = {}
         if column_keys is None:
             internal_dataframe_column_names_to_return = {column_key: self._internal_dataframe_column_names[column_key] for column_key in self._column_keys}
         elif isinstance(column_keys, dict):
@@ -70,12 +70,12 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         return dataframe_to_return
     
-    def dataframe_get_as_pd_dataframe(self, column_keys: Sequence[CK|Tuple[CK, Unit]]|dict[CK, Optional[Unit]]|None = None, deepcopy: bool = True) -> pd.DataFrame:
+    def dataframe_get_as_pd_dataframe(self, column_keys: Sequence[CK|Tuple[CK, Unit]]|Mapping[CK, Optional[Unit]]|None = None, deepcopy: bool = True) -> pd.DataFrame:
         """
         Get the dataframe as a pandas dataframe.
 
         Args:
-            column_keys (Sequence[CK|Tuple[CK, Unit]]|dict[CK, Optional[Unit]]|None): The column keys to get. If None, all columns are returned. If a dict or tuple in the sequence, the keys are the column keys to be returned and values are the units of the columns to be returned.
+            column_keys (Sequence[CK|Tuple[CK, Unit]]|Mapping[CK, Optional[Unit]]|None): The column keys to get. If None, all columns are returned. If a dict or tuple in the sequence, the keys are the column keys to be returned and values are the units of the columns to be returned.
             deepcopy (bool): Whether to copy the dataframe. Highly recommended!
 
         Returns:

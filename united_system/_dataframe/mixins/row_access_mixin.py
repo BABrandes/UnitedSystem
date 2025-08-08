@@ -25,7 +25,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     UnitedDataframe interface with proper IDE support and type checking.
     """
 
-    def _row_get_as_dict(self, row_index: int, column_keys: Sequence[CK]|None = None) -> dict[CK, SCALAR_TYPE]:
+    def _row_get_as_dict(self, row_index: int, column_keys: Sequence[CK]|None = None) -> Mapping[CK, SCALAR_TYPE]:
         """
         Internal: Get a row as a dictionary. (no lock, no read-only check)
         """
@@ -33,7 +33,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             column_keys = self._column_keys
         return {column_key: self._cell_get_value(row_index, column_key) for column_key in column_keys}
 
-    def row_get_as_dict(self, row_index: int, column_keys: Sequence[CK]|None = None) -> dict[CK, SCALAR_TYPE]:
+    def row_get_as_dict(self, row_index: int, column_keys: Sequence[CK]|None = None) -> Mapping[CK, SCALAR_TYPE]:
         """
         Get a row as a dictionary with a subset of column keys.
         """
@@ -48,7 +48,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     
     # ----------- Row Access: Head/Tail ------------
 
-    def row_get_head(self, n: int = 5) -> list[dict[CK, SCALAR_TYPE]]:
+    def row_get_head(self, n: int = 5) -> list[Mapping[CK, SCALAR_TYPE]]:
         """
         Get the first n rows of the dataframe.
         
@@ -62,12 +62,12 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if n < 0:
                 raise ValueError("n must be non-negative.")
             n = min(n, self._number_of_rows())
-            rows: list[dict[CK, SCALAR_TYPE]] = []
+            rows: list[Mapping[CK, SCALAR_TYPE]] = []
             for row_index in range(n):
                 rows.append(self._row_get_as_dict(row_index))
             return rows
 
-    def row_get_tail(self, n: int = 5) -> list[dict[CK, SCALAR_TYPE]]:
+    def row_get_tail(self, n: int = 5) -> list[Mapping[CK, SCALAR_TYPE]]:
         """
         Get the last n rows of the dataframe.
         
@@ -81,12 +81,12 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if n < 0:
                 raise ValueError("n must be non-negative.")
             n = min(n, self._number_of_rows())
-            rows: list[dict[CK, SCALAR_TYPE]] = []
+            rows: list[Mapping[CK, SCALAR_TYPE]] = []
             for row_index in range(self._number_of_rows() - n, self._number_of_rows()):
                 rows.append(self._row_get_as_dict(row_index))
             return rows
 
-    def row_get_first(self) -> dict[CK, SCALAR_TYPE]:
+    def row_get_first(self) -> Mapping[CK, SCALAR_TYPE]:
         """
         Get the first row of the dataframe.
         
@@ -98,7 +98,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("Dataframe is empty.")
             return self._row_get_as_dict(0)
 
-    def row_get_last(self) -> dict[CK, SCALAR_TYPE]:
+    def row_get_last(self) -> Mapping[CK, SCALAR_TYPE]:
         """
         Get the last row of the dataframe.
         
@@ -110,7 +110,7 @@ class RowAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("Dataframe is empty.")
             return self._row_get_as_dict(self._number_of_rows() - 1)
         
-    def row_get_by_slice(self, start: int, stop: int, step: int = 1) -> list[dict[CK, SCALAR_TYPE]]:
+    def row_get_by_slice(self, start: int, stop: int, step: int = 1) -> list[Mapping[CK, SCALAR_TYPE]]:
         """
         Return a slice of the dataframe.
         """

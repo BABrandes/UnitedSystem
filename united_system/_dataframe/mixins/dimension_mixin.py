@@ -29,15 +29,15 @@ class DimensionMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     # ----------- Retrievals: Dimensions ------------
 
     @property
-    def dimensions(self) -> dict[CK, Optional[Dimension]]:
+    def dimensions(self) -> Mapping[CK, Optional[Dimension]]:
         """
         Get a copy of all dimensions.
         
         Returns:
-            dict[CK, Optional[Dimension]]: A copy of the dictionary of dimensions
+            Mapping[CK, Optional[Dimension]]: A copy of the dictionary of dimensions
         """
         with self._rlock:
-            dimensions: dict[CK, Optional[Dimension]] = {}
+            dimensions: Mapping[CK, Optional[Dimension]] = {}
             for column_key in self._column_keys:
                 unit: Unit|None = self._column_units[column_key]
                 if unit is not None:

@@ -24,10 +24,10 @@ CK = TypeVar("CK", bound="ColumnKey|str")
 class GroupingContainer(Generic[CK]):
     parent_united_dataframe: "UnitedDataframe[CK]"
     dataframe: pd.DataFrame
-    internal_dataframe_column_names: bidict[CK, str]
+    internal_dataframe_column_names: biMapping[CK, str]
     available_column_keys: list[CK]
-    available_column_types: dict[CK, ColumnType]
-    available_column_units: dict[CK, Unit|None]
+    available_column_types: Mapping[CK, ColumnType]
+    available_column_units: Mapping[CK, Unit|None]
     categorical_column_keys: list[CK]
     categorical_key_values: Tuple[VALUE_TYPE, ...]
     _united_dataframe: "UnitedDataframe[CK]|None" = field(init=False, repr=False, default=None)
@@ -49,8 +49,8 @@ class GroupingContainer(Generic[CK]):
                 raise ValueError(f"Column keys {column_keys} not found in the available column keys {self.available_column_keys}")
             _column_keys: list[CK] = [col for col in column_keys if col in self.available_column_keys]
 
-        _column_types: dict[CK, ColumnType] = {col: self.available_column_types[col] for col in _column_keys}
-        _column_units: dict[CK, Unit|None] = {col: self.available_column_units[col] for col in _column_keys}
+        _column_types: Mapping[CK, ColumnType] = {col: self.available_column_types[col] for col in _column_keys}
+        _column_units: Mapping[CK, Unit|None] = {col: self.available_column_units[col] for col in _column_keys}
 
         if self._united_dataframe is None:
             self._united_dataframe = UnitedDataframe[CK]._construct(  # type: ignore
@@ -64,14 +64,14 @@ class GroupingContainer(Generic[CK]):
     def count(self) -> int:
         return len(self.dataframe)
     
-    def mean(self, column_keys_and_types: dict[CK, ColumnType]) -> dict[CK, float]:
+    def mean(self, column_keys_and_types: Mapping[CK, ColumnType]) -> Mapping[CK, float]:
         # Calculate the mean of the dataframe for each numeric column
         return {col: self.dataframe[col].mean() for col in column_keys_and_types if column_keys_and_types[col].is_numeric} # type: ignore
     
-    def sum(self, column_keys_and_types: dict[CK, ColumnType]) -> dict[CK, float]:
+    def sum(self, column_keys_and_types: Mapping[CK, ColumnType]) -> Mapping[CK, float]:
         return {col: self.dataframe[col].sum() for col in column_keys_and_types if column_keys_and_types[col].is_numeric} # type: ignore
     
-    def std(self, column_keys_and_types: dict[CK, ColumnType]) -> dict[CK, float]:
+    def std(self, column_keys_and_types: Mapping[CK, ColumnType]) -> Mapping[CK, float]:
         return {col: self.dataframe[col].std() for col in column_keys_and_types if column_keys_and_types[col].is_numeric} # type: ignore
 
 @dataclass
@@ -102,9 +102,9 @@ class BaseGrouping(Generic[CK]):
         # Initialize grouping infrastructure
         self._grouping_containers: list[GroupingContainer[CK]] = []
         self._available_column_keys: list[CK] = []
-        self._rowfun_result_column_information: dict[CK, ColumnInformation] = {}
-        self._categorical_column_information: dict[CK, ColumnInformation] = {}
-        self._available_column_information: dict[CK, ColumnInformation] = {}
+        self._rowfun_result_column_information: Mapping[CK, ColumnInformation] = {}
+        self._categorical_column_information: Mapping[CK, ColumnInformation] = {}
+        self._available_column_information: Mapping[CK, ColumnInformation] = {}
         
         # Create working copy of dataframe
         self._working_df: pd.DataFrame = dataframe._internal_dataframe.copy(deep=False) # type: ignore
@@ -156,7 +156,7 @@ class BaseGrouping(Generic[CK]):
     ) -> None:
         """Evaluate row functions and store results."""
 
-        result_types: dict[CK, type[SCALAR_TYPE]] = {}        
+        result_types: Mapping[CK, type[SCALAR_TYPE]] = {}        
         first_evaluation: bool = False
         
         # Evaluate functions for each row
@@ -188,7 +188,7 @@ class BaseGrouping(Generic[CK]):
             self, 
             column_key: CK, 
             result: SCALAR_TYPE, 
-            result_types: dict[CK, type[SCALAR_TYPE]]
+            result_types: Mapping[CK, type[SCALAR_TYPE]]
     ) -> None:
         """Validate and record the first result of a function."""
 
@@ -218,7 +218,7 @@ class BaseGrouping(Generic[CK]):
             self, 
             column_key: CK, 
             result: SCALAR_TYPE, 
-            result_types: dict[CK, type[SCALAR_TYPE]]
+            result_types: Mapping[CK, type[SCALAR_TYPE]]
     ) -> None:
         """Validate that subsequent results match the first result."""
         if not isinstance(result, result_types[column_key]):
@@ -317,10 +317,10 @@ class BaseGrouping(Generic[CK]):
             
             # Step 2: Aggregate the data
 
-            group_data: list[dict[CK, VALUE_TYPE]] = []
+            group_data: list[Mapping[CK, VALUE_TYPE]] = []
             
             for container in self._grouping_containers:
-                row_data: dict[CK, VALUE_TYPE] = {}
+                row_data: Mapping[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col, col_info in self._categorical_column_information.items():
@@ -394,11 +394,11 @@ class BaseGrouping(Generic[CK]):
             United_Dataframe[CK]: A dataframe with group keys and group sizes
         """
         with self._dataframe._rlock: # type: ignore
-            group_data: list[dict[CK, VALUE_TYPE]] = []
+            group_data: list[Mapping[CK, VALUE_TYPE]] = []
             
             # Get the group data
             for container in self._grouping_containers:
-                row_data: dict[CK, VALUE_TYPE] = {}
+                row_data: Mapping[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():
@@ -508,10 +508,10 @@ class BaseGrouping(Generic[CK]):
 
             # Step 2: Count the number of non-null values for each group for the columns to consider
             
-            group_data: list[dict[CK, VALUE_TYPE]] = []
+            group_data: list[Mapping[CK, VALUE_TYPE]] = []
             
             for container in self._grouping_containers:
-                row_data: dict[CK, VALUE_TYPE] = {}
+                row_data: Mapping[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():
@@ -531,8 +531,8 @@ class BaseGrouping(Generic[CK]):
             
             # Collect the column information for the result dataframe of the categorical columns
             result_column_keys: list[CK] = list(self._categorical_column_information.keys())
-            result_column_types: dict[CK, ColumnType] = {col: col_info.column_type for col, col_info in self._categorical_column_information.items() if col in result_column_keys}
-            result_column_units: dict[CK, Unit|None] = {col: col_info.column_unit for col, col_info in self._categorical_column_information.items() if col in result_column_keys}
+            result_column_types: Mapping[CK, ColumnType] = {col: col_info.column_type for col, col_info in self._categorical_column_information.items() if col in result_column_keys}
+            result_column_units: Mapping[CK, Unit|None] = {col: col_info.column_unit for col, col_info in self._categorical_column_information.items() if col in result_column_keys}
             
             # Add the result column information for the columns to consider
             for i, col in enumerate(_column_keys_to_consider):
@@ -564,13 +564,13 @@ class BaseGrouping(Generic[CK]):
         result_column_key, func = func_tuple
         
         with self._dataframe._rlock: # type: ignore
-            group_data: list[dict[CK, VALUE_TYPE]] = []
+            group_data: list[Mapping[CK, VALUE_TYPE]] = []
             result_column_type: ColumnType | None = None
             result_column_unit: Unit | None = None
             first_result: bool = True
             
             for container in self._grouping_containers:
-                row_data: dict[CK, VALUE_TYPE] = {}
+                row_data: Mapping[CK, VALUE_TYPE] = {}
                 
                 # Add group key values
                 for col in self._categorical_column_information.keys():
@@ -716,12 +716,12 @@ class BaseGrouping(Generic[CK]):
         """
         return self.tail(1)
     
-    def get_filtered(self, filter_dict: dict[CK, SCALAR_TYPE]) -> "BaseGrouping[CK]":
+    def get_filtered(self, filter_dict: Mapping[CK, SCALAR_TYPE]) -> "BaseGrouping[CK]":
         """
         Get a filtered version of the GroupBy object.
         
         Args:
-            filter_dict (dict[CK, SCALAR_TYPE]): Dictionary of column keys and values to filter by
+            filter_dict (Mapping[CK, SCALAR_TYPE]): Dictionary of column keys and values to filter by
             
         Returns:
             BaseGrouping[CK]: A new BaseGrouping object with filtered data

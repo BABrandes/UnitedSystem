@@ -235,7 +235,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Filter Operations: Custom Functions ------------
 
-    def filter_by_function(self, filter_func: Callable[[dict[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> "UnitedDataframe[CK]":
+    def filter_by_function(self, filter_func: Callable[[Mapping[CK, SCALAR_TYPE]], bool], column_keys: list[CK]|None = None) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using a custom function on a column.
         

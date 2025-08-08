@@ -7,7 +7,7 @@ including creating empty dataframes, from arrays, and other construction pattern
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, Union, cast, Optional, Any, overload, Type
+from typing import TYPE_CHECKING, Union, cast, Optional, Any, overload, Type, Mapping
 from collections.abc import Sequence
 import pandas as pd
 import numpy as np
@@ -43,7 +43,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_dataframe(
         cls,
         dataframe: pd.DataFrame,
-        columns: Optional[dict[CK, tuple[ColumnType, str, Optional[Unit|Dimension]]|tuple[ColumnType, str]]],
+        columns: Optional[Mapping[CK, tuple[ColumnType, str, Optional[Unit|Dimension]]|tuple[ColumnType, str]]],
         column_key_type: Type[CK],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         deepcopy: bool = True,
@@ -56,7 +56,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         Args:
             dataframe (pd.DataFrame): The pandas DataFrame to create the UnitedDataframe from.
-            columns (dict[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]]): The columns to create the UnitedDataframe from. The column key is the key of the column in the UnitedDataframe, the tuple is the source column name, the column type, and the column unit.
+            columns (Mapping[CK, Tuple[ColumnType, str, Optional[Unit|Dimension]|Tuple[ColumnType, str]]]): The columns to create the UnitedDataframe from. The column key is the key of the column in the UnitedDataframe, the tuple is the source column name, the column type, and the column unit.
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): The internal dataframe column name formatter.
             deepcopy (bool): Whether to deepcopy the dataframe.
             read_only (bool): Whether the UnitedDataframe should be read-only.
@@ -67,9 +67,9 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         # Generate the column keys, source column names, column types, and column units
         column_keys: list[CK] = []
-        source_column_names: dict[CK, str] = {}
-        column_types: dict[CK, ColumnType] = {}
-        column_units: dict[CK, Optional[Unit]] = {}
+        source_column_names: Mapping[CK, str] = {}
+        column_types: Mapping[CK, ColumnType] = {}
+        column_units: Mapping[CK, Optional[Unit]] = {}
         if columns is None:
             for column_name in dataframe.columns:
                 _column_key, column_unit = internal_dataframe_column_name_formatter.retrieve_from_internal_dataframe_column_name(column_name, column_key_type)
@@ -124,8 +124,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_empty(
         cls,
         column_keys: Sequence[CK],
-        column_types: dict[CK, ColumnType],
-        column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]],
+        column_types: Mapping[CK, ColumnType],
+        column_units_or_dimensions: Mapping[CK, Union[Unit, Dimension, None]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter()
     ) -> "UnitedDataframe[CK]":
         """
@@ -133,8 +133,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         Args:
             column_keys (Sequence[CK]): Sequence of column keys
-            column_types (dict[CK, ColumnType]): Column type mapping
-            column_units_or_dimensions (dict[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
+            column_types (Mapping[CK, ColumnType]): Column type mapping
+            column_units_or_dimensions (Mapping[CK, Union[Unit, Dimension, None]]): Column unit or dimension mapping
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter object
             
         Returns:
@@ -148,7 +148,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             raise ValueError("Column keys must be present in the units_or_dimensions dictionary")
 
         # Step 2: Set column units
-        column_units: dict[CK, Unit | None] = {}
+        column_units: Mapping[CK, Unit | None] = {}
         for column_key in column_keys:
             if not column_key in column_units_or_dimensions:
                 raise ValueError(f"Column key {column_key} not found in unit_or_dimension")
@@ -161,7 +161,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 column_units[column_key] = None
         
         # Step 3: Create empty pandas dataframe with proper column names
-        internal_column_strings: dict[CK, str] = {}
+        internal_column_strings: Mapping[CK, str] = {}
         for column_key in column_keys:
             internal_column_strings[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
         empty_df: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()))
@@ -190,34 +190,16 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @classmethod
     def create_from_data(
         cls,
-        columns: dict[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]|tuple[ColumnType, Sequence[VALUE_TYPE]]],
+        columns: Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]|tuple[ColumnType, Sequence[VALUE_TYPE]]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
-        ...
+        ...  
     @overload
     @classmethod
     def create_from_data(
         cls,
-        columns: dict[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]],   
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
-        read_only: bool = False
-    ) -> "UnitedDataframe[CK]":
-        ...
-    @overload
-    @classmethod
-    def create_from_data(
-        cls,
-        columns: dict[CK, tuple[ColumnType, Sequence[VALUE_TYPE]]],
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
-        read_only: bool = False
-    ) -> "UnitedDataframe[CK]":
-        ...    
-    @overload
-    @classmethod
-    def create_from_data(
-        cls,
-        columns: dict[CK, 
+        columns: Mapping[CK, 
                       tuple[ColumnType, Optional[Unit|Dimension], np.ndarray]|
                       tuple[ColumnType, np.ndarray]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
@@ -228,7 +210,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     @classmethod
     def create_from_data(
         cls,
-        columns: dict[CK, 
+        columns: Mapping[CK, 
                       tuple[ColumnType, Optional[Unit|Dimension], "pd.Series[Any]"]|
                       tuple[ColumnType, "pd.Series[Any]"]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
@@ -239,22 +221,22 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_data(
         cls,
         columns: 
-        dict[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[ColumnType, Sequence[VALUE_TYPE]]] |
-        dict[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]] |
-        dict[CK, tuple[ColumnType, Sequence[VALUE_TYPE]]] |
-        dict[CK, tuple[ColumnType, Optional[Unit|Dimension], np.ndarray] | tuple[ColumnType, np.ndarray]] |
-        dict[CK, tuple[ColumnType, Optional[Unit|Dimension], "pd.Series[Any]"] | tuple[ColumnType, "pd.Series[Any]"]] |
-        dict[CK, tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]] | tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]] |
-        dict[CK, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]],
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[ColumnType, Sequence[VALUE_TYPE]]] |
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]] |
+        Mapping[CK, tuple[ColumnType, Sequence[VALUE_TYPE]]] |
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], np.ndarray] | tuple[ColumnType, np.ndarray]] |
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], "pd.Series[Any]"] | tuple[ColumnType, "pd.Series[Any]"]] |
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]] | tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]] |
+        Mapping[CK, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
         """
         Create a UnitedDataframe from a dictionary of information and values.
 
-        columns: Variant 1) dict[CK, {ColumnType, Unit|Dimension|None, column_values}]
-        columns: Variant 2) dict[CK, {ColumnType, column_values}]
-        columns: Variant 3) dict[CK, ARRAY|list[SCALAR]]
+        columns: Variant 1) Mapping[CK, {ColumnType, Unit|Dimension|None, column_values}]
+        columns: Variant 2) Mapping[CK, {ColumnType, column_values}]
+        columns: Variant 3) Mapping[CK, ARRAY|list[SCALAR]]
 
         column_values can be: 
         - ARRAY_TYPE
@@ -263,7 +245,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         - pd.Series[Any]
         
         Args:
-            columns (dict[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
+            columns (Mapping[CK, Tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]|Tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, pd.Series[Any]]]]]): Dictionary mapping column keys to arrays
             internal_dataframe_column_name_formatter (InternalDataFrameColumnNameFormatter): Name formatter function
             read_only (bool): Whether the UnitedDataframe should be read-only.
             
@@ -274,9 +256,9 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         column_keys: list[CK] = list(columns.keys())
 
         # Step 2: Determine the column units and types from the arrays or, if a list is given, from column_types and column_units_or_dimensions dictionaries
-        column_units: dict[CK, Unit | None] = {}
-        column_types: dict[CK, ColumnType] = {}
-        column_values: dict[CK, Union[np.ndarray, "pd.Series[Any]"]] = {}
+        column_units: Mapping[CK, Unit | None] = {}
+        column_types: Mapping[CK, ColumnType] = {}
+        column_values: Mapping[CK, Union[np.ndarray, "pd.Series[Any]"]] = {}
         def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
             unit: Optional[Unit] = column_units[column_key]
             if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
@@ -370,7 +352,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError(f"Column {column_key} has a different length than column {column_keys[0]}")
             
         # Step 4: Create empty pandas dataframe with proper column names
-        internal_column_strings: dict[CK, str] = {}
+        internal_column_strings: Mapping[CK, str] = {}
         for column_key in column_keys:
             internal_column_strings[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
         dataframe: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()), index=range(length))
@@ -469,7 +451,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe[CK]: New empty dataframe with same structure
         """
         with self._rlock:
-            column_units_or_dimensions: dict[CK, Union[Unit, Dimension, None]] = {}
+            column_units_or_dimensions: Mapping[CK, Union[Unit, Dimension, None]] = {}
             for column_key in self._column_keys:
                 column_units_or_dimensions[column_key] = self._column_units[column_key]
             return self.create_empty(

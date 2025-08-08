@@ -7,7 +7,7 @@ including JSON, CSV, HDF5, and pickle formats.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import Any, Dict, Union, TYPE_CHECKING, Type, Optional
+from typing import Any, Dict, Union, TYPE_CHECKING, Type, Optional, Mapping
 import json
 import pickle
 from pathlib import Path
@@ -171,7 +171,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
             # Reconstruct column metadata from the pandas DataFrame
             # The column names should contain the metadata we need
-            columns: dict[CK, tuple[ColumnType, str, Optional[Unit|Dimension]]|tuple[ColumnType, str]] = {}
+            columns: Mapping[CK, tuple[ColumnType, str, Optional[Unit|Dimension]]|tuple[ColumnType, str]] = {}
             
             for col_name in df.columns:
                 # Parse the internal column name to extract metadata    

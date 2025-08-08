@@ -7,7 +7,7 @@ addition, removal, and row data manipulation.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 import pandas as pd
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Mapping
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME
@@ -67,13 +67,13 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         empty_rows = pd.DataFrame(index=range(len(self._internal_dataframe), len(self._internal_dataframe) + number_of_rows), columns=self._internal_dataframe.columns)  
         self._internal_dataframe = pd.concat([self._internal_dataframe, empty_rows], ignore_index=True) 
 
-    def _row_set_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def _row_set_items(self, row_index: int, items: Mapping[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
-        Internal: Set multiple row values in the dataframe from a dictionary mapping column keys to lists of values. (no lock)
+        Internal: Set multiple row items in the dataframe from a dictionary mapping column keys to lists of items. (no lock)
 
         Args:
             row_index (int): Row index (start) or slice object.
-            values (dict[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of values.
+            items (Mapping[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of items.
 
         Raises:
             ValueError: If dataframe is read-only, values are inconsistent, or column types mismatch.
@@ -81,34 +81,34 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         if self._read_only:
             raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
         
-        for column_key, value in values.items():
-            if isinstance(value, SCALAR_TYPE_RUNTIME):
-                self._cell_set_scalar(row_index, column_key, value)
+        for column_key, item in items.items():
+            if isinstance(item, SCALAR_TYPE_RUNTIME):
+                self._cell_set_scalar(row_index, column_key, item)
             else:
                 self._cell_set_value(row_index, column_key, value) # type: ignore
 
-    def _row_set_ordered_items(self, row_index: int, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def _row_set_ordered_items(self, row_index: int, items: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
-        Internal: Set rows with values at a specific index. (no lock)
-        The values are expected to be correctly ordered according to the column keys.
+        Internal: Set rows with items at a specific index. (no lock)
+        The items are expected to be correctly ordered according to the column keys.
 
         Args:
-            row_index (int): The index where to set the values
-            values (Sequence[Any]): Sequence of values to set
+            row_index (int): The index where to set the items
+            items (Sequence[Any]): Sequence of items to set
 
         Raises:
             ValueError: If the dataframe is read-only or values are invalid
         """
 
-        if not len(values) == len(self._column_keys):
-            raise ValueError(f"Number of values {len(values)} does not match number of columns {len(self._column_keys)}.")
+        if not len(items) == len(self._column_keys):
+            raise ValueError(f"Number of items {len(items)} does not match number of columns {len(self._column_keys)}.")
         
         # Direct cell operations for performance
         for col_index, column_key in enumerate(self._column_keys):
-            if isinstance(values[col_index], SCALAR_TYPE_RUNTIME):
-                self._cell_set_scalar(row_index, column_key, values[col_index])
+            if isinstance(items[col_index], SCALAR_TYPE_RUNTIME):
+                self._cell_set_scalar(row_index, column_key, items[col_index])
             else:
-                self._cell_set_value(row_index, column_key, values[col_index]) # type: ignore
+                self._cell_set_value(row_index, column_key, items[col_index]) # type: ignore
 
     def _row_remove(self, row_index_start_inclusive: int, row_index_stop_exclusive: int) -> None:
         """
@@ -161,24 +161,24 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             
             self._row_set_ordered_items(row_index, values)
 
-    def row_add_ordered_items(self, values: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_add_ordered_items(self, items: Sequence[VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
-        Add rows with values to the end of the dataframe. The values are expected to be correctly ordered according to the column keys.
+        Add rows with items to the end of the dataframe. The items are expected to be correctly ordered according to the column keys.
         """
         with self._wlock:
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             self._row_add_empty(1)
-            self._row_set_ordered_items(self._number_of_rows()-1, values)
+            self._row_set_ordered_items(self._number_of_rows()-1, items)
 
 
-    def row_add_items(self, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_add_items(self, items: Mapping[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
-        Add rows with values to the end of the dataframe.
+        Add rows with items to the end of the dataframe.
         
         Args:
-            values (dict[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of values or single values
+            items (Mapping[CK, VALUE_TYPE|SCALAR_TYPE]): Dictionary mapping column keys to lists of items or single items
             
         Raises:
             ValueError: If the dataframe is read-only or values are invalid
@@ -189,7 +189,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
 
             self._row_add_empty(1)
-            self._row_set_items(self._number_of_rows()-1, values)
+            self._row_set_items(self._number_of_rows()-1, items)
 
     def row_insert_empty(self, row_index: int) -> None:
         """
@@ -202,7 +202,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
             self._row_insert_empty(row_index)
 
-    def row_insert_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_insert_items(self, row_index: int, items: Mapping[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Insert rows with values at a specific index.
         """
@@ -211,9 +211,9 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
             self._row_insert_empty(row_index)
-            self._row_set_items(row_index, values)
+            self._row_set_items(row_index, items)
 
-    def row_set_items(self, row_index: int, values: dict[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
+    def row_set_items(self, row_index: int, items: Mapping[CK, VALUE_TYPE|SCALAR_TYPE]) -> None:
         """
         Replace rows with values at a specific index.
         """
@@ -222,7 +222,7 @@ class RowOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             if self._read_only:
                 raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
             
-            self._row_set_items(row_index, values)
+            self._row_set_items(row_index, items)
 
     def row_clear(self, row_index_start_inclusive: int, number_of_rows: int) -> None:
         """

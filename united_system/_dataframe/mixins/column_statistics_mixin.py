@@ -302,7 +302,7 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Count the number of missing values in each column.
         
         Returns:
-            dict[CK, int]: Dictionary mapping column keys to number of missing values
+            Mapping[CK, int]: Dictionary mapping column keys to number of missing values
         """
         with self._rlock:
             return {column_key: self._internal_dataframe[column_key].isna().sum() for column_key in self._column_keys} # type: ignore

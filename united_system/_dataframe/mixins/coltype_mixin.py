@@ -7,7 +7,7 @@ filtering by type, and column type management.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, TypeVar, Mapping
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType
 
@@ -30,12 +30,12 @@ class ColTypeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     # ----------- Retrievals: Column types ------------
 
     @property
-    def coltypes(self) -> dict[CK, ColumnType]:
+    def coltypes(self) -> Mapping[CK, ColumnType]:
         """
         Get a copy of all column types.
         
         Returns:
-            dict[CK, ColumnType]: A copy of the dictionary of column types
+            Mapping[CK, ColumnType]: A copy of the dictionary of column types
         """
         with self._rlock:  # Full IDE support!
             return self._column_types.copy()  # Protocol knows _column_types exists!

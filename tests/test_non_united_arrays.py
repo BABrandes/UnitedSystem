@@ -9,7 +9,7 @@ direct array construction, but the dataframe system works fine for data
 storage and basic operations.
 """
 
-from typing import Any, Sequence, Optional
+from typing import Any, Sequence, Optional, Mapping
 import numpy as np
 from pandas import Timestamp
 from united_system import UnitedDataframe, DataframeColumnType, Unit, Dimension, VALUE_TYPE, IntArray, FloatArray, RealUnitedScalar
@@ -75,7 +75,7 @@ class TestNonUnitedArrays:
         print("\n📊 Testing dataframe operations without array extraction...")
         
         # Create a mixed-type dataframe
-        arrays: dict[TestColumnKey, list[Any]] = {
+        arrays: Mapping[TestColumnKey, list[Any]] = {
             TestColumnKey("names"): ["Alice", "Bob", "Charlie"],
             TestColumnKey("scores"): [85.5, 92.3, 78.1],
             TestColumnKey("count"): [10, 15, 12],
@@ -83,7 +83,7 @@ class TestNonUnitedArrays:
             TestColumnKey("timestamps"): [Timestamp('2023-01-01'), Timestamp('2023-01-02'), Timestamp('2023-01-03')]
         }
 
-        columns: dict[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+        columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("names"): (DataframeColumnType.STRING, None, arrays[TestColumnKey("names")]),
             TestColumnKey("scores"): (DataframeColumnType.FLOAT_64, None, arrays[TestColumnKey("scores")]),
             TestColumnKey("count"): (DataframeColumnType.INTEGER_64, None, arrays[TestColumnKey("count")]),
