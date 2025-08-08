@@ -7,8 +7,8 @@ including complex filters, multi-column filters, and filter combinations.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Any, Callable, TYPE_CHECKING
-from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE
+from typing import Callable, TYPE_CHECKING, overload
+from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE, VALUE_TYPE
 from ..._arrays.bool_array import BoolArray
 
 if TYPE_CHECKING:
@@ -27,90 +27,104 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Filter Operations: Single Column ------------
 
-    def filter_column_equals(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_equals(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column equals a specific value.
         
         Args:
             column_key (CK): The column key
-            value (Any): The value to filter by
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
             
         Returns:
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_equal_to(column_key, value)
+            mask: BoolArray = self.mask_get_equal_to(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
-    def filter_column_not_equals(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_not_equals(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column does not equal a specific value.
         
         Args:
             column_key (CK): The column key
-            value (Any): The value to filter by
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
             
         Returns:
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_not_equal_to(column_key, value)
+            mask = self.mask_get_not_equal_to(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
-    def filter_column_greater_than(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_greater_than(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column is greater than a specific value.
         
         Args:
             column_key (CK): The column key
-            value (Any): The value to filter by
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
             
         Returns:
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_greater_than(column_key, value)
+            mask = self.mask_get_greater_than(column_key, item)
             return self._mask_apply_to_dataframe(mask)
         
-    def filter_column_greater_equal(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_greater_equal(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column is greater than or equal to a specific value.
+
+        Args:
+            column_key (CK): The column key
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
+            
+        Returns:
+            UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_greater_equal(column_key, value)
+            mask = self.mask_get_greater_equal(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
-    def filter_column_less_than(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_less_than(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column is less than a specific value.
         
         Args:
             column_key (CK): The column key
-            value (Any): The value to filter by
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
             
         Returns:
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_less_than(column_key, value)
+            mask = self.mask_get_less_than(column_key, item)
             return self._mask_apply_to_dataframe(mask)
         
-    def filter_column_less_equal(self, column_key: CK, value: Any) -> "UnitedDataframe[CK]":
+    def filter_column_less_equal(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column is less than or equal to a specific value.
+
+        Args:
+            column_key (CK): The column key
+            item (SCALAR_TYPE|VALUE_TYPE): The value to filter by
+            
+        Returns:
+            UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_less_equal(column_key, value)
+            mask = self.mask_get_less_equal(column_key, item)
             return self._mask_apply_to_dataframe(mask)
-
-    def filter_column_in_range(self, column_key: CK, min_value: Any, max_value: Any) -> "UnitedDataframe[CK]":
+        
+    def filter_column_in_range(self, column_key: CK, min_value: SCALAR_TYPE|VALUE_TYPE, max_value: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where column is within a specific range.
         
         Args:
             column_key (CK): The column key
-            min_value (Any): The minimum value (inclusive)
-            max_value (Any): The maximum value (inclusive)
+            min_value (SCALAR_TYPE|VALUE_TYPE): The minimum value (inclusive)
+            max_value (SCALAR_TYPE|VALUE_TYPE): The maximum value (inclusive)
             
         Returns:
             UnitedDataframe: Filtered dataframe
@@ -118,6 +132,31 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             mask: BoolArray = self.mask_get_in_range(column_key, min_value, max_value)
             return self._mask_apply_to_dataframe(mask)
+    
+    @overload
+    def filter_columns_in_range(self, range_dict: dict[CK, tuple[VALUE_TYPE, VALUE_TYPE]]) -> "UnitedDataframe[CK]":
+        ...
+    @overload
+    def filter_columns_in_range(self, range_dict: dict[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
+        ...
+    def filter_columns_in_range(self, range_dict: 
+                                dict[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]|
+                                dict[CK, tuple[VALUE_TYPE, VALUE_TYPE]]|
+                                dict[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where multiple columns are within a specific range.
+
+        Args:
+            range_dict (dict[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]): A dictionary of column keys and their range.
+            
+        Returns:
+            UnitedDataframe: Filtered dataframe
+        """
+        with self._rlock:
+            masks: list[BoolArray] = []
+            for column_key, (min_value, max_value) in range_dict.items():
+                masks.append(self.mask_get_in_range(column_key, min_value, max_value))
+            return self.filter_and(*masks)
         
     def filter_column_get_complete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
         """
