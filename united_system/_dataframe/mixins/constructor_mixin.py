@@ -280,7 +280,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
             unit: Optional[Unit] = column_units[column_key]
             if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
-                if not column_types[column_key].check_compatibility(array_or_list_or_numpy_array_or_pandas_series, unit): #type: ignore
+                if not column_types[column_key].check_item_compatibility(array_or_list_or_numpy_array_or_pandas_series, unit):
                     raise ValueError(f"Array {array_or_list_or_numpy_array_or_pandas_series} is not compatible with column unit {unit}")
                 return array_or_list_or_numpy_array_or_pandas_series.get_as_numpy_array(target_unit=unit)
             else:

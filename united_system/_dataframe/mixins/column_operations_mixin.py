@@ -238,9 +238,12 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             last_index (Optional[int]): The last index to fill, if None, the last index is the length of the dataframe
 
         Raises:
-        
+            ValueError: If the parameters are invalid
         """
 
+        if column_key not in self._column_keys:
+            raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
+        
         if first_index is None:
             first_index = 0
         if last_index is None:
@@ -248,7 +251,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         if first_index < 0 or first_index >= len(self._internal_dataframe):
             raise ValueError(f"First index {first_index} is out of bounds.")
-        if last_index < 0 or last_index >= len(self._internal_dataframe):
+        if last_index < 0 or last_index > len(self._internal_dataframe):
             raise ValueError(f"Last index {last_index} is out of bounds.")
         
         if first_index > last_index:
@@ -263,5 +266,19 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def column_fill(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE, first_index: Optional[int] = None, last_index: Optional[int] = None) -> None:
         """
         Fill a column with a value.
+
+        Args:
+            column_key (CK): The column key
+            item (SCALAR_TYPE|VALUE_TYPE): The value to fill the column with
+            first_index (Optional[int]): The first index to fill, if None, the first index is 0
+            last_index (Optional[int]): The last index to fill, if None, the last index is the length of the dataframe
+
+        Raises:
+            ValueError: If the dataframe is read-only or the parameters are invalid
         """
+
+        with self._wlock:
+            if self._read_only:
+                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
+            self._column_fill(column_key, item, first_index, last_index)
         

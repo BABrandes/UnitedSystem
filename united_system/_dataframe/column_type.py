@@ -1412,7 +1412,7 @@ class ColumnType(Enum):
 
     def check_item_compatibility(self, item: VALUE_TYPE | SCALAR_TYPE | ARRAY_TYPE, column_unit: Optional[Unit]) -> bool:
         """
-        Check if a scalar or array value is compatible with this column type.
+        Check if a value, scalar or array is compatible with this column type.
         
         This method verifies whether a given value can be stored in a column of this type,
         including unit compatibility checks for united types.
@@ -1420,7 +1420,7 @@ class ColumnType(Enum):
         Args:
             item (VALUE_TYPE | SCALAR_TYPE | ARRAY_TYPE): 
                 The value to check for compatibility.
-            unit (Optional[Unit]): 
+            column_unit (Optional[Unit]): 
                 Optional unit to check against for united types.
                 If provided, the value's unit must be compatible with this unit.
         
@@ -1429,17 +1429,17 @@ class ColumnType(Enum):
         
         Example:
             >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_compatibility(3.14, None)
+            >>> is_compatible = column_type.check_item_compatibility(3.14)
             >>> print(is_compatible)  # True
             
             >>> column_type = ColumnType.REAL_NUMBER_64
             >>> scalar = RealUnitedScalar(5.0, Unit("m"))
-            >>> is_compatible = column_type.check_compatibility(scalar, Unit("km"))
+            >>> is_compatible = column_type.check_item_compatibility(scalar, Unit("km"))
             >>> print(is_compatible)  # True (meters are compatible with kilometers)
             
             >>> column_type = ColumnType.REAL_NUMBER_64
             >>> scalar = RealUnitedScalar(5.0, Unit("m"))
-            >>> is_compatible = column_type.check_compatibility(scalar, None)
+            >>> is_compatible = column_type.check_item_compatibility(scalar)
             >>> print(is_compatible)  # True (no unit validation)
         """
         if self.has_unit:
