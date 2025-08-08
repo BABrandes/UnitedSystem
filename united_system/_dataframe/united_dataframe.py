@@ -214,7 +214,7 @@ class UnitedDataframe(
             dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> None:
         """
@@ -228,7 +228,7 @@ class UnitedDataframe(
             column_keys: dict[CK, ColumnType] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -242,7 +242,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Unit]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -256,7 +256,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -270,7 +270,7 @@ class UnitedDataframe(
             column_keys: dict[CK, Tuple[ColumnType, Optional[Unit|Dimension]]] = {},
             column_types: None = None,
             column_units: None = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -284,7 +284,7 @@ class UnitedDataframe(
             column_keys: Sequence[CK] = [],
             column_types: dict[CK, ColumnType] = {},
             column_units: dict[CK, Optional[Unit|Dimension]] = {},
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -301,7 +301,7 @@ class UnitedDataframe(
             dict[CK, Tuple[ColumnType, Optional[Dimension]]] = {},
             column_types: Optional[dict[CK, ColumnType]] = None,
             column_units: Optional[dict[CK, Optional[Unit|Dimension]]] = None,
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
     ) -> "UnitedDataframe[CK]":
         """
@@ -369,7 +369,7 @@ class UnitedDataframe(
             column_keys: Sequence[CK],
             column_types: dict[CK, ColumnType],
             column_units: dict[CK, Optional[Unit]],
-            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+            internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
             read_only: bool = False,
             copy_dataframe: bool = False,
             rename_dataframe_columns: bool = False

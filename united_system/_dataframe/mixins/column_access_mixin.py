@@ -80,7 +80,7 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
         with self._rlock:
             if expected_column_type is not None:
-                if not self._column_types[column_key].check_array_type(expected_column_type):
+                if not self._column_types[column_key].check_type_compatibility(expected_column_type, "array"):
                     raise ValueError(f"Column {column_key} is not a {expected_column_type} column.")
                 result: AT = self._column_get_as_array(column_key, expected_column_type, slice) # type: ignore
                 return result
@@ -114,7 +114,7 @@ class ColumnAccessMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             pandas_series: pd.Series = self._internal_dataframe[internal_column_name] # type: ignore[no-any-return]
 
         if expected_column_type is not None:
-            if not column_type.check_array_type(expected_column_type):
+            if not column_type.check_type_compatibility(expected_column_type, "array"):
                 raise ValueError(f"Column {column_key} is not a {expected_column_type} column.")
             array: AT = column_type.get_array_from_pd_series(pandas_series, self._column_units[column_key]) # type: ignore[no-any-return]
         else:

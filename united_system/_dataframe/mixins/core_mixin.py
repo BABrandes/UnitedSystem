@@ -10,8 +10,6 @@ import pandas as pd
 import numpy as np
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._dataframe.column_type import SCALAR_TYPE, ARRAY_TYPE, ColumnType
-from ..._units_and_dimension.has_unit_protocol import HasUnit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
 from ..._units_and_dimension.unit import Unit
 
@@ -53,7 +51,7 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         return len(self._column_keys)
     
     @property
-    def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter[CK]:
+    def internal_dataframe_column_name_formatter(self) -> InternalDataFrameColumnNameFormatter:
         """
         Get the internal dataframe column name formatter.
         """
@@ -164,52 +162,12 @@ class CoreMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return self._get_internal_dataframe_column_names(column_key)
 
     @staticmethod
-    def column_key_to_string(column_key: CK, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK], column_unit: Optional[Unit]) -> str:
+    def column_key_to_string(column_key: CK, internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter, column_unit: Optional[Unit]) -> str:
         """
         Public: Convert a column key to string. (with lock)
         """
         return internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_unit)
     
-    def _is_compatible_with_column(self, column_key: CK, value: SCALAR_TYPE|ARRAY_TYPE) -> bool:
-        """
-        Internal: Check if a value is compatible with a column (no lock).
-
-        This method checks if the given value(s) can be set in the column.
-        It also checks if the unit is compatible with the column unit (if the column has a unit).
-
-        Args:
-            column_key (CK): The column key to check compatibility with
-            value: The value to check
-            
-        Returns:
-            bool: True if the value is compatible with the column type
-        """
-        column_type: ColumnType = self._column_types[column_key]
-        if column_type.has_unit:
-            unit: Optional[Unit] = self._column_units[column_key]
-            if unit is None:
-                return False
-            if not isinstance(value, HasUnit):
-                return False
-            value_dimension: BaseDimension[Any, Any] = value.dimension # type: ignore
-            if not unit.dimension == value_dimension:
-                return False
-        return column_type.check_compatibility(value)
-
-    def is_compatible_with_column(self, column_key: CK, value: SCALAR_TYPE|ARRAY_TYPE) -> bool:
-        """
-        Public: Check if a value is compatible with a column (with lock).
-        
-        Args:
-            column_key (CK): The column key to check compatibility with
-            value: The value to check
-            
-        Returns:
-            bool: True if the value is compatible with the column type
-        """
-        with self._rlock:
-            return self._is_compatible_with_column(column_key, value)
-
     # Read-only state management
     def is_read_only(self) -> bool:
         """

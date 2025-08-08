@@ -54,7 +54,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         with self._rlock:
             if expected_type is not None:
-                if not self._column_types[column_key].check_scalar_type(expected_type):
+                if not self._column_types[column_key].check_type_compatibility(expected_type, "scalar"):
                     raise ValueError(f"Column {column_key} is not a {expected_type} column.")
                 result: ST = self._cell_get_scalar(row_index, column_key) # type: ignore
                 return result
@@ -96,7 +96,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         
         with self._rlock:
             if expected_type is not None:
-                if not self._column_types[column_key].check_scalar_type(expected_type):
+                if not self._column_types[column_key].check_type_compatibility(expected_type, "value"):
                     raise ValueError(f"Column {column_key} is not a {expected_type} column.")
                 result: VT = self._cell_get_value(row_index, column_key) # type: ignore
                 return result
@@ -135,7 +135,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
         with self._rlock:
             if expected_type is not None:
-                if not self._column_types[column_key].check_scalar_type(expected_type):
+                if not self._column_types[column_key].check_type_compatibility(expected_type, "scalar"):
                     raise ValueError(f"Column {column_key} is not a {expected_type} column.")
                 result: list[ST] = self._cell_get_scalars(row_indices, column_key) # type: ignore
                 return result
@@ -193,7 +193,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             raise ValueError(f"Column key {column_key} does not exist in the dataframe.")
         
         if expected_type is not None:
-            if not self._column_types[column_key].check_array_type(expected_type):
+            if not self._column_types[column_key].check_type_compatibility(expected_type, "array"):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
             result: AT = self._column_types[column_key].get_array_from_pd_series(self._internal_dataframe[self._internal_dataframe_column_names[column_key]][first_row_index:last_row_index], self._column_units[column_key]) # type: ignore
             return result
@@ -223,7 +223,7 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
         with self._rlock:
             if expected_type is not None:
-                if not self._column_types[column_key].check_array_type(expected_type):
+                if not self._column_types[column_key].check_type_compatibility(expected_type, "array"):
                     raise ValueError(f"Column {column_key} is not a {expected_type} column.")
                 result: AT = self._cell_get_array(first_row_index, last_row_index, column_key, expected_type) # type: ignore
                 return result
@@ -296,12 +296,15 @@ class CellOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         column_index: int = self._column_keys.index(column_key)
         column_unit: Optional[Unit] = self._column_units[column_key]
         column_type: ColumnType = self._column_types[column_key]
-        if not column_type.check_value_type(value):
+        if not column_type.check_item_compatibility(value, column_unit):
             raise ValueError(f"Value {value} is not a {column_type.name}.")
         if column_type.has_unit:
+            assert column_unit is not None
             if unit is None:
                 self._internal_dataframe.iloc[row_index, column_index] = value
             else:
+                if not column_unit.compatible_to(unit):
+                    raise ValueError(f"Unit {unit} is not compatible with column {column_key}.")
                 self._internal_dataframe.iloc[row_index, column_index] = Unit.convert(value, unit, column_unit) # type: ignore
         else:
             self._internal_dataframe.iloc[row_index, column_index] = value

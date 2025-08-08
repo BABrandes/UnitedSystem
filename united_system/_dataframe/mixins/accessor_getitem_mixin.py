@@ -284,10 +284,10 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
                 if isinstance(key_0, ColumnKey|str) and isinstance(key_1, int):
                     column_key: CK = key_0 # type: ignore
-                    return self._cell_get_lowlevel_value(key_1, column_key)
+                    return self._cell_get_value(key_1, column_key)
                 elif isinstance(key_0, int) and isinstance(key_1, ColumnKey|str):
                     column_key: CK = key_1 # type: ignore
-                    return self._cell_get_lowlevel_value(key_0, column_key)
+                    return self._cell_get_value(key_0, column_key)
                 elif isinstance(key_0, ColumnKey|str) and isinstance(key_1, slice):
                     column_key: CK = key_0 # type: ignore
                     _slice: slice = _ensure_valid_slice(key_1)

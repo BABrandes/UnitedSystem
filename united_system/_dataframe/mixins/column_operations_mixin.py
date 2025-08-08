@@ -13,6 +13,8 @@ from ..._dataframe.column_type import ColumnType, ARRAY_TYPE
 from ..._units_and_dimension.unit import Unit
 from ..._units_and_dimension.has_unit_protocol import HasUnit
 import numpy as np
+from ..._utils.scalar_type import SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
 
 AT = TypeVar("AT", bound=ARRAY_TYPE)
 
@@ -168,7 +170,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     def _column_set_values(self, column_key: CK, array: ARRAY_TYPE) -> None:
         """
-        Replace the data in a column.
+        Internal: Replace the data in a column. (no lock, no read-only check)
         
         Args:
             column_key (CK): The column key
@@ -223,4 +225,43 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             self._internal_dataframe_column_names.pop(current_column_key)
             self._internal_dataframe_column_names[new_column_key] = new_dataframe_column_name
             self._column_types[new_column_key] = self._column_types.pop(current_column_key)
-            self._column_units[new_column_key] = self._column_units.pop(current_column_key) 
+            self._column_units[new_column_key] = self._column_units.pop(current_column_key)
+
+    def _column_fill(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE, first_index: Optional[int] = None, last_index: Optional[int] = None) -> None:
+        """
+        Internal: Fill a column with a value. (no lock, no read-only check)
+
+        Args:
+            column_key (CK): The column key
+            item (SCALAR_TYPE|VALUE_TYPE): The value to fill the column with
+            first_index (Optional[int]): The first index to fill, if None, the first index is 0
+            last_index (Optional[int]): The last index to fill, if None, the last index is the length of the dataframe
+
+        Raises:
+        
+        """
+
+        if first_index is None:
+            first_index = 0
+        if last_index is None:
+            last_index = len(self._internal_dataframe)
+        
+        if first_index < 0 or first_index >= len(self._internal_dataframe):
+            raise ValueError(f"First index {first_index} is out of bounds.")
+        if last_index < 0 or last_index >= len(self._internal_dataframe):
+            raise ValueError(f"Last index {last_index} is out of bounds.")
+        
+        if first_index > last_index:
+            raise ValueError(f"First index {first_index} is greater than last index {last_index}.")
+        
+        # Fill the column
+        if not self._column_types[column_key].check_item_compatibility(item, self._column_units[column_key]):
+            raise ValueError(f"The provided item is not compatible with the column {column_key}.")
+        
+        self._internal_dataframe[self._internal_dataframe_column_names[column_key]][first_index:last_index] = item
+
+    def column_fill(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE, first_index: Optional[int] = None, last_index: Optional[int] = None) -> None:
+        """
+        Fill a column with a value.
+        """
+        

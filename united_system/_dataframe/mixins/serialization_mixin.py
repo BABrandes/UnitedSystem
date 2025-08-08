@@ -52,7 +52,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return json_data
         
     @classmethod
-    def from_json(cls, data: dict[str, Any], column_key_type: Type[CK], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK]=SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
+    def from_json(cls, data: dict[str, Any], column_key_type: Type[CK], internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(), **_: Any) -> "UnitedDataframe[CK]":
 
         """
         Load dataframe from JSON format.
@@ -149,7 +149,7 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         cls,
         group: Union[h5py.Group, Path, tuple[str, h5py.Group]],
         column_key_type: Type[CK],
-        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter[CK] = SimpleInternalDataFrameNameFormatter(),
+        internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter = SimpleInternalDataFrameNameFormatter(),
         **kwargs: Any
     ) -> "UnitedDataframe[CK]":
         """
@@ -180,8 +180,8 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 
                 # Infer column type from pandas dtype
                 column_type: ColumnType = ColumnType.from_dtype(df[col_name].dtype, has_unit=(unit is not None)) # type: ignore
-                
-                columns[column_key] = (column_type, col_name, unit)
+
+                columns[column_key] = (column_type, col_name, unit) # type: ignore
             
             united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(
                 dataframe=df,

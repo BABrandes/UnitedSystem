@@ -31,7 +31,7 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     def _helper_return_numeric_scalar(self, raw_value: Any, column_key: CK, expected_type: type[NST]|None) -> NUMERIC_SCALAR_TYPE|NST:
         if expected_type is not None:
-            if not self._column_types[column_key].check_scalar_type(expected_type):
+            if not self._column_types[column_key].check_type_compatibility(expected_type, "scalar"):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
             result: NST = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
         else:
@@ -40,7 +40,7 @@ class ColumnStatisticsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     
     def _helper_return_scalar(self, raw_value: Any, column_key: CK, expected_type: type[ST]|None) -> SCALAR_TYPE|ST:
         if expected_type is not None:
-            if not self._column_types[column_key].check_scalar_type(expected_type):
+            if not self._column_types[column_key].check_type_compatibility(expected_type, "scalar"):
                 raise ValueError(f"Column {column_key} is not a {expected_type} column.")
             result: ST = self._column_types[column_key].get_scalar_value_from_dataframe(raw_value, self._column_units[column_key]) # type: ignore
         else:

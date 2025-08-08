@@ -1408,15 +1408,9 @@ class ColumnType(Enum):
                         return option
                 raise ValueError(f"No column type found for UnitedScalar type {scalar_or_array_type} with precision {precision}. Tried: {[ct.name for ct in options]}")
         
-    # ------------ Check the compatibility of a scalar or array with the column type ------------
+    # ------------ Check the compatibility of a value, scalar or array with the column type ------------
 
-    @overload
-    def check_compatibility(self, scalar_or_array_value: ARRAY_TYPE, unit: Optional[Unit]=None) -> bool: ...
-    @overload
-    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE, unit: Optional[Unit]=None) -> bool: ...
-    @overload
-    def check_compatibility(self, scalar_or_array_value: BaseArray[Any, Any, Any]) -> bool: ...
-    def check_compatibility(self, scalar_or_array_value: SCALAR_TYPE | ARRAY_TYPE|BaseArray[Any, Any, Any], unit: Optional[Unit]=None) -> bool:
+    def check_item_compatibility(self, item: VALUE_TYPE | SCALAR_TYPE | ARRAY_TYPE, column_unit: Optional[Unit]) -> bool:
         """
         Check if a scalar or array value is compatible with this column type.
         
@@ -1424,7 +1418,7 @@ class ColumnType(Enum):
         including unit compatibility checks for united types.
         
         Args:
-            scalar_or_array_value (SCALAR_TYPE | ARRAY_TYPE|BaseArray[Any, Any, Any]): 
+            item (VALUE_TYPE | SCALAR_TYPE | ARRAY_TYPE): 
                 The value to check for compatibility.
             unit (Optional[Unit]): 
                 Optional unit to check against for united types.
@@ -1435,212 +1429,158 @@ class ColumnType(Enum):
         
         Example:
             >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_compatibility(3.14)
+            >>> is_compatible = column_type.check_compatibility(3.14, None)
             >>> print(is_compatible)  # True
             
             >>> column_type = ColumnType.REAL_NUMBER_64
             >>> scalar = RealUnitedScalar(5.0, Unit("m"))
             >>> is_compatible = column_type.check_compatibility(scalar, Unit("km"))
             >>> print(is_compatible)  # True (meters are compatible with kilometers)
+            
+            >>> column_type = ColumnType.REAL_NUMBER_64
+            >>> scalar = RealUnitedScalar(5.0, Unit("m"))
+            >>> is_compatible = column_type.check_compatibility(scalar, None)
+            >>> print(is_compatible)  # True (no unit validation)
         """
         if self.has_unit:
-            if not isinstance(scalar_or_array_value, HasUnit):
+            if not isinstance(item, HasUnit):
                 return False
         match self:
             case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                if isinstance(scalar_or_array_value, RealUnitedScalar) or isinstance(scalar_or_array_value, RealUnitedArray):
-                    if unit is not None:
-                        if not scalar_or_array_value.unit.compatible_to(unit):
+                if isinstance(item, RealUnitedScalar) or isinstance(item, RealUnitedArray):
+                    if column_unit is not None:
+                        if not item.unit.compatible_to(column_unit):
                             return False
                     return True
                 else:
                     return False
             case ColumnType.COMPLEX_NUMBER_128:
-                if isinstance(scalar_or_array_value, ComplexUnitedScalar) or isinstance(scalar_or_array_value, ComplexUnitedArray):
-                    if unit is not None:
-                        if not scalar_or_array_value.unit.compatible_to(unit):
+                if isinstance(item, ComplexUnitedScalar) or isinstance(item, ComplexUnitedArray):
+                    if column_unit is not None:
+                        if not item.unit.compatible_to(column_unit):
                             return False
                     return True
                 else:
                     return False
             case ColumnType.STRING:
-                if isinstance(scalar_or_array_value, str) or isinstance(scalar_or_array_value, StringArray):
+                if isinstance(item, str) or isinstance(item, StringArray):
                     return True
                 else:
                     return False
             case ColumnType.BOOL:
-                if isinstance(scalar_or_array_value, bool) or isinstance(scalar_or_array_value, BoolArray):
+                if isinstance(item, bool) or isinstance(item, BoolArray):
                     return True
                 else:
                     return False
             case ColumnType.TIMESTAMP:
-                if isinstance(scalar_or_array_value, Timestamp) or isinstance(scalar_or_array_value, TimestampArray):
+                if isinstance(item, Timestamp) or isinstance(item, TimestampArray):
                     return True
                 else:
                     return False
             case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                if isinstance(scalar_or_array_value, int) or isinstance(scalar_or_array_value, IntArray):
+                if isinstance(item, int) or isinstance(item, IntArray):
                     return True
                 else:
                     return False
             case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                if isinstance(scalar_or_array_value, float) or isinstance(scalar_or_array_value, FloatArray):
+                if isinstance(item, float) or isinstance(item, FloatArray):
                     return True
                 else:
                     return False
             case ColumnType.COMPLEX_128:
-                if isinstance(scalar_or_array_value, complex) or isinstance(scalar_or_array_value, ComplexUnitedArray):
+                if isinstance(item, complex) or isinstance(item, ComplexUnitedArray):
                     return True
                 else:
                     return False
                 
-    def check_value_type(self, value: type|object) -> bool:
+    def check_type_compatibility(self, value_type: type, check_kind: Literal["value", "scalar", "array"]) -> bool:
         """
-        Check if a value is compatible with this column type.
+        Check if a type is compatible with this column type.
         
-        This method verifies whether a given value matches the expected
-        value type for this column type.
+        This method verifies whether a given type matches the expected
+        type for this column type based on the specified check kind.
         
         Args:
-            value (type|object): The value to check for compatibility.
-                Can be a type object or an instance.
+            value_type (type): The type to check for compatibility.
+            check_kind (Literal["value", "scalar", "array"]): The kind of type to check:
+                - "value": Check against the column's value type (e.g., float, str)
+                - "scalar": Check against the column's scalar type (e.g., RealUnitedScalar, float)
+                - "array": Check against the column's array type (e.g., RealUnitedArray, FloatArray)
         
         Returns:
-            bool: True if the value is compatible with this column type, False otherwise.
+            bool: True if the type is compatible with this column type, False otherwise.
         
         Example:
             >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_value_type(3.14)
-            >>> print(is_compatible)  # True
-            
-            >>> column_type = ColumnType.STRING
-            >>> is_compatible = column_type.check_value_type("hello")
-            >>> print(is_compatible)  # True
-        """
-        # If it's a type, check if it's the correct type
-        if isinstance(value, type):
-            match self:
-                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    return value == float
-                case ColumnType.COMPLEX_NUMBER_128:
-                    return value == complex
-                case ColumnType.STRING:
-                    return value == str
-                case ColumnType.BOOL:
-                    return value == bool
-                case ColumnType.TIMESTAMP:
-                    return value == Timestamp
-                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                    return value == int
-                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                    return value == float
-                case ColumnType.COMPLEX_128:
-                    return value == complex
-        else:
-            # If it's a value, check if it's of the correct type
-            match self:
-                case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                    return isinstance(value, float)
-                case ColumnType.COMPLEX_NUMBER_128:
-                    return isinstance(value, complex)
-                case ColumnType.STRING:
-                    return isinstance(value, str)
-                case ColumnType.BOOL:
-                    return isinstance(value, bool)
-                case ColumnType.TIMESTAMP:
-                    return isinstance(value, Timestamp)
-                case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                    return isinstance(value, int)
-                case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                    return isinstance(value, float)
-                case ColumnType.COMPLEX_128:
-                    return isinstance(value, complex)
-
-    def check_scalar_type(self, value_type: type|object) -> bool:
-        """
-        Check if a scalar type is compatible with this column type.
-        
-        This method verifies whether a given scalar type matches the expected
-        scalar type for this column type.
-        
-        Args:
-            value_type (type|object): The scalar type to check for compatibility.
-                Can be a type object or an instance (in which case its class is used).
-        
-        Returns:
-            bool: True if the scalar type is compatible with this column type, False otherwise.
-        
-        Example:
-            >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_scalar_type(float)
+            >>> is_compatible = column_type.check_type_compatibility(float, "value")
             >>> print(is_compatible)  # True
             
             >>> column_type = ColumnType.REAL_NUMBER_64
-            >>> is_compatible = column_type.check_scalar_type(RealUnitedScalar)
+            >>> is_compatible = column_type.check_type_compatibility(RealUnitedScalar, "scalar")
             >>> print(is_compatible)  # True
-        """
-        if not isinstance(value_type, type):
-            value_type = value_type.__class__
-        match self:
-            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return issubclass(value_type, RealUnitedScalar)
-            case ColumnType.COMPLEX_NUMBER_128:
-                return issubclass(value_type, ComplexUnitedScalar)
-            case ColumnType.STRING:
-                return issubclass(value_type, str)
-            case ColumnType.BOOL:
-                return issubclass(value_type, bool)
-            case ColumnType.TIMESTAMP:
-                return issubclass(value_type, Timestamp)
-            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return issubclass(value_type, int)
-            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return issubclass(value_type, float)
-            case ColumnType.COMPLEX_128:
-                return issubclass(value_type, complex)
             
-    def check_array_type(self, value_type: type|object) -> bool:
-        """
-        Check if an array type is compatible with this column type.
-        
-        This method verifies whether a given array type matches the expected
-        array type for this column type.
-        
-        Args:
-            value_type (type|object): The array type to check for compatibility.
-                Can be a type object or an instance (in which case its class is used).
-        
-        Returns:
-            bool: True if the array type is compatible with this column type, False otherwise.
-        
-        Example:
             >>> column_type = ColumnType.FLOAT_64
-            >>> is_compatible = column_type.check_array_type(FloatArray)
-            >>> print(is_compatible)  # True
-            
-            >>> column_type = ColumnType.REAL_NUMBER_64
-            >>> is_compatible = column_type.check_array_type(RealUnitedArray)
+            >>> is_compatible = column_type.check_type_compatibility(FloatArray, "array")
             >>> print(is_compatible)  # True
         """
-        if not isinstance(value_type, type):
-            value_type = value_type.__class__
-        match self:
-            case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
-                return issubclass(value_type, RealUnitedArray)
-            case ColumnType.COMPLEX_NUMBER_128:
-                return issubclass(value_type, ComplexUnitedArray)
-            case ColumnType.STRING:
-                return issubclass(value_type, StringArray)
-            case ColumnType.BOOL:
-                return issubclass(value_type, BoolArray)
-            case ColumnType.TIMESTAMP:
-                return issubclass(value_type, TimestampArray)
-            case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
-                return issubclass(value_type, IntArray)
-            case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
-                return issubclass(value_type, FloatArray)
-            case ColumnType.COMPLEX_128:
-                return issubclass(value_type, ComplexArray)
+        
+        match check_kind:
+            case "value":
+                match self:
+                    case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                        return value_type == float
+                    case ColumnType.COMPLEX_NUMBER_128:
+                        return value_type == complex
+                    case ColumnType.STRING:
+                        return value_type == str
+                    case ColumnType.BOOL:
+                        return value_type == bool
+                    case ColumnType.TIMESTAMP:
+                        return value_type == Timestamp
+                    case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                        return value_type == int
+                    case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                        return value_type == float
+                    case ColumnType.COMPLEX_128:
+                        return value_type == complex
+            case "scalar":
+                match self:
+                    case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                        return issubclass(value_type, RealUnitedScalar)
+                    case ColumnType.COMPLEX_NUMBER_128:
+                        return issubclass(value_type, ComplexUnitedScalar)
+                    case ColumnType.STRING:
+                        return issubclass(value_type, str)
+                    case ColumnType.BOOL:
+                        return issubclass(value_type, bool)
+                    case ColumnType.TIMESTAMP:
+                        return issubclass(value_type, Timestamp)
+                    case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                        return issubclass(value_type, int)
+                    case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                        return issubclass(value_type, float)
+                    case ColumnType.COMPLEX_128:
+                        return issubclass(value_type, complex)
+            case "array":
+                match self:
+                    case ColumnType.REAL_NUMBER_64 | ColumnType.REAL_NUMBER_32:
+                        return issubclass(value_type, RealUnitedArray)
+                    case ColumnType.COMPLEX_NUMBER_128:
+                        return issubclass(value_type, ComplexUnitedArray)
+                    case ColumnType.STRING:
+                        return issubclass(value_type, StringArray)
+                    case ColumnType.BOOL:
+                        return issubclass(value_type, BoolArray)
+                    case ColumnType.TIMESTAMP:
+                        return issubclass(value_type, TimestampArray)
+                    case ColumnType.INTEGER_64 | ColumnType.INTEGER_32 | ColumnType.INTEGER_16 | ColumnType.INTEGER_8:
+                        return issubclass(value_type, IntArray)
+                    case ColumnType.FLOAT_64 | ColumnType.FLOAT_32:
+                        return issubclass(value_type, FloatArray)
+                    case ColumnType.COMPLEX_128:
+                        return issubclass(value_type, ComplexArray)
+            case _: # type: ignore[unreachable]
+                raise ValueError(f"Invalid check kind: {check_kind}")
 
     def __reduce_ex__(self, _: Any):
         """
