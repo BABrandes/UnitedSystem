@@ -7,7 +7,7 @@ including complex filters, multi-column filters, and filter combinations.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Callable, TYPE_CHECKING, overload, Mapping
+from typing import Callable, TYPE_CHECKING, Mapping, Literal
 from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE, VALUE_TYPE
 from ..._arrays.bool_array import BoolArray
 
@@ -133,21 +133,13 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             mask: BoolArray = self.mask_get_in_range(column_key, min_value, max_value)
             return self._mask_apply_to_dataframe(mask)
     
-    @overload
-    def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[VALUE_TYPE, VALUE_TYPE]]) -> "UnitedDataframe[CK]":
-        ...
-    @overload
-    def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
-        ...
-    def filter_columns_in_range(self, range_dict:
-                                Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]|
-                                Mapping[CK, tuple[VALUE_TYPE, VALUE_TYPE]]|
-                                Mapping[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
+    def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]], filter_mode: Literal["inclusive", "exclusive"] = "inclusive") -> "UnitedDataframe[CK]":
         """
         Filter dataframe where multiple columns are within a specific range.
 
         Args:
             range_dict (Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]): A dictionary of column keys and their range.
+            filter_mode (Literal["inclusive", "exclusive"]): The mode of the filter. "inclusive" means that the min_item and max_item are included and will be included in result.
             
         Returns:
             UnitedDataframe: Filtered dataframe
@@ -155,7 +147,56 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             masks: list[BoolArray] = []
             for column_key, (min_value, max_value) in range_dict.items():
-                masks.append(self.mask_get_in_range(column_key, min_value, max_value))
+                masks.append(self.mask_get_in_range(column_key, min_value, max_value, filter_mode))
+            return self.filter_and(*masks)
+        
+    def filter_columns_outside_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]], filter_mode: Literal["inclusive", "exclusive"] = "exclusive") -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where multiple columns are outside a specific range.
+
+        Args:
+            range_dict (Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]): A dictionary of column keys and their range.
+            filter_mode (Literal["inclusive", "exclusive"]): The mode of the filter. "inclusive" means that the min_item and max_item are included and will be included in result.
+
+        Returns:
+            UnitedDataframe: Filtered dataframe
+        """
+        with self._rlock:
+            masks: list[BoolArray] = []
+            for column_key, (min_value, max_value) in range_dict.items():
+                masks.append(self.mask_get_outside_range(column_key, min_value, max_value, filter_mode))
+            return self.filter_and(*masks)
+        
+    def filter_columns_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where multiple columns are equal to a specific value.
+
+        Args:
+            items_dict (Mapping[CK, SCALAR_TYPE|VALUE_TYPE]): A dictionary of column keys and their values.
+
+        Returns:
+            UnitedDataframe: Filtered dataframe
+        """
+        with self._rlock:
+            masks: list[BoolArray] = []
+            for column_key, item in items_dict.items():
+                masks.append(self.mask_get_equal_to(column_key, item))
+            return self.filter_and(*masks)
+        
+    def filter_columns_not_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
+        """
+        Filter dataframe where multiple columns are not equal to a specific value.
+
+        Args:
+            items_dict (Mapping[CK, SCALAR_TYPE|VALUE_TYPE]): A dictionary of column keys and their values.
+
+        Returns:
+            UnitedDataframe: Filtered dataframe
+        """
+        with self._rlock:
+            masks: list[BoolArray] = []
+            for column_key, item in items_dict.items():
+                masks.append(self.mask_get_not_equal_to(column_key, item))
             return self.filter_and(*masks)
         
     def filter_column_get_complete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
