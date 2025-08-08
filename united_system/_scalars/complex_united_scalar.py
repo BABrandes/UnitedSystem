@@ -4,6 +4,7 @@ from .._units_and_dimension.unit import Unit
 from typing import Any, Type, Optional, Union
 import h5py
 from .._units_and_dimension.dimension import Dimension
+from .._units_and_dimension.has_unit_protocol import HasUnit
 
 @dataclass(frozen=True, slots=True, init=False)
 class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
@@ -131,15 +132,13 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
     def is_infinite(self) -> bool:
         raise NotImplementedError("ComplexUnitedScalar.is_infinite is not implemented")
     
-    def compatible_to(self, *args: "ComplexUnitedScalar") -> bool:
-        if len(args) == 0:
-            return True
-        if len(args) == 1:
-            return self.dimension == args[0].dimension
-        for arg in args:
-            if arg.dimension != self.dimension:
-                return False
-        return True
+    def compatible_to(self, *args: Union["HasUnit", "Unit", "Dimension"]) -> bool:
+        """
+        Check if the dimension is compatible with other dimensions.
+        Two dimensions are compatible if they have the same subscripts
+        and the same proper exponents.
+        """
+        return Dimension.are_compatible(self.dimension, *args)
     
     def scalar_in_canonical_unit(self) -> "ComplexUnitedScalar":
         return ComplexUnitedScalar(
@@ -147,7 +146,9 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
             self.dimension,
             self.dimension.canonical_unit)
     
-    def scalar_in_unit(self, unit: Unit) -> "ComplexUnitedScalar":
+    def scalar_in_unit(self, unit: Union[Unit, str]) -> "ComplexUnitedScalar":
+        if isinstance(unit, str):
+            unit = Unit(unit)
         if not unit.compatible_to(self.dimension):
             raise ValueError(f"The suggested display unit {unit} is not compatible with the canonical dimension {self.dimension}")
         return ComplexUnitedScalar(

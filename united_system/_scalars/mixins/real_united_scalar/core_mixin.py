@@ -1,6 +1,6 @@
 """Core functionality for RealUnitedScalar."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
@@ -18,18 +18,13 @@ class RealUnitedScalarCore(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
 # dimension is provided by the dataclass field, no property needed
 
-    def compatible_to(self, *args: "RealUnitedScalar") -> bool:
-        """Check if this scalar is compatible with other scalars."""
-        if len(args) == 0:
-            return True
-        # Handle both single argument and multiple arguments
-        if len(args) == 1:
-            return self.dimension == args[0].dimension
-        # Multiple arguments - check all
-        for arg in args:
-            if arg.dimension != self.dimension:
-                return False
-        return True
+    def compatible_to(self, *args: Union["RealUnitedScalar", "Unit", "Dimension"]) -> bool:
+        """
+        Check if the dimension is compatible with other dimensions.
+        Two dimensions are compatible if they have the same subscripts
+        and the same proper exponents.
+        """
+        return Dimension.are_compatible(self.dimension, *args)  
 
     def abs(self) -> "RealUnitedScalar":
         """Return the absolute value of this scalar."""
