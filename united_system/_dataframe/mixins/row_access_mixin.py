@@ -7,7 +7,7 @@ head, tail, first, last, and row iteration.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Sequence, TYPE_CHECKING
+from typing import Sequence, TYPE_CHECKING, Mapping
 from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE
 from ..accessors._row_accessor import RowAccessor
 
