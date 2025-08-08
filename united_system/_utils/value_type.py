@@ -5,4 +5,4 @@ from pandas import Timestamp
 VALUE_TYPE: TypeAlias = float|complex|str|bool|int|Timestamp
 
 # Runtime type tuples for basic types
-VALUE_TYPE_RUNTIME: tuple[type, ...] = (float, complex, str, bool, int, Timestamp) 
+VALUE_TYPE_RUNTIME: tuple[type, ...] = (float, complex, str, bool, int, Timestamp)

@@ -7,7 +7,7 @@ including complex filters, multi-column filters, and filter combinations.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import Callable, TYPE_CHECKING, overload
+from typing import Callable, TYPE_CHECKING, overload, Mapping
 from .dataframe_protocol import UnitedDataframeProtocol, CK, SCALAR_TYPE, VALUE_TYPE
 from ..._arrays.bool_array import BoolArray
 
@@ -134,20 +134,20 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             return self._mask_apply_to_dataframe(mask)
     
     @overload
-    def filter_columns_in_range(self, range_dict: dict[CK, tuple[VALUE_TYPE, VALUE_TYPE]]) -> "UnitedDataframe[CK]":
+    def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[VALUE_TYPE, VALUE_TYPE]]) -> "UnitedDataframe[CK]":
         ...
     @overload
-    def filter_columns_in_range(self, range_dict: dict[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
+    def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
         ...
-    def filter_columns_in_range(self, range_dict: 
-                                dict[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]|
-                                dict[CK, tuple[VALUE_TYPE, VALUE_TYPE]]|
-                                dict[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
+    def filter_columns_in_range(self, range_dict:
+                                Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]|
+                                Mapping[CK, tuple[VALUE_TYPE, VALUE_TYPE]]|
+                                Mapping[CK, tuple[SCALAR_TYPE, SCALAR_TYPE]]) -> "UnitedDataframe[CK]":
         """
         Filter dataframe where multiple columns are within a specific range.
 
         Args:
-            range_dict (dict[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]): A dictionary of column keys and their range.
+            range_dict (Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]]): A dictionary of column keys and their range.
             
         Returns:
             UnitedDataframe: Filtered dataframe
