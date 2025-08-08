@@ -6,7 +6,7 @@ setting, and display unit management.
 
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Mapping
 import numpy as np
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._units_and_dimension.unit import Unit
