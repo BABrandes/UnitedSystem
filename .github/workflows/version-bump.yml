@@ -90,6 +90,10 @@ jobs:
         [bumpversion:file:pyproject.toml]
         search = version = "{current_version}"
         replace = version = "{new_version}"
+        
+        [bumpversion:file:united_system/__init__.py]
+        search = __version__ = '{current_version}'
+        replace = __version__ = '{new_version}'
         EOF
         
         # Perform the version bump
