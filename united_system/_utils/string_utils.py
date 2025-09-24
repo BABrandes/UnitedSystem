@@ -32,7 +32,7 @@ def str_to_float(value: str, decimal_separator: Decimal_Seperator_Keys|None = No
         COMMA_AS_DECIMAL_SEPARATOR_LOCALE: str = 'de_DE.UTF-8'
 
         current_locale_tuple: tuple[str|None, str|None] = locale.getlocale(locale.LC_NUMERIC)
-        current_locale: str|None = current_locale_tuple[0] if current_locale_tuple else None
+        current_locale = current_locale_tuple[0] if current_locale_tuple else None
         target_locale: str|None = None
 
         #Second, check if the decimal separator is provided

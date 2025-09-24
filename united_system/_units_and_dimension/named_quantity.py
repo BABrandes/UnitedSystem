@@ -167,7 +167,7 @@ class NamedQuantity(Enum):
             if has_single_element_tag:
                 self._unit_element: Optional["UnitElement"] = UnitElement.parse_string(unit_element_str, "nominator")
             else:
-                self._unit_element: Optional["UnitElement"] = None
+                self._unit_element = None
         return self._unit_element
 
     @property

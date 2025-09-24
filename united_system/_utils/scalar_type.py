@@ -1,4 +1,4 @@
-from typing import TypeAlias, TYPE_CHECKING, Union, Any
+from typing import TypeAlias, TYPE_CHECKING, Union
 from .._scalars.base_scalar import BaseScalar
 from .value_type import VALUE_TYPE
 from pandas import Timestamp
@@ -16,10 +16,10 @@ NUMERIC_SCALAR_TYPE: TypeAlias = Union["RealUnitedScalar", "ComplexUnitedScalar"
 NUMERIC_SCALAR_TYPE_RUNTIME: tuple[type, ...] = (float, complex, int, Timestamp, BaseScalar)
 
 @staticmethod
-def is_scalar(item: Any) -> bool:
-    return isinstance(item, SCALAR_TYPE_RUNTIME)
+def is_scalar(obj: object) -> bool:
+    return isinstance(obj, SCALAR_TYPE_RUNTIME)
     
 @staticmethod
-def is_numeric_scalar(item: Any) -> bool:
-    return isinstance(item, NUMERIC_SCALAR_TYPE_RUNTIME)
+def is_numeric_scalar(obj: object) -> bool:
+    return isinstance(obj, NUMERIC_SCALAR_TYPE_RUNTIME)
     

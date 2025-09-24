@@ -535,7 +535,7 @@ class Dimension:
 
             # Multiply log dimensions
             log_dimensions: set["Dimension"] = set(self._log_dimensions.keys()) | set(other._log_dimensions.keys()) # type: ignore
-            new_log_dimensions: dict["Dimension", float] = {}
+            new_log_dimensions = {}
             for log_dimension in log_dimensions:
                 if log_dimension in self._log_dimensions and log_dimension in other._log_dimensions:
                     new_exponent: float = self._log_dimensions[log_dimension] + other._log_dimensions[log_dimension] # type: ignore
@@ -1201,7 +1201,7 @@ class Dimension:
             if subscript == "":
                 subscript_string: str = ""
             else:
-                subscript_string: str = "_" + subscript # type: ignore
+                subscript_string = "_" + subscript # type: ignore
             for i, exponent in enumerate(values):
                 exponent: float = format_exponent(exponent)
                 if exponent == 0.0:
@@ -1306,7 +1306,7 @@ class Dimension:
             if seperator == "*":
                 position: float = 1.0
             elif seperator == "/":
-                position: float = -1.0
+                position = -1.0
             else:
                 raise ValueError("Invalid seperator.")
             
@@ -1353,7 +1353,7 @@ class Dimension:
                 else:
                     pow_chae_index: int = part.rfind("^")
                     exponent: float = float(part[pow_chae_index + 1:])
-                    log_exponent: float = position * exponent
+                    log_exponent = position * exponent
 
                 log_dimensions[log_dimension] = log_exponent
             else:
@@ -1362,7 +1362,7 @@ class Dimension:
                     subscript: str = ""
                 else:
                     dimension_element, subscript = part.split("_", 1)
-                    subscript: str = subscript
+                    subscript = subscript
 
                 # Skip "1" as it's just a placeholder
                 if dimension_element == "1":
@@ -1373,10 +1373,10 @@ class Dimension:
 
                 if dimension_element.count("^") == 0:
                     symbol: str = dimension_element
-                    exponent: float = 1.0 * position
+                    exponent = 1.0 * position
                 else:
                     symbol, exponent = dimension_element.split("^") # type: ignore
-                    exponent: float = float(exponent) * position
+                    exponent = float(exponent) * position
 
                 if DimensionSymbol.is_dimension_symbol(symbol):
                     proper_exponents_lists[subscript][DimensionSymbol.get_index(symbol)] = exponent
@@ -1436,11 +1436,11 @@ class Dimension:
             log_unit_elements: list[tuple[UnitElement, "Dimension"]] = []
             for log_dimension, log_exponent in self._log_dimensions.items():
                 if abs(log_exponent) > EPSILON:
-                    unit_element: UnitElement = UnitElement(prefix=None, unit_symbol=BASE_10_LOG_UNIT_SYMBOL, exponent=log_exponent)
+                    unit_element = UnitElement(prefix=None, unit_symbol=BASE_10_LOG_UNIT_SYMBOL, exponent=log_exponent)
                     log_unit_elements.append((unit_element, log_dimension))
 
             unreduced_canonical_unit: Unit = Unit._construct(unit_elements, log_unit_elements) # type: ignore
-            self._canonical_unit: Unit = Unit.reduce_unit(unreduced_canonical_unit) # type: ignore
+            self._canonical_unit = Unit.reduce_unit(unreduced_canonical_unit) # type: ignore
 
         return self._canonical_unit
 

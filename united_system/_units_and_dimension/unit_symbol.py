@@ -89,7 +89,7 @@ class UnitSymbol(Enum):
     STONE = UnitSymbolInformation.create(                 "stone",                 "st",                NamedQuantity.MASS,                     symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT},      factor=6.35029)
     TONNE = UnitSymbolInformation.create(                 "tonne",                 "t",                 NamedQuantity.MASS,                     symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT},      factor=1000)
     TORR = UnitSymbolInformation.create(                  "torr",                  "torr",              NamedQuantity.PRESSURE,                 symbol_tags={UNIT_SYMBOL_TAG.US_CUSTOMARY_SYSTEM},  factor=133.322)
-    TURN = UnitSymbolInformation.create(                  "turn",                  "tr",                NamedQuantity.ANGLE,                    symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT},      factor=2*math.pi)
+    TURN = UnitSymbolInformation.create(                  "turn",                  ["tr", "turn"],      NamedQuantity.ANGLE,                    symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT},      factor=2*math.pi)
     VOLT = UnitSymbolInformation.create(                  "volt",                  "V",                 NamedQuantity.VOLTAGE,                  symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
     WEBER = UnitSymbolInformation.create(                 "weber",                 "Wb",                NamedQuantity.MAGNETIC_FLUX,            symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
     WATT = UnitSymbolInformation.create(                  "watt",                  "W",                 NamedQuantity.POWER,                    symbol_tags={UNIT_SYMBOL_TAG.SI_DERIVED_UNIT})
