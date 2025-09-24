@@ -63,6 +63,7 @@ jobs:
         else
           # Check commit messages for version bump indicators
           COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
           if echo "$COMMIT_MSG" | grep -qi "major\|breaking"; then
             VERSION_TYPE="major"
           elif echo "$COMMIT_MSG" | grep -qi "minor\|feature"; then
