@@ -3,11 +3,6 @@ name: Version Bump
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'examples/**'
-      - '.github/workflows/version-bump.yml'
   workflow_dispatch:
     inputs:
       version_type:
