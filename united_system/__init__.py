@@ -62,6 +62,6 @@ __all__ = [
     'is_numeric_scalar',
     'is_array'
 ]
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __author__ = 'Benedikt Axel Brandes'
 __year__ = '2025'
