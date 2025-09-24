@@ -1,13 +1,6 @@
 name: Version Bump
 
 on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'examples/**'
-      - '.github/workflows/version-bump.yml'
   workflow_dispatch:
     inputs:
       version_type:
@@ -25,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     
     steps:
     - name: Checkout repository
@@ -56,25 +48,6 @@ jobs:
         echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
         echo "Current version: $CURRENT_VERSION"
     
-    - name: Determine version bump type
-      id: version_type
-      run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION_TYPE="${{ github.event.inputs.version_type }}"
-        else
-          # Check commit messages for version bump indicators
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          if echo "$COMMIT_MSG" | grep -qi "major\|breaking"; then
-            VERSION_TYPE="major"
-          elif echo "$COMMIT_MSG" | grep -qi "minor\|feature"; then
-            VERSION_TYPE="minor"
-          else
-            VERSION_TYPE="patch"
-          fi
-        fi
-        echo "version_type=$VERSION_TYPE" >> $GITHUB_OUTPUT
-        echo "Version bump type: $VERSION_TYPE"
-    
     - name: Bump version
       id: bump_version
       run: |
@@ -97,7 +70,7 @@ jobs:
         EOF
         
         # Perform the version bump
-        bump2version ${{ steps.version_type.outputs.version_type }} --verbose
+        bump2version ${{ github.event.inputs.version_type }} --verbose
         
         # Get the new version
         NEW_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
