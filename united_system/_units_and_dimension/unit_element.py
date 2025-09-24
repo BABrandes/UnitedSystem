@@ -208,7 +208,7 @@ class UnitElement:
                 try:
                     from .unit_symbol import UnitSymbol
                     unit_symbol = UnitSymbol.from_symbol(unit_part[len(prefix.prefix_string):])
-                    simple_unit_element: UnitElement = UnitElement(prefix, unit_symbol, exponent)
+                    simple_unit_element = UnitElement(prefix, unit_symbol, exponent)
                     _CACHE__SIMPLE_UNIT_ELEMENT[cache_key] = simple_unit_element
                     return simple_unit_element
                 except ValueError:
