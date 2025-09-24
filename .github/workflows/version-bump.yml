@@ -96,6 +96,9 @@ jobs:
         replace = __version__ = '{new_version}'
         EOF
         
+        # Add the config file to git first
+        git add .bumpversion.cfg
+        
         # Perform the version bump
         bump2version ${{ steps.version_type.outputs.version_type }} --verbose
         
