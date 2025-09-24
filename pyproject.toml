@@ -47,6 +47,7 @@ dev = [
     "flake8>=4.0.0",
     "mypy>=0.900",
     "pyright>=1.1.0",
+    "bump2version>=1.0.0",
 ]
 docs = [
     "sphinx>=4.0.0",
