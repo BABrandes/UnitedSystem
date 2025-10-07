@@ -66,7 +66,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if isinstance(dimension_or_unit, Unit):
             dimension: Dimension = dimension_or_unit.dimension
         else:
-            dimension: Dimension = dimension_or_unit
+            dimension = dimension_or_unit
         return cls(canonical_value, dimension, display_unit) # type: ignore
     
     @classmethod
@@ -122,8 +122,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     @classmethod
     def create_dimensionless(cls, value: float) -> "RealUnitedScalar":
         """Create a dimensionless scalar."""
-        from ...._scalars.real_united_scalar import RealUnitedScalar
-        return RealUnitedScalar.create_from_canonical_value(value, Dimension.dimensionless_dimension(), None)
+        return cls.create_from_canonical_value(value, Dimension.dimensionless_dimension(), None)
 
     #########################################################
     # Factory methods for special values (cached)
@@ -147,6 +146,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if float("inf") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("inf")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("inf")]:
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             cls._CACHE_SPECIAL_VALUES[float("inf")][unit_or_dimension] = RealUnitedScalar(float("inf"), unit_or_dimension)
         return cls._CACHE_SPECIAL_VALUES[float("inf")][unit_or_dimension]
     
@@ -166,6 +166,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if float("-inf") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("-inf")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("-inf")]:
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             cls._CACHE_SPECIAL_VALUES[float("-inf")][unit_or_dimension] = RealUnitedScalar(float("-inf"), unit_or_dimension)
         return cls._CACHE_SPECIAL_VALUES[float("-inf")][unit_or_dimension]
     
@@ -185,6 +186,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if float("nan") not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[float("nan")] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("nan")]:
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension] = RealUnitedScalar(float("nan"), unit_or_dimension)
         return cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension]
         
@@ -204,6 +206,7 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if 0.0 not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[0.0] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[0.0]:
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             cls._CACHE_SPECIAL_VALUES[0.0][unit_or_dimension] = RealUnitedScalar(0.0, unit_or_dimension)
         return cls._CACHE_SPECIAL_VALUES[0.0][unit_or_dimension]
         
@@ -223,5 +226,6 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if 1.0 not in cls._CACHE_SPECIAL_VALUES:
             cls._CACHE_SPECIAL_VALUES[1.0] = {}
         if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[1.0]:
+            from ...._scalars.real_united_scalar import RealUnitedScalar
             cls._CACHE_SPECIAL_VALUES[1.0][unit_or_dimension] = RealUnitedScalar(1.0, unit_or_dimension)
         return cls._CACHE_SPECIAL_VALUES[1.0][unit_or_dimension]
