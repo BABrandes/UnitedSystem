@@ -129,6 +129,8 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     #########################################################
 
     _CACHE_SPECIAL_VALUES: dict[float, dict[Unit|Dimension|NamedQuantity|None, "RealUnitedScalar"]] = {}
+    # NaN cannot be cached in _CACHE_SPECIAL_VALUES because NaN != NaN, so we need a separate cache
+    _CACHE_NAN_VALUES: dict[Unit|Dimension|NamedQuantity|None, "RealUnitedScalar"] = {}
 
     @classmethod
     def positive_infinity(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
@@ -183,12 +185,11 @@ class FactoryMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         """
         if isinstance(unit_or_dimension, str):
             unit_or_dimension = Unit(unit_or_dimension)
-        if float("nan") not in cls._CACHE_SPECIAL_VALUES:
-            cls._CACHE_SPECIAL_VALUES[float("nan")] = {}
-        if unit_or_dimension not in cls._CACHE_SPECIAL_VALUES[float("nan")]:
+        # Use special NaN cache (NaN cannot be used as dict key because NaN != NaN)
+        if unit_or_dimension not in cls._CACHE_NAN_VALUES:
             from ...._scalars.real_united_scalar import RealUnitedScalar
-            cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension] = RealUnitedScalar(float("nan"), unit_or_dimension)
-        return cls._CACHE_SPECIAL_VALUES[float("nan")][unit_or_dimension]
+            cls._CACHE_NAN_VALUES[unit_or_dimension] = RealUnitedScalar(float("nan"), unit_or_dimension)
+        return cls._CACHE_NAN_VALUES[unit_or_dimension]
         
     @classmethod
     def zero(cls, unit_or_dimension: Unit|Dimension|NamedQuantity|str|None = None) -> "RealUnitedScalar":
