@@ -47,6 +47,14 @@ class UtilityMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     def is_infinite(self) -> bool:
         """Check if the scalar is infinite."""
         return math.isinf(self.canonical_value)
+
+    def is_positive_infinite(self) -> bool:
+        """Check if the scalar is positive infinite."""
+        return self.canonical_value == float('inf')
+    
+    def is_negative_infinite(self) -> bool:
+        """Check if the scalar is negative infinite."""
+        return self.canonical_value == float('-inf')
     
     def is_positive_or_zero(self) -> bool:
         """Check if the scalar is positive or zero."""

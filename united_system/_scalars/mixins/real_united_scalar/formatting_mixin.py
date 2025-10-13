@@ -32,7 +32,7 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
     def __repr__(self) -> str:
         """Return detailed string representation for debugging."""
-        return f"RealUnitedScalar(canonical_value={self.canonical_value}, dimension={self.dimension}, display_unit={self._display_unit})"
+        return f"RealUnitedScalar(cv={self.canonical_value}, d={self.dimension}, du={self._display_unit})"
 
     def format(self, unit: Union[str, "Unit", None] = None, max_decimals: int = 0, trailing_zeros: bool = False, no_unit: bool = False) -> str:
         """
