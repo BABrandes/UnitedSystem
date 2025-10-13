@@ -1,4 +1,4 @@
-from typing import Iterator, Generic, TypeVar, Any, overload, Optional
+from typing import Iterator, Generic, TypeVar, Any, overload, Optional, Sequence
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
@@ -21,6 +21,20 @@ AT = TypeVar("AT", bound="BaseArray[VALUE_TYPE, SCALAR_TYPE, Any]")
 class BaseArray(ABC, Generic[PT, IT, AT]):
 
     canonical_np_array: np.ndarray
+
+    def __new__(cls, canonical_np_array: np.ndarray | pd.Series | Sequence[VALUE_TYPE]):  # type: ignore
+        # Convert pd.Series to np.ndarray if necessary
+        if isinstance(canonical_np_array, np.ndarray):
+            pass
+        elif isinstance(canonical_np_array, Sequence):
+            canonical_np_array = np.array(canonical_np_array)
+        else:
+            raise ValueError(f"Invalid type: {type(canonical_np_array)}")
+
+        # Create instance using object.__new__ and manually set the attribute
+        instance = object.__new__(cls)
+        object.__setattr__(instance, 'canonical_np_array', canonical_np_array)
+        return instance
 
     def __post_init__(self) -> None:
         if self.canonical_np_array.ndim != 1:
