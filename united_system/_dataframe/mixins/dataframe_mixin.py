@@ -59,7 +59,7 @@ class DataframeMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 else:
                     internal_dataframe_column_names_to_return[column_key] = self._internal_dataframe_column_names[column_key]
 
-        dataframe_to_return: pd.DataFrame = self._internal_dataframe[list(internal_dataframe_column_names_to_return.values())].copy(deep=True) if deepcopy else self._internal_dataframe[list(internal_dataframe_column_names_to_return.values())]
+        dataframe_to_return: pd.DataFrame = self._internal_dataframe[list(internal_dataframe_column_names_to_return.values())].copy(deep=True) if deepcopy else self._internal_dataframe[list(internal_dataframe_column_names_to_return.values())] # type: ignore
 
         # Coverts the columns based on the units and adjust the column names
         for column_key, unit in units_to_convert_with.items():
