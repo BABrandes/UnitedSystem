@@ -17,28 +17,29 @@ PT = TypeVar("PT", bound=VALUE_TYPE)
 IT = TypeVar("IT", bound=SCALAR_TYPE)
 AT = TypeVar("AT", bound="BaseArray[VALUE_TYPE, SCALAR_TYPE, Any]")
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class BaseArray(ABC, Generic[PT, IT, AT]):
 
     canonical_np_array: np.ndarray
 
-    def __new__(cls, canonical_np_array: np.ndarray | pd.Series | Sequence[VALUE_TYPE]):  # type: ignore
-        # Convert pd.Series to np.ndarray if necessary
+    def __init__(self, canonical_np_array: np.ndarray | pd.Series | Sequence[VALUE_TYPE]) -> None:
+
         if isinstance(canonical_np_array, np.ndarray):
             pass
-        elif isinstance(canonical_np_array, Sequence):
+        elif isinstance(canonical_np_array, pd.Series):
+            canonical_np_array = canonical_np_array.to_numpy() # type: ignore
+        elif isinstance(canonical_np_array, Sequence): # type: ignore
             canonical_np_array = np.array(canonical_np_array)
         else:
             raise ValueError(f"Invalid type: {type(canonical_np_array)}")
 
-        # Create instance using object.__new__ and manually set the attribute
-        instance = object.__new__(cls)
-        object.__setattr__(instance, 'canonical_np_array', canonical_np_array)
-        return instance
+        if canonical_np_array.ndim != 1:
+            raise ValueError(f"The canonical_np_array is not a 1D array. It is a {canonical_np_array.ndim}D array.")
 
-    def __post_init__(self) -> None:
-        if self.canonical_np_array.ndim != 1:
-            raise ValueError(f"The canonical_np_array is not a 1D array. It is a {self.canonical_np_array.ndim}D array.")
+        if not self._check_numpy_type(canonical_np_array):
+            raise ValueError(f"Array has wrong numpy type: {canonical_np_array.dtype}")
+
+        object.__setattr__(self, 'canonical_np_array', canonical_np_array)
 
     @property
     def size(self) -> int:

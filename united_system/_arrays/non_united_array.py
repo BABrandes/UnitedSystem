@@ -10,36 +10,8 @@ AT = TypeVar("AT", bound="NonUnitedArray[VALUE_TYPE, Any]")
 
 class NonUnitedArray(BaseArray[PT, PT, AT], Generic[PT, AT]):
 
-    def __post_init__(self) -> None:
-        """Override BaseArray's __post_init__ to safely handle our custom construction."""
-        if hasattr(self, 'canonical_np_array') and hasattr(self.canonical_np_array, 'ndim'):
-            if self.canonical_np_array.ndim != 1:
-                raise ValueError(f"The canonical_np_array is not a 1D array. It is a {self.canonical_np_array.ndim}D array.")
-        # If canonical_np_array isn't properly set yet, skip validation (it will happen in __new__)
-
-    def __new__(cls, values: np.ndarray|Sequence[VALUE_TYPE]) -> AT:
-        # Create instance using object.__new__ to avoid inheritance issues
-        instance: AT = object.__new__(cls) # type: ignore
-
-        # Process values
-        if isinstance(values, np.ndarray):
-            values_array: np.ndarray = values
-        elif isinstance(values, Sequence): # type: ignore
-            values_array: np.ndarray = np.array(values)
-        else:
-            raise ValueError(f"Invalid values type: {type(values)}")
-        
-        # Set the canonical_np_array attribute directly BEFORE validation
-        object.__setattr__(instance, "canonical_np_array", values_array)
-        
-        if not instance._check_numpy_type(values_array):
-            raise ValueError(f"Array has wrong numpy type: {values_array.dtype}")
-        
-        # Do the validation inline
-        if values_array.ndim != 1:
-            raise ValueError(f"The canonical_np_array is not a 1D array. It is a {values_array.ndim}D array.")
-        
-        return instance
+    def __init__(self, canonical_np_array: np.ndarray | pd.Series | Sequence[VALUE_TYPE]) -> None:
+        super().__init__(canonical_np_array)
     
     @overload
     def __getitem__(self, key: int) -> PT:...

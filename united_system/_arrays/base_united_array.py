@@ -140,8 +140,8 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
                 dimension: Dimension = dimension_or_display_unit
                 display_unit: Unit = dimension_or_display_unit.canonical_unit
             case Unit():
-                dimension: Dimension = dimension_or_display_unit.dimension
-                display_unit: Unit = dimension_or_display_unit
+                dimension = dimension_or_display_unit.dimension
+                display_unit = dimension_or_display_unit
         
         return cls(canonical_np_array, dimension, display_unit) # type: ignore
     

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from .._arrays.non_united_array import NonUnitedArray
 import numpy as np
+
 @dataclass(frozen=True, slots=True, init=False)
 class BoolArray(NonUnitedArray[bool, "BoolArray"]):
     """Array of booleans."""
