@@ -17,7 +17,7 @@ from .._scalars.mixins.real_united_scalar.factory_mixin import FactoryMixin
 from .._scalars.mixins.real_united_scalar.utility_mixin import UtilityMixin
 from .._scalars.mixins.real_united_scalar.serialization_mixin import SerializationMixin
 
-@dataclass(frozen=True, slots=True, eq=False, init=False)
+@dataclass(frozen=True, slots=True, eq=False, init=False, repr=False)
 class RealUnitedScalar(
     ArithmeticMixin,
     ComparisonMixin,
