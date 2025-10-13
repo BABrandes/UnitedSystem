@@ -148,7 +148,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             masks: list[BoolArray] = []
             for column_key, (min_value, max_value) in range_dict.items():
                 masks.append(self._mask_get_in_range(column_key, min_value, max_value, filter_mode))
-            return self.filter_and(*masks)
+            return self._filter_and(*masks)
         
     def filter_columns_outside_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]], filter_mode: Literal["inclusive", "exclusive"] = "exclusive") -> "UnitedDataframe[CK]":
         """
@@ -165,7 +165,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             masks: list[BoolArray] = []
             for column_key, (min_value, max_value) in range_dict.items():
                 masks.append(self._mask_get_outside_range(column_key, min_value, max_value, filter_mode))
-            return self.filter_and(*masks)
+            return self._filter_and(*masks)
         
     def filter_columns_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
         """
@@ -181,7 +181,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             masks: list[BoolArray] = []
             for column_key, item in items_dict.items():
                 masks.append(self._mask_get_equal_to(column_key, item))
-            return self.filter_and(*masks)
+            return self._filter_and(*masks)
         
     def filter_columns_not_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
         """
@@ -197,7 +197,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             masks: list[BoolArray] = []
             for column_key, item in items_dict.items():
                 masks.append(self._mask_get_not_equal_to(column_key, item))
-            return self.filter_and(*masks)
+            return self._filter_and(*masks)
         
     def filter_column_get_complete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
         """
@@ -218,6 +218,27 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
 
     # ----------- Filter Operations: Multiple Conditions ------------
 
+    def _filter_and(self, *masks: BoolArray) -> "UnitedDataframe[CK]":
+        """
+        Internal: Filter dataframe using AND logic on multiple boolean masks. (No locks)
+
+        Args:
+            *masks (BoolArray): Boolean masks to combine with AND
+
+        Returns:
+            UnitedDataframe: Filtered dataframe
+        """
+
+        if not masks:
+            raise ValueError("At least one mask must be provided.")
+        
+        # Combine all masks with AND logic
+        combined_mask: BoolArray = masks[0]
+        for mask in masks[1:]:
+            combined_mask = combined_mask & mask
+        
+        return self._mask_apply_to_dataframe(combined_mask)
+
     def filter_and(self, *masks: BoolArray) -> "UnitedDataframe[CK]":
         """
         Filter dataframe using AND logic on multiple boolean masks.
@@ -228,16 +249,9 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Returns:
             UnitedDataframe: Filtered dataframe
         """
+
         with self._rlock:
-            if not masks:
-                raise ValueError("At least one mask must be provided.")
-            
-            # Combine all masks with AND logic
-            combined_mask: BoolArray = masks[0]
-            for mask in masks[1:]:
-                combined_mask = combined_mask & mask
-            
-            return self._mask_apply_to_dataframe(combined_mask)
+            return self._filter_and(*masks)
 
     def filter_or(self, *masks: BoolArray) -> "UnitedDataframe[CK]":
         """
