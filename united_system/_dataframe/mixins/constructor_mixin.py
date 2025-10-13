@@ -71,8 +71,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         column_types: Mapping[CK, ColumnType] = {}
         column_units: Mapping[CK, Optional[Unit]] = {}
         if columns is None:
-            for column_name in dataframe.columns:
-                _column_key, column_unit = internal_dataframe_column_name_formatter.retrieve_from_internal_dataframe_column_name(column_name, column_key_type)
+            for column_name in dataframe.columns: # type: ignore
+                _column_key, column_unit = internal_dataframe_column_name_formatter.retrieve_from_internal_dataframe_column_name(column_name, column_key_type) # type: ignore
                 column_key: CK = cast(CK, _column_key) # type: ignore
                 column_types[column_key] = ColumnType.from_dtype(dataframe[column_name].dtype, has_unit=column_unit is not None) # type: ignore
                 source_column_names[column_key] = column_name
@@ -97,7 +97,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                     raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
             
         # Copy the dataframe
-        dataframe = dataframe[source_column_names.values()].copy(deep=deepcopy)
+        dataframe = dataframe[source_column_names.values()].copy(deep=deepcopy) # type: ignore
 
         # Rename the columns
         target_column_names: list[str] = []
@@ -108,7 +108,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             dataframe.rename(columns={source_column_names[column_key]: target_column_names[index]}, inplace=True)
 
         # Rearrange the columns
-        dataframe = dataframe[target_column_names]
+        dataframe = dataframe[target_column_names] # type: ignore
 
         # Create the UnitedDataframe
         return cls._construct( # type: ignore
@@ -164,7 +164,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         internal_column_strings: Mapping[CK, str] = {}
         for column_key in column_keys:
             internal_column_strings[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
-        empty_df: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()))
+        empty_df: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values())) # type: ignore
 
         # Step 4: Set the column types
         for column_key in column_keys:
@@ -184,7 +184,6 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             copy_dataframe= False,
             rename_dataframe_columns= False
         )
-    
     
     @overload
     @classmethod
@@ -211,8 +210,8 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     def create_from_data(
         cls,
         columns: Mapping[CK, 
-                      tuple[ColumnType, Optional[Unit|Dimension], "pd.Series[Any]"]|
-                      tuple[ColumnType, "pd.Series[Any]"]],
+                      tuple[ColumnType, Optional[Unit|Dimension], "pd.Series"]|
+                      tuple[ColumnType, "pd.Series"]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
@@ -225,9 +224,9 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]]] |
         Mapping[CK, tuple[ColumnType, Sequence[VALUE_TYPE]]] |
         Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], np.ndarray] | tuple[ColumnType, np.ndarray]] |
-        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], "pd.Series[Any]"] | tuple[ColumnType, "pd.Series[Any]"]] |
-        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]] | tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]]] |
-        Mapping[CK, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series[Any]"]],
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], "pd.Series"] | tuple[ColumnType, "pd.Series"]] |
+        Mapping[CK, tuple[ColumnType, Optional[Unit|Dimension], Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series"]] | tuple[ColumnType, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series"]]] |
+        Mapping[CK, Union[ARRAY_TYPE, Sequence[VALUE_TYPE], np.ndarray, "pd.Series"]],
         internal_dataframe_column_name_formatter: InternalDataFrameColumnNameFormatter=SimpleInternalDataFrameNameFormatter(),
         read_only: bool = False
     ) -> "UnitedDataframe[CK]":
@@ -258,7 +257,7 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         # Step 2: Determine the column units and types from the arrays or, if a list is given, from column_types and column_units_or_dimensions dictionaries
         column_units: Mapping[CK, Unit | None] = {}
         column_types: Mapping[CK, ColumnType] = {}
-        column_values: Mapping[CK, Union[np.ndarray, "pd.Series[Any]"]] = {}
+        column_values: Mapping[CK, Union[np.ndarray, "pd.Series"]] = {}
         def get_numpy_from_array(column_key: CK, array_or_list_or_numpy_array_or_pandas_series: ARRAY_TYPE) -> np.ndarray:
             unit: Optional[Unit] = column_units[column_key]
             if isinstance(array_or_list_or_numpy_array_or_pandas_series, BaseUnitedArray):
@@ -297,11 +296,11 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                         column_units[column_key] = tuple_value[1].canonical_unit
                     else:
                         column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"] = tuple_value[2]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series"] = tuple_value[2] # type: ignore
                 elif len(tuple_value) == 2:
                     column_types[column_key] = tuple_value[0]
                     column_units[column_key] = None
-                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series[Any]"] = tuple_value[1]
+                    array_or_list_or_numpy_array_or_pandas_series: Union[ARRAY_TYPE, list[VALUE_TYPE], np.ndarray, "pd.Series"] = tuple_value[1]
                 else:
                     raise ValueError(f"Invalid column specification for column key {column_key}: {value}")
                 
@@ -355,17 +354,17 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         internal_column_strings: Mapping[CK, str] = {}
         for column_key in column_keys:
             internal_column_strings[column_key] = internal_dataframe_column_name_formatter.create_internal_dataframe_column_name(column_key, column_units[column_key])
-        dataframe: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()), index=range(length))
+        dataframe: pd.DataFrame = pd.DataFrame(columns=list(internal_column_strings.values()), index=range(length)) # type: ignore
 
         # Step 5: Set the column types
         for column_key in column_keys:
-            dtype: Dtype = column_types[column_key].value.dataframe_storage_type
-            dataframe[internal_column_strings[column_key]] = pd.Series(dtype=dtype)
+            _dtype: Dtype = column_types[column_key].value.dataframe_storage_type
+            dataframe[internal_column_strings[column_key]] = pd.Series(dtype=_dtype)
 
         # Step 6: Fill the dataframe with the data
         for column_key in column_keys:
-            dtype: Dtype = column_types[column_key].value.dataframe_storage_type
-            dataframe[internal_column_strings[column_key]] = pd.Series(column_values[column_key], dtype=dtype)
+            _dtype = column_types[column_key].value.dataframe_storage_type
+            dataframe[internal_column_strings[column_key]] = pd.Series(column_values[column_key], dtype=_dtype)
         
         # Step 7: Create UnitedDataframe instance
         return cls._construct( # type: ignore
@@ -460,3 +459,87 @@ class ConstructorMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                 column_units_or_dimensions=column_units_or_dimensions,
                 internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter
             )
+
+    # ----------- Crop Operations ------------
+
+    def _crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: slice|Sequence[int]|None = None) -> "UnitedDataframe[CK]":
+        """
+        Internal: Create a new dataframe with a subset of columns and/or rows. (No locks, no read-only check)
+        
+        Args:
+            column_keys (Sequence[CK]|None): Column keys to include. If None, all columns are included.
+            row_indices (slice|Sequence[int]|None): Row indices to include. If None, all rows are included.
+                Can be a slice object or a sequence of integer indices.
+        
+        Returns:
+            UnitedDataframe[CK]: A new dataframe with the specified subset of data.
+        """
+        # Determine which columns to include
+        if column_keys is None:
+            selected_column_keys: list[CK] = self._column_keys.copy()
+        else:
+            # Validate that all requested column keys exist
+            for ck in column_keys:
+                if ck not in self._column_keys:
+                    raise ValueError(f"Column key {ck} does not exist in the dataframe.")
+            selected_column_keys = list(column_keys)
+        
+        # Get the internal column names for the selected columns
+        selected_internal_column_names: list[str] = [
+            self._internal_dataframe_column_names[ck] for ck in selected_column_keys
+        ]
+        
+        # Subset the internal dataframe
+        if row_indices is None:
+            # All rows, selected columns
+            subset_df = self._internal_dataframe[selected_internal_column_names].copy() # type: ignore
+        elif isinstance(row_indices, slice):
+            # Slice of rows, selected columns
+            subset_df = self._internal_dataframe.iloc[row_indices][selected_internal_column_names].copy() # type: ignore
+        else:
+            # Sequence of row indices, selected columns
+            subset_df = self._internal_dataframe.iloc[list(row_indices)][selected_internal_column_names].copy() # type: ignore
+        
+        # Create filtered column_types and column_units
+        filtered_column_types = {ck: self._column_types[ck] for ck in selected_column_keys}
+        filtered_column_units = {ck: self._column_units[ck] for ck in selected_column_keys}
+        
+        # Construct new UnitedDataframe
+        return self._construct(
+            dataframe=subset_df, # type: ignore
+            column_keys=selected_column_keys,
+            column_types=filtered_column_types,
+            column_units=filtered_column_units,
+            internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter,
+            read_only=False,
+            copy_dataframe=False,
+            rename_dataframe_columns=False
+        )
+
+    def crop_dataframe(self, column_keys: Sequence[CK]|None = None, row_indices: Sequence[int]|slice|None = None) -> "UnitedDataframe[CK]":
+        """
+        Create a new dataframe with a subset of columns and/or rows.
+        
+        Args:
+            column_keys (Sequence[CK]|None): Column keys to include. If None, all columns are included.
+            row_indices (Sequence[int]|slice|None): Row indices to include. If None, all rows are included.
+                Can be a slice object or a sequence of integer indices.
+        
+        Returns:
+            UnitedDataframe[CK]: A new dataframe with the specified subset of data.
+        
+        Examples:
+            >>> # Crop to specific columns
+            >>> df.crop_dataframe(column_keys=['col1', 'col2'])
+            
+            >>> # Crop to specific rows
+            >>> df.crop_dataframe(row_indices=[0, 1, 2, 5, 10])
+            
+            >>> # Crop using a slice
+            >>> df.crop_dataframe(row_indices=slice(0, 10))
+            
+            >>> # Crop both columns and rows
+            >>> df.crop_dataframe(column_keys=['col1', 'col2'], row_indices=slice(0, 100))
+        """
+        with self._rlock:
+            return self._crop_dataframe(column_keys=column_keys, row_indices=row_indices)

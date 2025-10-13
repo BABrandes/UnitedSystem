@@ -524,7 +524,11 @@ class MaskOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             raise ValueError(f"Mask must have length {self._number_of_rows()}, got {len(mask)}")
 
         row_indices: list[int] = np.nonzero(mask.canonical_np_array)[0].tolist()
-        return self._crop_dataframe(row_indices=row_indices)
+        if len(row_indices) == 0:
+            return self.create_empty(column_keys=self._column_keys, column_types=self._column_types, column_units_or_dimensions=self._column_units, internal_dataframe_column_name_formatter=self._internal_dataframe_column_name_formatter)
+        else:
+            cropped_df: "UnitedDataframe[CK]" = self._crop_dataframe(row_indices=row_indices)
+            return cropped_df
 
     def mask_apply_to_dataframe(self, mask: BoolArray) -> "UnitedDataframe[CK]":
         """
