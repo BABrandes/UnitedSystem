@@ -53,7 +53,7 @@ class NamedQuantity(Enum):
     """Dimension: M*L^2/T^3*I^-1; Canonical unit: V = volt"""
     RESISTANCE =                ("Ω",       ProperExponents(mass=1, length=2, time=-3, current=-2), {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Voltage per current
     """Dimension: M*L^2/T^3*I^-2; Canonical unit: Ω = ohm"""
-    CONDUCTANCE =               ("S",       ProperExponents(mass=1, length=-2, time=3, current=2),  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Current per voltage
+    CONDUCTANCE =               ("S",       ProperExponents(mass=-1, length=-2, time=3, current=2),  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Current per voltage
     """Dimension: M^-1*L^-2*T^3*I^2; Canonical unit: S = siemens"""
     CAPACITANCE =               ("F",       ProperExponents(mass=-1, length=-2, time=4, current=2), {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY, QuantityTag.SINGLE_ELEMENT_QUANTITY, QuantityTag.CONSIDER_FOR_REDUCTION}) # Charge per voltage
     """Dimension: M^-1*L^-2*T^4*I^2; Canonical unit: F = farad"""
@@ -74,11 +74,11 @@ class NamedQuantity(Enum):
     ELECTRIC_DISPLACEMENT =     ("C/m^2",   ProperExponents(current=1, time=1, length=-2),          {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per area
     """Dimension: T*I/L^2; Canonical unit: C/m^2 = coulomb per square meter"""
     MAGNETIC_FIELD =            ("A/m",     ProperExponents(current=1, length=-1),                  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Current per length
-    """Dimension: T*I/L; Canonical unit: A/m = ampere per meter"""
+    """Dimension: I/L; Canonical unit: A/m = ampere per meter"""
     MAGNETIZATION =             ("A/m",     ProperExponents(current=1, length=-1),                  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Magnetic moment per volume
-    """Dimension: T*I/L; Canonical unit: A/m = ampere per meter"""
+    """Dimension: I/L; Canonical unit: A/m = ampere per meter"""
     ELECTRIC_CURRENT_DENSITY =  ("A/m^2",   ProperExponents(current=1, length=-2),                  {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Current per area
-    """Dimension: T*I/L^2; Canonical unit: A/m^2 = ampere per square meter"""
+    """Dimension: I/L^2; Canonical unit: A/m^2 = ampere per square meter"""
     ELECTRIC_CHARGE_DENSITY =   ("C/m^3",   ProperExponents(current=1, time=1, length=-3),          {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per volume
     """Dimension: T*I/L^3; Canonical unit: C/m^3 = coulomb per cubic meter"""
     ELECTRIC_FLUX =             ("V*m",     ProperExponents(mass=1, length=3, time=-3, current=-1), {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Electric field times area
@@ -88,7 +88,7 @@ class NamedQuantity(Enum):
     ELECTRIC_DIPOLE_MOMENT =    ("C*m",     ProperExponents(current=1, time=1, length=1),           {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge times distance
     """Dimension: T*I*L; Canonical unit: C*m = coulomb meter"""
     MAGNETIC_DIPOLE_MOMENT =    ("A*m^2",   ProperExponents(current=1, length=2),                   {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Current times area
-    """Dimension: T*I*L^2; Canonical unit: A*m^2 = ampere square meter"""
+    """Dimension: I*L^2; Canonical unit: A*m^2 = ampere square meter"""
     ELECTRIC_POLARIZATION =     ("C/m^2",   ProperExponents(current=1, time=1, length=-2),          {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Electric dipole moment per volume
     """Dimension: T*I/L^2; Canonical unit: C/m^2 = coulomb per square meter"""
     MAGNETIC_POLARIZATION =     ("T",       ProperExponents(mass=1, time=-2, current=-1),           {QuantityTag.DERIVED_QUANTITY, QuantityTag.SI_QUANTITY}) # Magnetic field (same as TESLA)
@@ -109,29 +109,29 @@ class NamedQuantity(Enum):
     """Dimension: N/L^3; Canonical unit: mol/m^3 = mole per cubic meter"""
 
     # Altercations of multi-element SI derived units
-    VOLTAGE_SCAN_RATE =         ("V/s",     ProperExponents(length=1, time=-1),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Voltage per time
-    """Dimension: M*L/T^3*I^-1; Canonical unit: V/s = volt per second"""
+    VOLTAGE_SCAN_RATE =         ("V/s",     ProperExponents(mass=1, length=2, time=-4, current=-1), {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Voltage per time
+    """Dimension: M*L^2/T^4*I^-1; Canonical unit: V/s = volt per second"""
     CURRENT_DENSITY =           ("A/m^2",   ProperExponents(current=1, length=-2),                  {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Current per area
-    """Dimension: T*I/L^2; Canonical unit: A/m^2 = ampere per square meter"""
-    CHARGE_DENSITY =            ("C/m^2",   ProperExponents(current=1, length=-2),                  {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per area
+    """Dimension: I/L^2; Canonical unit: A/m^2 = ampere per square meter"""
+    CHARGE_DENSITY =            ("C/m^2",   ProperExponents(current=1, time=1, length=-2),          {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per area
     """Dimension: T*I/L^2; Canonical unit: C/m^2 = coulomb per square meter"""
-    CAPACITANCE_DENSITY =       ("F/m^2",   ProperExponents(mass=-1, length=-2, time=4, current=2), {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per voltage per area
-    """Dimension: M^-1*L^-2*T^4*I^2; Canonical unit: F/m^2 = farad per square meter"""
-    AREA = ("m^2", ProperExponents(length=2)) # Length squared
+    CAPACITANCE_DENSITY =       ("F/m^2",   ProperExponents(mass=-1, length=-4, time=4, current=2), {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Charge per voltage per area
+    """Dimension: M^-1*L^-4*T^4*I^2; Canonical unit: F/m^2 = farad per square meter"""
+    AREA =                      ("m^2",     ProperExponents(length=2),                              {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Length squared
     """Dimension: L^2; Canonical unit: m^2 = square meter"""
-    VOLUME = ("m^3", ProperExponents(length=3)) # Length cubed
+    VOLUME =                    ("m^3",     ProperExponents(length=3),                              {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Length cubed
     """Dimension: L^3; Canonical unit: m^3 = cubic meter"""
-    DENSITY = ("kg/m^3", ProperExponents(mass=1, length=-3)) # Mass per length cubed
+    DENSITY =                   ("kg/m^3",  ProperExponents(mass=1, length=-3),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Mass per length cubed
     """Dimension: M/L^3; Canonical unit: kg/m^3 = kilogram per cubic meter"""
-    AREAL_FLOW_RATE = ("m^2/s", ProperExponents(length=2, time=-1)) # Area per time
+    AREAL_FLOW_RATE =           ("m^2/s",   ProperExponents(length=2, time=-1),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Area per time
     """Dimension: L^2/T; Canonical unit: m^2/s = square meter per second"""
-    VOLUMETRIC_DENSITY = ("1/m^3", ProperExponents(length=-3)) # 1 per length cubed
+    VOLUMETRIC_DENSITY =        ("1/m^3",   ProperExponents(length=-3),                             {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # 1 per length cubed
     """Dimension: L^-3; Canonical unit: 1/m^3 = 1 per cubic meter"""
-    AREAL_DENSITY = ("kg/m^2", ProperExponents(mass=1, length=-2)) # Mass per area
+    AREAL_DENSITY =             ("kg/m^2",  ProperExponents(mass=1, length=-2),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Mass per area
     """Dimension: M/L^2; Canonical unit: kg/m^2 = kilogram per square meter"""
-    KINEMATIC_VISCOSITY = ("m^2/s", ProperExponents(length=2, time=-1)) # Area per time
+    KINEMATIC_VISCOSITY =       ("m^2/s",   ProperExponents(length=2, time=-1),                     {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Area per time
     """Dimension: L^2/T; Canonical unit: m^2/s = square meter per second"""
-    DYNAMIC_VISCOSITY = ("Pa*s", ProperExponents(mass=1, length=-1, time=-1)) # Mass per length per time
+    DYNAMIC_VISCOSITY =         ("Pa*s",    ProperExponents(mass=1, length=-1, time=-1),            {QuantityTag.COMPOSED_QUANTITY, QuantityTag.SI_QUANTITY}) # Mass per length per time
     """Dimension: M/L*T; Canonical unit: Pa*s = pascal second"""
     
     # -------------------- Dimensions with Non-SI Canonical Units --------------------
