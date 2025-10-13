@@ -142,9 +142,9 @@ class RealUnitedScalar(
                     value = value.strip()
                     value_and_unit = value.split(" ")
                     if len(value_and_unit) == 1:
-                        _value: float = str_to_float(value_and_unit[0])
+                        _value = str_to_float(value_and_unit[0])
                     elif len(value_and_unit) == 2:
-                        _value: float = str_to_float(value_and_unit[0])
+                        _value = str_to_float(value_and_unit[0])
                         display_unit = Unit(value[1])
                     else:
                         raise ValueError(f"Invalid value: {value}")
