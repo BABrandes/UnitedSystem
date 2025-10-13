@@ -45,7 +45,7 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, Any
+from typing import TYPE_CHECKING, overload, Union, Optional, Any
 from types import MappingProxyType
 from h5py import Group
 from .utils import seperate_string
@@ -119,7 +119,7 @@ class Dimension:
         "_log_dimensions",
         "_canonical_unit",
     )
-    _proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]]
+    _proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]]
     _log_dimensions: dict["Dimension", float]
     _canonical_unit: "Unit"
 
@@ -262,7 +262,7 @@ class Dimension:
         elif isinstance(value, Unit):
 
             # Determine the proper exponents for each subscript
-            proper_exponents_dict: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+            proper_exponents_dict: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
             for subscript, unit_elements in value.unit_elements.items():
                 # Use the proper_exponents_of_unit_elements function directly to avoid circular dependency
                 from .proper_exponents import ProperExponents
@@ -284,13 +284,27 @@ class Dimension:
     @classmethod
     def _construct(
         cls,
-        proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]],
+        proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]],
         log_dimensions: dict["Dimension", float] = {},
     ) -> "Dimension":
+        """
+        Construct a Dimension from its internal components.
+        
+        Args:
+            proper_exponents: Dictionary mapping subscripts to tuples of dimension exponents. Must be {} for dimensionless.
+            log_dimensions: Dictionary mapping log dimensions to their exponents
+        """
+        
+        # Remove any entries with all-zero exponents
+        proper_exponents_cleaned = {
+            subscript: exponents 
+            for subscript, exponents in proper_exponents.items() 
+            if exponents != (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        }
         
         self = super().__new__(cls)
 
-        self._proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = MappingProxyType(proper_exponents) # type: ignore
+        self._proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = MappingProxyType(proper_exponents_cleaned) # type: ignore
         self._log_dimensions: dict["Dimension", float] = MappingProxyType(log_dimensions) # type: ignore
 
         return self
@@ -491,7 +505,7 @@ class Dimension:
 
             # Multiply proper exponents        
             subscripts: set[str] = set(self._proper_exponents.keys()) | set(other._proper_exponents.keys())
-            proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+            proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
             for subscript in subscripts:
                 if subscript in self._proper_exponents and subscript in other._proper_exponents:
                     values_1: Tuple[float, float, float, float, float, float, float, float] = self._proper_exponents[subscript] # type: ignore
@@ -583,7 +597,7 @@ class Dimension:
 
         # Divide proper exponents        
         subscripts: set[str] = set(self._proper_exponents.keys()) | set(other._proper_exponents.keys())
-        proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+        proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
         for subscript in subscripts:
             if subscript in self._proper_exponents and subscript in other._proper_exponents:
                 values_1: Tuple[float, float, float, float, float, float, float, float] = self._proper_exponents[subscript] # type: ignore
@@ -665,7 +679,7 @@ class Dimension:
         if abs(exponent) <= EPSILON:
             return DIMENSIONLESS_DIMENSION
         
-        proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+        proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
         for subscript, values in self._proper_exponents.items():
             new_values = (
                 values[0] * exponent,
@@ -703,7 +717,7 @@ class Dimension:
             force = Dimension("M*L/T^2")
             inverse_force = ~force  # M^-1*L^-1*T^2
         """
-        proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+        proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
         for subscript, values in self._proper_exponents.items():
             proper_exponents[subscript] = (
                 values[0] * -1,
@@ -747,7 +761,7 @@ class Dimension:
             force = Dimension("M*L/T^2")
             log_force = force.log()  # DEC(M*L/T^2)
         """
-        return Dimension._construct({}, {self: 1.0})
+        return Dimension._construct({"": (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)}, {self: 1.0})
     
     def exp(self) -> "Dimension":
         """
@@ -859,6 +873,7 @@ class Dimension:
         """
         if not isinstance(other, type(self)):
             return False
+
         if self._proper_exponents.keys() != other._proper_exponents.keys():
             return False
         for subscript in self._proper_exponents.keys():
@@ -1389,7 +1404,7 @@ class Dimension:
                     except ValueError:
                         raise ValueError(f"Invalid dimension symbol: {symbol}")
 
-        proper_exponents: dict[str, Tuple[float, float, float, float, float, float, float, float]] = {}
+        proper_exponents: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
         for subscript, values in proper_exponents_lists.items():
             proper_exponents[subscript] = tuple(values) # type: ignore
 
