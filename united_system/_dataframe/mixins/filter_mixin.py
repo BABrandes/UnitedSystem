@@ -114,7 +114,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_less_equal(column_key, item)
+            mask = self._mask_get_less_equal(column_key, item)
             return self._mask_apply_to_dataframe(mask)
         
     def filter_column_in_range(self, column_key: CK, min_value: SCALAR_TYPE|VALUE_TYPE, max_value: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -130,7 +130,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_in_range(column_key, min_value, max_value)
+            mask: BoolArray = self._mask_get_in_range(column_key, min_value, max_value)
             return self._mask_apply_to_dataframe(mask)
     
     def filter_columns_in_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]], filter_mode: Literal["inclusive", "exclusive"] = "inclusive") -> "UnitedDataframe[CK]":
@@ -204,7 +204,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Filter dataframe where column is missing.
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_complete_rows(*column_keys)
+            mask: BoolArray = self._mask_get_complete_rows(*column_keys)
             return self._mask_apply_to_dataframe(mask)
         
     def filter_column_get_incomplete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":
@@ -212,7 +212,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         Filter dataframe where column is not missing.
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_incomplete_rows(*column_keys)
+            mask: BoolArray = self._mask_get_incomplete_rows(*column_keys)
             return self._mask_apply_to_dataframe(mask)
 
 
@@ -288,7 +288,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_by_function(filter_func, column_keys)
+            mask: BoolArray = self._mask_get_by_function(filter_func, column_keys)
             return self._mask_apply_to_dataframe(mask)
 
     # ----------- Filter Operations: Missing Values ------------
@@ -304,7 +304,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_complete_rows()
+            mask: BoolArray = self._mask_get_complete_rows()
             return self._mask_apply_to_dataframe(mask)
 
     def filter_missing_values(self, column_key: CK) -> "UnitedDataframe[CK]":
@@ -318,5 +318,5 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_incomplete_rows()
+            mask: BoolArray = self._mask_get_incomplete_rows()
             return self._mask_apply_to_dataframe(mask) 
