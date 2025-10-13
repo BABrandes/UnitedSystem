@@ -67,7 +67,7 @@ class ColumnOperationsMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         # Add to internal dataframe
         internal_column_name: str = self._create_internal_dataframe_column_name(column_key)
         self._internal_dataframe_column_names[column_key] = internal_column_name
-        self._internal_dataframe[internal_column_name] = column_type.get_pd_series_for_dataframe(np.empty(len(self._internal_dataframe)), unit) # type: ignore
+        self._internal_dataframe[internal_column_name] = column_type.get_pd_series_for_dataframe(np.empty(len(self._internal_dataframe)), unit, unit)
 
     def column_add(self, column_key: CK, array: ARRAY_TYPE, column_type: ColumnType, unit: Optional[Unit] = None) -> None:
         """
