@@ -96,13 +96,13 @@ class TestUnitedDataframeSerialization:
             
             # Use completely separate temporary files to avoid file lock issues
             with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file1:
-                hdf5_path: Path = Path(tmp_file1.name)
+                hdf5_path = Path(tmp_file1.name)
             
             with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file2:
-                hdf5_path2: Path = Path(tmp_file2.name)
+                hdf5_path2 = Path(tmp_file2.name)
             
             with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as tmp_file3:
-                hdf5_path3: Path = Path(tmp_file3.name)
+                hdf5_path3 = Path(tmp_file3.name)
             
             try:
                 # Skip h5py Group test on macOS due to file locking issues
@@ -286,7 +286,7 @@ class TestUnitedDataframeSerialization:
                 try:
                     # Save and load using pandas API
                     current_df.to_hdf5(hdf5_path, key=f"round_trip_{i}")
-                    current_df: UnitedDataframe[TestColumnKey] = UnitedDataframe[TestColumnKey].from_hdf5(hdf5_path, key=f"round_trip_{i}", column_key_type=TestColumnKey)
+                    current_df = UnitedDataframe[TestColumnKey].from_hdf5(hdf5_path, key=f"round_trip_{i}", column_key_type=TestColumnKey)
                     
                     # Verify integrity
                     assert len(current_df) == len(df_original)
@@ -375,7 +375,7 @@ class TestUnitedDataframeSerialization:
                 is_valid_key: (DataframeColumnType.BOOL, None, [True, False, True, True]),
                 
                 # TIMESTAMP: Time measurements  
-                timestamp_key: (DataframeColumnType.TIMESTAMP, None, [
+                timestamp_key: (DataframeColumnType.TIMESTAMP, None, [ # type: ignore
                     pd.Timestamp("2024-01-15 10:30:00"),
                     pd.Timestamp("2024-02-20 14:45:30"),
                     pd.Timestamp("2024-03-25 08:15:45"),
@@ -528,7 +528,7 @@ class TestUnitedDataframeSerialization:
             sample_ids = ["EXP-001", "EXP-002", "EXP-003", "EXP-004"]
 
             columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
-                timestamp_key: (DataframeColumnType.TIMESTAMP, None, timestamp_data),
+                timestamp_key: (DataframeColumnType.TIMESTAMP, None, timestamp_data), # type: ignore
                 sample_id_key: (DataframeColumnType.STRING, None, sample_ids)
             }   
 
@@ -620,7 +620,7 @@ class TestUnitedDataframeSerialization:
             
             # Test 1: Empty dataframe HTML representation
             print("\n📋 Testing empty dataframe HTML display...")
-            empty_df = UnitedDataframe()
+            empty_df = UnitedDataframe[TestColumnKey]()
             
             # Test that _repr_html_ method exists and returns HTML
             assert hasattr(empty_df, '_repr_html_'), "UnitedDataframe should have _repr_html_ method for Jupyter display"
@@ -790,7 +790,7 @@ class TestUnitedDataframeSerialization:
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325.0, 150000.0, 200000.0, 250000.0])
             }
-            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            columns  = {
                 temp_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), [273.15, 298.15, 323.15, 348.15]),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), [101325.0, 150000.0, 200000.0, 250000.0])
             }
@@ -884,7 +884,7 @@ class TestUnitedDataframeSerialization:
             # Create test data with all types
             import pandas as pd
             timestamp_data: list[pd.Timestamp] = [
-                pd.Timestamp("2024-01-15 10:30:00"),
+                pd.Timestamp("2024-01-15 10:30:00"), # type: ignore
                     pd.Timestamp("2024-02-20 14:45:30"),
                     pd.Timestamp("2024-03-25 08:15:45"),
                     pd.Timestamp("2024-04-30 16:20:10")
@@ -1226,7 +1226,7 @@ class TestUnitedDataframeSerialization:
                 
                 # Also test in-memory pickle round trip
                 pickled_bytes: bytes = pickle.dumps(current_df) # type: ignore
-                current_df: UnitedDataframe[TestColumnKey] = pickle.loads(pickled_bytes) # type: ignore
+                current_df = pickle.loads(pickled_bytes) # type: ignore
                 
                 # Verify in-memory round trip
                 assert len(current_df) == len(df_original)

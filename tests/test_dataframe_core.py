@@ -20,7 +20,7 @@ class TestUnitedDataframeCore:
     def test_empty_dataframe_creation(self):
         """Test creating an empty UnitedDataframe with minimal configuration."""
         try:
-            df = UnitedDataframe()
+            df = UnitedDataframe[TestColumnKey]()
             assert len(df) == 0
             print("✅ Empty dataframe creation successful")
         except Exception as e:
@@ -141,7 +141,7 @@ class TestUnitedDataframeCore:
     def test_dataframe_thread_safety(self):
         """Test that dataframe operations are thread-safe."""
         try:
-            df = UnitedDataframe()
+            df = UnitedDataframe[TestColumnKey]()
             
             # Test context manager (thread safety)
             with df:
@@ -212,7 +212,7 @@ class TestUnitedDataframeCore:
             notes = ["Control", "Test A", "Invalid", "Test B", "Final"]
             
             # Create UnitedDataframe with data using PUBLIC API
-            columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
+            _: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
                 sample_id_key: (DataframeColumnType.STRING, None, sample_ids),
                 temperature_key: (DataframeColumnType.REAL_NUMBER_64, Unit("K"), temperatures),
                 pressure_key: (DataframeColumnType.REAL_NUMBER_64, Unit("Pa"), pressures),

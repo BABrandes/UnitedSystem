@@ -39,7 +39,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask: BoolArray = self.mask_get_equal_to(column_key, item)
+            mask: BoolArray = self._mask_get_equal_to(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
     def filter_column_not_equals(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -54,7 +54,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_not_equal_to(column_key, item)
+            mask = self._mask_get_not_equal_to(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
     def filter_column_greater_than(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -69,7 +69,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_greater_than(column_key, item)
+            mask = self._mask_get_greater_than(column_key, item)
             return self._mask_apply_to_dataframe(mask)
         
     def filter_column_greater_equal(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -84,7 +84,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_greater_equal(column_key, item)
+            mask = self._mask_get_greater_equal(column_key, item)
             return self._mask_apply_to_dataframe(mask)
 
     def filter_column_less_than(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -99,7 +99,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             UnitedDataframe: Filtered dataframe
         """
         with self._rlock:
-            mask = self.mask_get_less_than(column_key, item)
+            mask = self._mask_get_less_than(column_key, item)
             return self._mask_apply_to_dataframe(mask)
         
     def filter_column_less_equal(self, column_key: CK, item: SCALAR_TYPE|VALUE_TYPE) -> "UnitedDataframe[CK]":
@@ -147,7 +147,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             masks: list[BoolArray] = []
             for column_key, (min_value, max_value) in range_dict.items():
-                masks.append(self.mask_get_in_range(column_key, min_value, max_value, filter_mode))
+                masks.append(self._mask_get_in_range(column_key, min_value, max_value, filter_mode))
             return self.filter_and(*masks)
         
     def filter_columns_outside_range(self, range_dict: Mapping[CK, tuple[SCALAR_TYPE|VALUE_TYPE, SCALAR_TYPE|VALUE_TYPE]], filter_mode: Literal["inclusive", "exclusive"] = "exclusive") -> "UnitedDataframe[CK]":
@@ -164,7 +164,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             masks: list[BoolArray] = []
             for column_key, (min_value, max_value) in range_dict.items():
-                masks.append(self.mask_get_outside_range(column_key, min_value, max_value, filter_mode))
+                masks.append(self._mask_get_outside_range(column_key, min_value, max_value, filter_mode))
             return self.filter_and(*masks)
         
     def filter_columns_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
@@ -180,7 +180,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             masks: list[BoolArray] = []
             for column_key, item in items_dict.items():
-                masks.append(self.mask_get_equal_to(column_key, item))
+                masks.append(self._mask_get_equal_to(column_key, item))
             return self.filter_and(*masks)
         
     def filter_columns_not_equal(self, items_dict: Mapping[CK, SCALAR_TYPE|VALUE_TYPE]) -> "UnitedDataframe[CK]":
@@ -196,7 +196,7 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         with self._rlock:
             masks: list[BoolArray] = []
             for column_key, item in items_dict.items():
-                masks.append(self.mask_get_not_equal_to(column_key, item))
+                masks.append(self._mask_get_not_equal_to(column_key, item))
             return self.filter_and(*masks)
         
     def filter_column_get_complete_rows(self, *column_keys: CK) -> "UnitedDataframe[CK]":

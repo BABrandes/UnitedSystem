@@ -232,8 +232,8 @@ class TestUnitedDataframeOperations:
         """Test row_find_by_item across types, units, not-found, invalid, and read-only."""
         print("\n🔎 Testing row_find_by_item...")
 
-        now1: Timestamp = Timestamp("2024-01-01")
-        now2: Timestamp = Timestamp("2024-01-02")
+        now1: Timestamp = Timestamp("2024-01-01") # type: ignore
+        now2: Timestamp = Timestamp("2024-01-02") # type: ignore
 
         columns: Mapping[TestColumnKey, tuple[DataframeColumnType, Optional[Unit|Dimension], Sequence[VALUE_TYPE]] | tuple[DataframeColumnType, Sequence[VALUE_TYPE]]] = {
             TestColumnKey("strings"): (DataframeColumnType.STRING, None, ["A", "B", "A", "C"]),
