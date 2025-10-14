@@ -1036,7 +1036,11 @@ class Dimension:
 ################################################################################
 
     def __hash__(self) -> int:
-        return hash(tuple(self._proper_exponents.values()) + tuple(self._log_dimensions.values()))
+        # Hash must include both keys and values to ensure dimensions with different subscripts
+        # or different log dimensions have different hashes
+        proper_hash = tuple(sorted(self._proper_exponents.items()))
+        log_hash = tuple(sorted((k, v) for k, v in self._log_dimensions.items()))
+        return hash((proper_hash, log_hash))
 
 ################################################################################
 # Properties
@@ -1568,6 +1572,23 @@ class Dimension:
         # Set attributes directly on the already-created object
         object.__setattr__(self, '_proper_exponents', MappingProxyType(state.get("_proper_exponents", {})))
         object.__setattr__(self, '_log_dimensions', MappingProxyType(state.get("_log_dimensions", {})))
+    
+    def __copy__(self) -> "Dimension":
+        """Dimension is immutable, so return self for shallow copy."""
+        return self
+    
+    def __deepcopy__(self, memo: dict[int, Any]) -> "Dimension":
+        """
+        Dimension is immutable, so return self for deep copy.
+        This also ensures that dimensions remain cached and share identity.
+        """
+        # Check if we're already in the memo (circular reference handling)
+        if id(self) in memo:
+            return memo[id(self)]
+        
+        # Add self to memo and return self (since we're immutable)
+        memo[id(self)] = self
+        return self
     
     @classmethod
     def clear_cache(cls) -> None:

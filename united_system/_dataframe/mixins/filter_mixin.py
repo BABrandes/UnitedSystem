@@ -230,8 +230,8 @@ class FilterMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
 
         if not masks:
-            raise ValueError("At least one mask must be provided.")
-        
+            return self._copy()
+
         # Combine all masks with AND logic
         combined_mask: BoolArray = masks[0]
         for mask in masks[1:]:

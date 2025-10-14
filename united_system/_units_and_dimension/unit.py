@@ -220,7 +220,7 @@ class Unit:
                 return _UNIT_CACHE[value]
             
             # Create new instance
-            instance: Unit = object.__new__(cls)
+            instance = object.__new__(cls)
 
             # Parse string representation
             unit_elements, log_units = cls._parse_string(value)
@@ -234,9 +234,9 @@ class Unit:
         elif isinstance(value, NamedQuantity): # type: ignore
             # Create a new instance
             if subscript is None:
-                instance: Unit = value.dimension.canonical_unit
+                instance = value.dimension.canonical_unit
             else:
-                instance: Unit = Dimension(value, subscript).canonical_unit
+                instance = Dimension(value, subscript).canonical_unit
             return instance
         
         else:
@@ -501,7 +501,7 @@ class Unit:
             for element in elements:
                 if not isinstance(element.unit_symbol, UnitSymbol):
                     raise ValueError(f"Invalid unit symbol: {element.unit_symbol}")
-                key: Tuple[str, UnitSymbol, Optional[UnitPrefix]] = (subscript, element.unit_symbol, element.prefix)
+                key = (subscript, element.unit_symbol, element.prefix)
                 if key in all_elements:
                     # Combine exponents
                     combined_exponent = all_elements[key].exponent + element.exponent
@@ -757,7 +757,8 @@ class Unit:
     def __hash__(self) -> int:
         """Hash based on unit elements and log units."""
         unit_elements_tuple = tuple(sorted(self._unit_elements.items()))
-        log_units_tuple = tuple(sorted(self._log_units))
+        # Sort log_units by hash of dimensions to ensure consistent hashing without requiring Dimension to be orderable
+        log_units_tuple = tuple(sorted(self._log_units, key=lambda x: (hash(x[1]), x[0].exponent)))
         return hash((unit_elements_tuple, log_units_tuple))
 
 ########################################################
@@ -898,7 +899,7 @@ class Unit:
                             log_part = part[log_start:]
                         else:
                             # No prefix
-                            prefix_string: str = ""
+                            prefix_string = ""
                             log_part = part
 
                         prefix: Optional[UnitPrefix] = UnitPrefix.get_prefix(prefix_string)
@@ -1047,12 +1048,12 @@ class Unit:
         """
         ...
     @overload
-    def to_canonical_value(self, value_in_unit: "pd.Series[Any]") -> "pd.Series[Any]":
+    def to_canonical_value(self, value_in_unit: "pd.Series") -> "pd.Series":
         """
         Convert a pandas series from this unit to canonical units.
         """
         ...
-    def to_canonical_value(self, value_in_unit: Union[float, int, complex, np.ndarray, "pd.Series[Any]"]) -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
+    def to_canonical_value(self, value_in_unit: Union[float, int, complex, np.ndarray, "pd.Series"]) -> Union[float, int, complex, np.ndarray, "pd.Series"]:
         """
         Convert a value from this unit to canonical units.
         
@@ -1096,12 +1097,12 @@ class Unit:
         """
         ...
     @overload
-    def from_canonical_value(self, canonical_value: "pd.Series[Any]") -> "pd.Series[Any]":
+    def from_canonical_value(self, canonical_value: "pd.Series") -> "pd.Series":
         """
         Convert a pandas series from canonical units to this unit.
         """
         ...
-    def from_canonical_value(self, canonical_value: Union[float, int, complex, np.ndarray, "pd.Series[Any]"]) -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
+    def from_canonical_value(self, canonical_value: Union[float, int, complex, np.ndarray, "pd.Series"]) -> Union[float, int, complex, np.ndarray, "pd.Series"]:
         """
         Convert a value from canonical units to this unit.
         
@@ -1127,7 +1128,7 @@ class Unit:
             raise ValueError(f"Invalid value type: {type(canonical_value)}")
         
     @classmethod
-    def convert(cls, value: Union[float, int, complex, np.ndarray, "pd.Series[Any]"], from_unit: "Unit", to_unit: "Unit") -> Union[float, int, complex, np.ndarray, "pd.Series[Any]"]:
+    def convert(cls, value: Union[float, int, complex, np.ndarray, "pd.Series"], from_unit: "Unit", to_unit: "Unit") -> Union[float, int, complex, np.ndarray, "pd.Series"]:
         """
         Create a unit from a canonical value.
         """
@@ -1381,6 +1382,23 @@ class Unit:
         if not hasattr(self, "_dimension"):
             from .dimension import Dimension
             object.__setattr__(self, "_dimension", Dimension(self))
+    
+    def __copy__(self) -> "Unit":
+        """Unit is immutable (frozen dataclass), so return self for shallow copy."""
+        return self
+    
+    def __deepcopy__(self, memo: dict[int, Any]) -> "Unit":
+        """
+        Unit is immutable (frozen dataclass), so return self for deep copy.
+        This also ensures that units remain cached and share identity.
+        """
+        # Check if we're already in the memo (circular reference handling)
+        if id(self) in memo:
+            return memo[id(self)]
+        
+        # Add self to memo and return self (since we're immutable)
+        memo[id(self)] = self
+        return self
 
 ########################################################
     # Factory methods
