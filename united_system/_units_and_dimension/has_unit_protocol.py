@@ -1,12 +1,14 @@
-from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING, Union
+from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING, Union, TypeVar, Any
 from abc import abstractmethod
 
 if TYPE_CHECKING:
-    from .unit import Unit
-    from .dimension import Dimension
+    from .unit.unit import Unit
+    from .dimension.dimension import Dimension
+
+T = TypeVar("T", bound="HasUnit[Any]", covariant=True)
 
 @runtime_checkable
-class HasUnit(Protocol):
+class HasUnit(Protocol[T]):
     """
     A protocol for objects that have a unit.
 
@@ -23,10 +25,11 @@ class HasUnit(Protocol):
     @abstractmethod
     def unit(self) -> "Unit": ...
 
-    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit"]) -> bool:
+    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit[Any]"]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
         and the same proper exponents.
         """
+
         return Dimension.are_compatible(self.dimension, *others)

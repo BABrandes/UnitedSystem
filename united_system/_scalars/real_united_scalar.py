@@ -1,10 +1,10 @@
 """RealUnitedScalar using mixins for better modularity."""
 
-from dataclasses import dataclass, field
 from typing import Optional, overload
-from .._units_and_dimension.named_quantity import NamedQuantity
-from .._units_and_dimension.dimension import Dimension
-from .._units_and_dimension.unit import Unit
+from dataclasses import dataclass, field
+
+from united_system import Dimension, Unit, NamedQuantity
+
 from .._utils.string_utils import str_to_float
 
 # Import all mixins

@@ -1,4 +1,4 @@
-from typing import Iterator, Generic, TypeVar, Any, overload, Optional, Sequence
+from typing import Iterator, Generic, TypeVar, Any, overload, Optional, Sequence, Literal
 import numpy as np
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
@@ -12,13 +12,14 @@ if TYPE_CHECKING:
     from .._arrays.base_united_array import BaseUnitedArray
 from .._utils.value_type import VALUE_TYPE
 from .._utils.scalar_type import SCALAR_TYPE
+from .._utils.general import SerializationProtocol
 
 PT = TypeVar("PT", bound=VALUE_TYPE)
 IT = TypeVar("IT", bound=SCALAR_TYPE)
 AT = TypeVar("AT", bound="BaseArray[VALUE_TYPE, SCALAR_TYPE, Any]")
 
 @dataclass(frozen=True, slots=True, init=False)
-class BaseArray(ABC, Generic[PT, IT, AT]):
+class BaseArray(ABC, SerializationProtocol[AT], Generic[PT, IT, AT]):
 
     canonical_np_array: np.ndarray
 
@@ -179,6 +180,43 @@ class BaseArray(ABC, Generic[PT, IT, AT]):
         """
         ...
 
+    #########################################################
+    # Serialization
+    #########################################################
+
+    def serialize(self, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> Any:
+        if format == "json":
+            raise NotImplementedError("JSON serialization is not implemented for BaseArray")
+        elif format == "hdf5":
+            raise NotImplementedError("HDF5 serialization is not implemented for BaseArray")
+        elif format == "pickle":
+            raise NotImplementedError("Pickle serialization is not implemented for BaseArray")
+        elif format == "csv":
+            raise NotImplementedError("CSV serialization is not implemented for BaseArray")
+        elif format == "yaml":
+            raise NotImplementedError("YAML serialization is not implemented for BaseArray")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")
+
+    @classmethod
+    def deserialize(cls, data: Any, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> AT:
+        if format == "json":
+            raise NotImplementedError("JSON deserialization is not implemented for BaseArray")
+        elif format == "hdf5":
+            raise NotImplementedError("HDF5 deserialization is not implemented for BaseArray")
+        elif format == "pickle":
+            raise NotImplementedError("Pickle deserialization is not implemented for BaseArray")
+        elif format == "csv":
+            raise NotImplementedError("CSV deserialization is not implemented for BaseArray")
+        elif format == "yaml":
+            raise NotImplementedError("YAML deserialization is not implemented for BaseArray")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")
+
+########################################################
+# Module methods
+########################################################
+
 @overload
 def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int) -> "ARRAY_TYPE":
     ...
@@ -235,3 +273,4 @@ def create_array(item: VALUE_TYPE|SCALAR_TYPE, size: int, expected_type: Optiona
         raise NotImplementedError("ComplexUnitedArray is not implemented")
     else:
         raise ValueError(f"Invalid type: {type(item)}")
+

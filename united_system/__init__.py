@@ -7,8 +7,8 @@ with automatic unit conversion and dimensional analysis.
 
 from ._scalars.real_united_scalar import RealUnitedScalar
 from ._arrays.real_united_array import RealUnitedArray
-from ._units_and_dimension.dimension import Dimension
-from ._units_and_dimension.unit import Unit
+from ._units_and_dimension.dimension.dimension import Dimension
+from ._units_and_dimension.unit.unit import Unit
 from ._dataframe.united_dataframe import UnitedDataframe
 from ._arrays.int_array import IntArray
 from ._arrays.string_array import StringArray
@@ -19,14 +19,14 @@ from ._arrays.float_array import FloatArray
 from ._dataframe.column_type import ColumnType as DataframeColumnType
 from ._dataframe.column_key import ColumnKey as DataframeColumnKey
 from ._units_and_dimension.named_quantity import NamedQuantity
-from ._units_and_dimension.unit_symbol import UnitSymbol
-from ._units_and_dimension.unit_prefix import UnitPrefix
+from ._units_and_dimension.unit.unit_symbol import UnitSymbol
+from ._units_and_dimension.unit.unit_prefix import UnitPrefix
 from ._units_and_dimension.has_unit_protocol import HasUnit
 from ._utils.value_type import VALUE_TYPE, is_value
 from ._utils.scalar_type import SCALAR_TYPE, NUMERIC_SCALAR_TYPE, is_scalar, is_numeric_scalar
 from ._utils.array_type import ARRAY_TYPE, is_array
 from ._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
-from ._units_and_dimension.dimension import DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
+from ._units_and_dimension.dimension.dimension import DIMENSIONLESS_DIMENSION, ANGLE_DIMENSION
 from ._arrays.base_array import create_array
 
 

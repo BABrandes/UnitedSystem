@@ -1,11 +1,12 @@
 """String formatting and representation for RealUnitedScalar."""
 
 from typing import Union, Optional, TYPE_CHECKING
+
+from united_system import Unit, Dimension
+
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from ...._units_and_dimension.unit import Unit
-    from ...._units_and_dimension.dimension import Dimension
     from ...._scalars.real_united_scalar import RealUnitedScalar
 
 class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
@@ -58,13 +59,13 @@ class FormattingMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             >>> scalar.format("g", max_decimals=0)
             '1000 g'
         """
-        from ...._units_and_dimension.unit import Unit
+
         if unit is None:
-            _unit: "Unit" = self.unit.reduced
+            _unit: Unit = self.unit.reduced
         elif isinstance(unit, str):
-            _unit: "Unit" = Unit(unit)
+            _unit = Unit(unit)
         else:
-            _unit: "Unit" = unit
+            _unit = unit
         if _unit.dimension != self.dimension:
             raise ValueError(f"The requested display unit {_unit} is not compatible with the scalar's dimension {self.dimension}")
         display_value = _unit.from_canonical_value(self.canonical_value)

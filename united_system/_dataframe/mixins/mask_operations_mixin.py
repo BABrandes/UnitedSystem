@@ -8,14 +8,16 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
 from typing import Callable, TYPE_CHECKING, Literal, Mapping, overload, Optional
+import pandas as pd
+import numpy as np
+
+from united_system import Unit
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._scalars.united_scalar import UnitedScalar
-from ..._units_and_dimension.unit import Unit
 from ..._utils.scalar_type import SCALAR_TYPE
 from ..._utils.value_type import VALUE_TYPE
 from ..._arrays.bool_array import BoolArray
-import pandas as pd
-import numpy as np
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe

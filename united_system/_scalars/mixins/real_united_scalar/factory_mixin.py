@@ -1,8 +1,9 @@
 """Factory methods for RealUnitedScalar."""
 
 from typing import TYPE_CHECKING, Union, Optional
-from ...._units_and_dimension.unit import Unit
-from ...._units_and_dimension.dimension import Dimension
+
+from united_system import Unit, Dimension
+
 from .protocol import RealUnitedScalarProtocol
 from ...._units_and_dimension.named_quantity import NamedQuantity
 from ...._utils.string_utils import str_to_float

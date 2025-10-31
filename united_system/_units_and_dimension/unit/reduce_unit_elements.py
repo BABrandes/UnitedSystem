@@ -1,7 +1,7 @@
 from typing import Sequence
 from .unit_element import UnitElement
-from .proper_exponents import ProperExponents
-from .named_quantity import NamedQuantity, CONSIDER_FOR_REDUCTION_QUANTITIES, QuantityTag
+from ..proper_exponents import ProperExponents
+from ..named_quantity import NamedQuantity, CONSIDER_FOR_REDUCTION_QUANTITIES, QuantityTag
 from functools import lru_cache
 
 EPSILON: float = 1e-12

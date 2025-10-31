@@ -1,19 +1,19 @@
-import numpy as np
+from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, Sequence, TYPE_CHECKING, Literal
 from dataclasses import dataclass
-from typing import overload, Any, TypeVar, Generic, Union, Iterator, Optional, Sequence, TYPE_CHECKING
-from .._units_and_dimension.dimension import Dimension
-from .._units_and_dimension.unit import Unit
+from abc import ABC, abstractmethod
+
+import numpy as np
+import pandas as pd
+from pandas._typing import Dtype
+
+from united_system import Dimension, Unit, NamedQuantity
+
 from .._scalars.united_scalar import UnitedScalar
 from .._units_and_dimension.has_unit_protocol import HasUnit
 from .base_array import BaseArray
 from .protocol_numerical_array import ProtocolNumericalArray
-from abc import ABC, abstractmethod
-import h5py
-import pandas as pd
-from pandas._typing import Dtype
-from .._units_and_dimension.named_quantity import NamedQuantity
-
 from .._utils.value_type import VALUE_TYPE
+
 if TYPE_CHECKING:
     from .int_array import IntArray
     from .float_array import FloatArray
@@ -192,7 +192,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
         if slice is None:
             canonical_np_array: np.ndarray = self.canonical_np_array
         else:
-            canonical_np_array: np.ndarray = self.canonical_np_array[slice]
+            canonical_np_array = self.canonical_np_array[slice]
         if target_unit is None:
             return self.unit.from_canonical_value(canonical_np_array)
         else:
@@ -217,7 +217,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
         if slice is None:
             canonical_np_array: np.ndarray = self.canonical_np_array
         else:
-            canonical_np_array: np.ndarray = self.canonical_np_array[slice]
+            canonical_np_array = self.canonical_np_array[slice]
         if target_unit is None:
             return pd.Series(self.unit.from_canonical_value(canonical_np_array), dtype=dtype)
         else:
@@ -278,7 +278,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             case BaseUnitedArray():
                 if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
-                array: np.ndarray = self.canonical_np_array + other.canonical_np_array
+                array = self.canonical_np_array + other.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit) # type: ignore
 
     @overload    
@@ -306,7 +306,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             case BaseUnitedArray():
                 if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
-                array: np.ndarray = self.canonical_np_array - other.canonical_np_array
+                array = self.canonical_np_array - other.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit) # type: ignore
 
     @overload    
@@ -325,7 +325,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             case BaseUnitedArray():
                 if not self.dimension == other.dimension:
                     raise ValueError(f"The unit dimension {self.dimension} is not compatible with the unit dimension {other.dimension}.")
-                array: np.ndarray = other.canonical_np_array - self.canonical_np_array
+                array = other.canonical_np_array - self.canonical_np_array
                 return type(self)(array, self.dimension, self._display_unit) # type: ignore
     
     @overload    
@@ -345,18 +345,18 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             array: np.ndarray = self.canonical_np_array * other.canonical_np_array
             return type(self)(array, dimension, self._display_unit) # type: ignore
         elif isinstance(other, FloatArray):
-            array: np.ndarray = self.canonical_np_array * other.canonical_np_array
+            array = self.canonical_np_array * other.canonical_np_array
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
         elif isinstance(other, UnitedScalar):
-            array: np.ndarray = self.canonical_np_array * other.canonical_value
+            array = self.canonical_np_array * other.canonical_value
             dimension: Dimension = self.dimension * other.dimension
             return type(self)(array, dimension, None) # type: ignore
         elif isinstance(other, BaseUnitedArray):
-            array: np.ndarray = self.canonical_np_array * other.canonical_np_array
-            dimension: Dimension = self.dimension * other.dimension
+            array = self.canonical_np_array * other.canonical_np_array
+            dimension = self.dimension * other.dimension
             return type(self)(array, dimension, None) # type: ignore
         else:
-            array: np.ndarray = self.canonical_np_array.__mul__(other)
+            array = self.canonical_np_array.__mul__(other)
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
 
     @overload
@@ -391,18 +391,18 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             array: np.ndarray = self.canonical_np_array / other.canonical_np_array
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
         elif isinstance(other, FloatArray):
-            array: np.ndarray = self.canonical_np_array / other.canonical_np_array
+            array = self.canonical_np_array / other.canonical_np_array
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
         elif isinstance(other, UnitedScalar):
-            array: np.ndarray = self.canonical_np_array / other.canonical_value
+            array = self.canonical_np_array / other.canonical_value
             dimension: Dimension = self.dimension / other.dimension
             return type(self)(array, dimension, None) # type: ignore
         elif isinstance(other, BaseUnitedArray):
-            array: np.ndarray = self.canonical_np_array / other.canonical_np_array
-            dimension: Dimension = self.dimension / other.dimension
+            array = self.canonical_np_array / other.canonical_np_array
+            dimension = self.dimension / other.dimension
             return type(self)(array, dimension, None) # type: ignore
         else:
-            array: np.ndarray = self.canonical_np_array.__truediv__(other)
+            array = self.canonical_np_array.__truediv__(other)
             return type(self)(array, self.dimension, self._display_unit) # type: ignore
     
     @overload
@@ -422,18 +422,18 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             array: np.ndarray = other.canonical_np_array / self.canonical_np_array
             return type(self)(array, self.dimension, self._display_unit.invert()) # type: ignore
         elif isinstance(other, FloatArray):
-            array: np.ndarray = other.canonical_np_array / self.canonical_np_array
+            array = other.canonical_np_array / self.canonical_np_array
             return type(self)(array, self.dimension, self._display_unit.invert()) # type: ignore
         elif isinstance(other, UnitedScalar):
-            array: np.ndarray = other.canonical_value / self.canonical_np_array
+            array = other.canonical_value / self.canonical_np_array
             dimension: Dimension = other.dimension / self.dimension
             return type(self)(array, dimension, self._display_unit) # type: ignore
         elif isinstance(other, BaseUnitedArray):
-            array: np.ndarray = other.canonical_np_array / self.canonical_np_array
-            dimension: Dimension = other.dimension / self.dimension
+            array = other.canonical_np_array / self.canonical_np_array
+            dimension = other.dimension / self.dimension
             return type(self)(array, dimension, self._display_unit) # type: ignore
         else:
-            array: np.ndarray = other / self.canonical_np_array
+            array = other / self.canonical_np_array
             zero_dim: Dimension = (type(self.dimension)).dimensionless_dimension()
             dimension = zero_dim / self.dimension
             return type(self)(array, dimension, None) # type: ignore
@@ -565,44 +565,6 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
     def var_as_scalar(self) -> UST:
         var: PT = np.var(self.canonical_np_array) # type: ignore
         return self.get_scalar_from_value(var)
-    
-    def to_json(self) -> dict[str, Any]:
-        canonical_dimension_as_unit: Unit = self.dimension.canonical_unit
-        return {
-            "canonical_np_array": self.canonical_np_array.tolist(),
-            "canonical_dimension_as_unit": canonical_dimension_as_unit.to_json(),
-            "display_unit": self._display_unit.to_json() if self._display_unit else None
-        }
-    
-    @classmethod
-    def from_json(cls, data: dict[str, Any]) -> UAT:
-        canonical_np_array: np.ndarray = np.array(data["canonical_np_array"])
-        canonical_dimension_as_unit: Unit = Unit.from_json(data["canonical_dimension_as_unit"])
-        dimension: Dimension = canonical_dimension_as_unit.dimension
-        display_unit: Unit|None = Unit.from_json(data["display_unit"]) if data["display_unit"] else None
-
-        return type(cls)(
-            canonical_np_array=canonical_np_array,
-            dimension=dimension,
-            display_unit=display_unit)
-    
-    def to_hdf5(self, hdf5_group: h5py.Group) -> None:
-        canonical_dimension_as_unit: Unit = self.dimension.canonical_unit
-        hdf5_group.attrs["canonical_np_array"] = self.canonical_np_array.tolist()
-        hdf5_group.attrs["canonical_dimension_as_unit"] = canonical_dimension_as_unit.to_json()
-        hdf5_group.attrs["display_unit"] = self._display_unit.to_json() if self._display_unit else None
-    
-    @classmethod
-    def from_hdf5(cls, hdf5_group: h5py.Group) -> UAT:
-        canonical_np_array: np.ndarray = np.array(hdf5_group.attrs["canonical_np_array"])
-        canonical_dimension_as_unit: Unit = Unit.from_json(hdf5_group.attrs["canonical_dimension_as_unit"]) # type: ignore
-        dimension: Dimension = canonical_dimension_as_unit.dimension
-        display_unit: Unit|None = Unit.from_json(hdf5_group.attrs["display_unit"]) if hdf5_group.attrs["display_unit"] else None # type: ignore
-
-        return type(cls)(
-            canonical_np_array=canonical_np_array,
-            dimension=dimension,
-            display_unit=display_unit)
 
     def in_unit(self, unit: Unit) -> np.ndarray:
         """Convert the array to a specific unit and return numpy array."""
@@ -616,7 +578,7 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             raise ValueError(f"Unit {unit} is not compatible with dimension {self.dimension}")
         return type(self)(self.canonical_np_array, self.dimension, unit)
     
-    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit"]) -> bool:
+    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit[Any]"]) -> bool:
         """Check if this array is compatible (same dimension) with another."""
         return self.dimension.compatible_to(*others)
 
@@ -654,3 +616,36 @@ class BaseUnitedArray(BaseArray[PT, UST, UAT], HasUnit, ProtocolNumericalArray[P
             raise ValueError("All arrays must have the same dimension")
         
         return cls(canonical_np_array=np.concatenate([array.canonical_np_array for array in arrays]), dimension=arrays[0].dimension, display_unit=arrays[0]._display_unit) # type: ignore
+
+    #########################################################
+    # Serialization
+    #########################################################
+
+    def serialize(self, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> Any:
+        if format == "json":
+            raise NotImplementedError("JSON serialization is not implemented for BaseUnitedArray")
+        elif format == "hdf5":
+            raise NotImplementedError("HDF5 serialization is not implemented for BaseUnitedArray")
+        elif format == "pickle":
+            raise NotImplementedError("Pickle serialization is not implemented for BaseUnitedArray")
+        elif format == "csv":
+            raise NotImplementedError("CSV serialization is not implemented for BaseUnitedArray")
+        elif format == "yaml":
+            raise NotImplementedError("YAML serialization is not implemented for BaseUnitedArray")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")
+
+    @classmethod
+    def deserialize(cls, data: Any, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> UAT:
+        if format == "json":
+            raise NotImplementedError("JSON deserialization is not implemented for BaseUnitedArray")
+        elif format == "hdf5":
+            raise NotImplementedError("HDF5 deserialization is not implemented for BaseUnitedArray")
+        elif format == "pickle":
+            raise NotImplementedError("Pickle deserialization is not implemented for BaseUnitedArray")
+        elif format == "csv":
+            raise NotImplementedError("CSV deserialization is not implemented for BaseUnitedArray")
+        elif format == "yaml":
+            raise NotImplementedError("YAML deserialization is not implemented for BaseUnitedArray")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")

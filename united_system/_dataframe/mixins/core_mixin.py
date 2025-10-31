@@ -5,13 +5,13 @@ Contains basic properties, initialization helpers, and core utility methods.
 """
 
 from typing import Any, Optional, Sequence, TYPE_CHECKING, Iterable, overload, Union, cast, Mapping
-from collections.abc import Sequence
 import pandas as pd
 import numpy as np
 
+from united_system import Unit
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter
-from ..._units_and_dimension.unit import Unit
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe

@@ -8,11 +8,13 @@ Now inherits from UnitedDataframeProtocol for full IDE support and type checking
 """
 
 from typing import TYPE_CHECKING, TypeVar, Optional
+import numpy as np
+
+from united_system import Unit
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import ColumnType, ARRAY_TYPE
-from ..._units_and_dimension.unit import Unit
 from ..._units_and_dimension.has_unit_protocol import HasUnit
-import numpy as np
 from ..._utils.scalar_type import SCALAR_TYPE
 from ..._utils.value_type import VALUE_TYPE
 

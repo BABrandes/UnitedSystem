@@ -1,10 +1,11 @@
+from typing import Any, Type, Optional, Union, Literal
 from dataclasses import dataclass, field
-from .._scalars.united_scalar import UnitedScalar
-from .._units_and_dimension.unit import Unit
-from typing import Any, Type, Optional, Union
 import h5py
-from .._units_and_dimension.dimension import Dimension
+
+from .._scalars.united_scalar import UnitedScalar
 from .._units_and_dimension.has_unit_protocol import HasUnit
+
+from united_system import Unit, Dimension
 
 @dataclass(frozen=True, slots=True, init=False)
 class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
@@ -132,7 +133,7 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
     def is_infinite(self) -> bool:
         raise NotImplementedError("ComplexUnitedScalar.is_infinite is not implemented")
     
-    def compatible_to(self, *args: Union["HasUnit", "Unit", "Dimension"]) -> bool:
+    def compatible_to(self, *args: Union["HasUnit[Any]", "Unit", "Dimension"]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
@@ -155,3 +156,10 @@ class ComplexUnitedScalar(UnitedScalar["ComplexUnitedScalar", complex]):
             self.canonical_value,
             self.dimension,
             unit)
+
+    def serialize(self, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> Any:
+        raise NotImplementedError("ComplexUnitedScalar.serialize is not implemented")
+    
+    @classmethod
+    def deserialize(cls, data: Any, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> "ComplexUnitedScalar":
+        raise NotImplementedError("ComplexUnitedScalar.deserialize is not implemented")

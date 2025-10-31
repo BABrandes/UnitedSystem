@@ -13,10 +13,10 @@ import pandas as pd
 import numpy as np
 from pandas._typing import Dtype
 
+from united_system import Unit, Dimension
+
 from .dataframe_protocol import CK, UnitedDataframeProtocol
 from ..._dataframe.column_type import ColumnType
-from ..._units_and_dimension.dimension import Dimension
-from ..._units_and_dimension.unit import Unit
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from ..._arrays.base_united_array import BaseUnitedArray
 from ..._scalars.united_scalar import UnitedScalar

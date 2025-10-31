@@ -7,22 +7,23 @@ including JSON, CSV, HDF5, and pickle formats.
 Now inherits from UnitedDataframeProtocol for full IDE support and type checking.
 """
 
-from typing import Any, Dict, Union, TYPE_CHECKING, Type, Optional, Mapping
+from typing import Any, Dict, Union, TYPE_CHECKING, Type, Optional, Mapping, Literal
 import json
 import pickle
 from pathlib import Path
 import h5py
 
+from united_system import Unit, Dimension
+
+from ..._utils.general import SerializationProtocol
 from ..column_type import ColumnType
-from ..._units_and_dimension.dimension import Dimension
-from ..._units_and_dimension.unit import Unit
 from ..internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe
 
-class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
+class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"], SerializationProtocol["UnitedDataframe[CK]"]):
     """
     Serialization operations mixin for UnitedDataframe.
     
@@ -32,6 +33,41 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
     Now inherits from UnitedDataframeProtocol so it has full knowledge of the 
     UnitedDataframe interface with proper IDE support and type checking.
     """
+
+    def serialize(self, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> Any:
+        """Serialize the dataframe to a JSON, HDF5, pickle, CSV, or YAML string."""
+        if format == "json":
+            return self.to_json()
+        elif format == "hdf5":
+            return self.to_hdf5(kwargs["hdf5_group"])
+        elif format == "pickle":
+            return self.to_pickle()
+        elif format == "csv":
+            return self.to_csv()
+        elif format == "yaml":
+            raise NotImplementedError("YAML serialization is not implemented for UnitedDataframe")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")
+
+    @classmethod
+    def deserialize(cls, data: Any, format: Optional[Literal["json", "hdf5", "pickle", "csv", "yaml"]], **kwargs: Any) -> "UnitedDataframe[CK]":
+        """Deserialize the dataframe from a JSON, HDF5, pickle, CSV, or YAML string."""
+        if format == "json":
+            return cls.from_json(data, **kwargs)
+        elif format == "hdf5":
+            return cls.from_hdf5(data, **kwargs)
+        elif format == "pickle":
+            return cls.from_pickle(data, **kwargs)
+        elif format == "csv":
+            return cls.from_csv(data, **kwargs)
+        elif format == "yaml":
+            raise NotImplementedError("YAML deserialization is not implemented for UnitedDataframe")
+        else:
+            raise ValueError(f"Unsupported serialization format: {format}")
+
+
+
+
 
     # ----------- JSON Serialization ------------
 
@@ -82,12 +118,13 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
         """
         with self._rlock:
             if path is None:
-                return self._internal_dataframe.to_csv(index=False)
+                return self._internal_dataframe.to_csv(index=False) # type: ignore
             else:
-                self._internal_dataframe.to_csv(path, index=False)
+                self._internal_dataframe.to_csv(path, index=False) # type: ignore
                 return None
 
-    def from_csv(self, path: Union[str, Path], **_: Type[Any]) -> None:
+    @classmethod
+    def from_csv(cls, path: Union[str, Path], **_: Type[Any]) -> "UnitedDataframe[CK]":
         """
         Load dataframe from CSV format.
         
@@ -95,16 +132,13 @@ class SerializationMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             path (Union[str, Path]): File path to load CSV from
             **kwargs: Additional arguments passed to pandas.read_csv()
         """
-        with self._wlock:  # Full IDE support for _wlock!
-            if self._read_only:  # And _read_only!
-                raise ValueError("The dataframe is read-only. Please create a new dataframe instead.")
-            
-            # Load pandas dataframe from CSV
-            import pandas as pd
-            df = pd.read_csv(path) # type: ignore
-            
-            # Replace internal dataframe
-            self._internal_dataframe = df
+
+        # Load pandas dataframe from CSV
+        import pandas as pd
+        df = pd.read_csv(path) # type: ignore
+        
+        united_dataframe: "UnitedDataframe[CK]" = cls.create_from_dataframe(dataframe=df, column_key_type=column_key_type, internal_dataframe_column_name_formatter=internal_dataframe_column_name_formatter) # type: ignore
+        return united_dataframe # type: ignore
 
     # ----------- HDF5 Serialization ------------
 

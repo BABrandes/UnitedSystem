@@ -47,20 +47,20 @@ Examples:
 
 from typing import TYPE_CHECKING, overload, Union, Optional, Any
 from types import MappingProxyType
-from h5py import Group
-from .utils import seperate_string
+from ..utils import seperate_string
+from .mixins.serialization_mixin import SerializationMixin
 from .dimension_symbol import DimensionSymbol, BASE_DIMENSION_SYMBOLS
-from .has_unit_protocol import HasUnit
+from ..has_unit_protocol import HasUnit
 
 if TYPE_CHECKING:
-    from .unit import Unit
-    from .named_quantity import NamedQuantity
+    from ..unit.unit import Unit
+    from ..named_quantity import NamedQuantity
 
 EPSILON: float = 1e-12
 
 LOG_DIMENSION_SYMBOL_STRING: str =   "DEC"
 
-class Dimension:
+class Dimension(SerializationMixin):
     """
     A class representing physical dimensions for scientific calculations.
     
@@ -191,8 +191,8 @@ class Dimension:
             dimensionless = Dimension("")
         """
         # Import here to avoid circular import
-        from .named_quantity import NamedQuantity
-        from .unit import Unit
+        from ..named_quantity import NamedQuantity
+        from ..unit.unit import Unit
         
         if isinstance(value, str):
             pass
@@ -211,8 +211,8 @@ class Dimension:
             subscript: Optional[str]=None,
         ) -> "Dimension":
         # Import here to avoid circular import
-        from .named_quantity import NamedQuantity
-        from .unit import Unit
+        from ..named_quantity import NamedQuantity
+        from ..unit.unit import Unit
         
         if isinstance(value, str):
 
@@ -265,7 +265,7 @@ class Dimension:
             proper_exponents_dict: dict[str, tuple[float, float, float, float, float, float, float, float]] = {}
             for subscript, unit_elements in value.unit_elements.items():
                 # Use the proper_exponents_of_unit_elements function directly to avoid circular dependency
-                from .proper_exponents import ProperExponents
+                from ..proper_exponents import ProperExponents
                 proper_exponents_tuple = ProperExponents.proper_exponents_of_unit_elements(unit_elements)
                 proper_exponents_dict[subscript] = proper_exponents_tuple
 
@@ -1078,7 +1078,7 @@ class Dimension:
 ################################################################################
 
     @classmethod
-    def are_compatible(cls, *others: Optional[Union["Dimension", "Unit", HasUnit]]) -> bool:
+    def are_compatible(cls, *others: Optional[Union["Dimension", "Unit", "HasUnit[Any]"]]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
@@ -1103,11 +1103,11 @@ class Dimension:
             return False
         
         assert others[0] is not None
-        first_item: Union["Dimension", "Unit", HasUnit] = others[0]        
+        first_item: Union["Dimension", "Unit", "HasUnit[Any]"] = others[0]        
         for other in others[1:]:
             assert other is not None
             if isinstance(first_item, Unit):
-                if not first_item.compatible_to(other):
+                if not first_item.compatible_to(other): # type: ignore
                     return False
             elif isinstance(first_item, HasUnit):
                 if not first_item.compatible_to(other):
@@ -1119,7 +1119,7 @@ class Dimension:
                 raise ValueError(f"Invalid item: {first_item}")
         return True
 
-    def compatible_to(self, *others: Union["Dimension", "Unit", HasUnit]) -> bool:
+    def compatible_to(self, *others: Union["Dimension", "Unit", "HasUnit[Any]"]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts
@@ -1130,7 +1130,7 @@ class Dimension:
         
         """
         # Import here to avoid circular import
-        from .unit import Unit
+        from ..unit.unit import Unit
         
         for other in others:
             if isinstance(other, Unit):
@@ -1330,7 +1330,7 @@ class Dimension:
                 raise ValueError("Invalid seperator.")
             
             # Check if this is a log function call by checking against all LOG_UNIT_SYMBOLS and LOG_DIMENSION_SYMBOL_STRING
-            from .unit_symbol import LOG_UNIT_SYMBOLS
+            from ..unit.unit_symbol import LOG_UNIT_SYMBOLS
             is_log_function = False
             
             # Check LOG_UNIT_SYMBOLS (lowercase functions)
@@ -1359,7 +1359,7 @@ class Dimension:
                 log_dimension_string: str = part[opening_bracket_index + 1:first_closing_bracket_index]
                 
                 # Handle nested log functions by converting all log functions to DEC format
-                from .unit_symbol import LOG_UNIT_SYMBOLS
+                from ..unit.unit_symbol import LOG_UNIT_SYMBOLS
                 normalized_log_dimension_string = log_dimension_string
                 for log_symbol_enum in LOG_UNIT_SYMBOLS:
                     for log_symbol in log_symbol_enum.value.symbols:
@@ -1401,7 +1401,7 @@ class Dimension:
                     proper_exponents_lists[subscript][DimensionSymbol.get_index(symbol)] = exponent
                 else:
                     try:
-                        from .unit_element import UnitElement
+                        from ..unit.unit_element import UnitElement
                         unit_element: UnitElement = UnitElement.parse_string(symbol, "nominator")
                         for i, exponent_of_unit_element in enumerate(unit_element.dimension._proper_exponents[""]):
                             proper_exponents_lists[subscript][i] += exponent * exponent_of_unit_element
@@ -1436,9 +1436,9 @@ class Dimension:
         if not hasattr(self, "_canonical_unit"):
 
             # Import here to avoid circular import
-            from .unit import Unit
-            from .unit_element import UnitElement
-            from .unit_symbol import BASE_10_LOG_UNIT_SYMBOL
+            from ..unit.unit import Unit
+            from ..unit.unit_element import UnitElement
+            from ..unit.unit_symbol import BASE_10_LOG_UNIT_SYMBOL
             from .dimension_symbol import BASE_DIMENSION_SYMBOLS
             
             # Create unit elements from the dimension's proper exponents
@@ -1463,79 +1463,6 @@ class Dimension:
 
         return self._canonical_unit
 
-################################################################################
-# JSON serialization
-################################################################################
-
-    def to_json(self) -> str:
-        """
-        Convert the dimension to a JSON string representation.
-        
-        Returns:
-            JSON string representation of the dimension
-        
-        Examples:
-            force = Dimension("M*L/T^2")
-            json_str = force.to_json()  # "M*L/T^2"
-        """
-        return self.format_string()
-
-    @classmethod
-    def from_json(cls, json_string: str) -> "Dimension":
-        """
-        Create a dimension from a JSON string representation.
-        
-        Args:
-            json_string: JSON string representation of the dimension
-        
-        Returns:
-            A new Dimension object
-        
-        Examples:
-            json_str = "M*L/T^2"
-            force = Dimension.from_json(json_str)
-        """
-        return Dimension._parse_string(json_string)
-    
-################################################################################
-# HDF5 serialization
-################################################################################
-
-    def to_hdf5(self, hdf5_group: Group) -> None:
-        """
-        Save the dimension to an HDF5 group.
-        
-        Args:
-            hdf5_group: HDF5 group to save the dimension to
-        
-        Examples:
-            import h5py
-            
-            with h5py.File('data.h5', 'w') as f:
-                force = Dimension("M*L/T^2")
-                force.to_hdf5(f)
-        """
-        hdf5_group.attrs["dimension"] = self.format_string()
-
-    @classmethod
-    def from_hdf5(cls, hdf5_group: Group) -> "Dimension":
-        """
-        Load a dimension from an HDF5 group.
-        
-        Args:
-            hdf5_group: HDF5 group containing the dimension
-        
-        Returns:
-            A new Dimension object
-        
-        Examples:
-            import h5py
-            
-            with h5py.File('data.h5', 'r') as f:
-                force = Dimension.from_hdf5(f)
-        """
-        return Dimension._parse_string(hdf5_group.attrs["dimension"]) # type: ignore
-    
     @classmethod
     def dimensionless_dimension(cls) -> "Dimension":
         """
@@ -1610,8 +1537,8 @@ class Dimension:
         Extract a dimension from an object.
         """
         # Import here to avoid circular import
-        from .unit import Unit
-        from .named_quantity import NamedQuantity
+        from ..unit.unit import Unit
+        from ..named_quantity import NamedQuantity
         
         if isinstance(obj, Dimension):  # This is a static method, so we can use the class name
             return obj
@@ -1625,7 +1552,7 @@ class Dimension:
             return None
         
     @classmethod
-    def check_dimensions(cls, dictionary: dict[HasUnit, Union["Dimension", "Unit"]]) -> bool:
+    def check_dimensions(cls, dictionary: dict["HasUnit[Any]", Union["Dimension", "Unit"]]) -> bool:
         """
         Check if the dimensions of the United objects in the dictionary are compatible.
         """

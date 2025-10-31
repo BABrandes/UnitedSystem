@@ -3,14 +3,13 @@
 
 from typing import TYPE_CHECKING, Optional, overload, Union
 import math
-from ...._units_and_dimension.unit import Unit
-from ...._units_and_dimension.dimension import Dimension
-from ...._units_and_dimension.unit_symbol import UnitSymbol
+from united_system import Unit
+from united_system import Dimension
+from united_system import UnitSymbol
 from .protocol import RealUnitedScalarProtocol
 
 if TYPE_CHECKING:
-    from ...._units_and_dimension.dimension import Dimension
-    from ...._scalars.real_united_scalar import RealUnitedScalar
+    from ...real_united_scalar import RealUnitedScalar
 
 class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Arithmetic operations for RealUnitedScalar."""
@@ -114,7 +113,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
                 sign = 1 if (self.canonical_value > 0 and value > 0) or (self.canonical_value < 0 and value < 0) else -1
                 from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(float('inf') * sign, new_dimension, None) # type: ignore
-            case _:
+            case _: # type: ignore
                 raise ValueError(f"Cannot multiply {self} and {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
             
     @overload
@@ -181,7 +180,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
                 # Both infinite
                 from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
-            case _:
+            case _: # type: ignore
                 raise ValueError(f"Cannot divide {self} by {other} because: {math.isfinite(self.canonical_value)} and {math.isfinite(value)} are not finite") # type: ignore
 
     @overload
@@ -232,7 +231,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
                 # Both infinite
                 from ...._scalars.real_united_scalar import RealUnitedScalar
                 return RealUnitedScalar(math.nan, new_dimension, None) # type: ignore
-            case _:
+            case _: # type: ignore
                 raise ValueError(f"Cannot divide {other} by {self} because: {math.isfinite(value)} and {math.isfinite(self.canonical_value)} are not finite") # type: ignore
 
     # Power # --------------------------------------------
@@ -302,7 +301,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
             if self._display_unit is not None:
                 display_unit: Optional["Unit"] = self._display_unit.exp()
             else:
-                display_unit: Optional["Unit"] = None
+                display_unit = None
         else:
             #E.g. 5 ^(3 m/s) is not allowed
             raise ValueError(f"Cannot raise {self} to the power of {other} because it has dimension {self.dimension}")
@@ -353,7 +352,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
                 else:
                     # -inf^±inf = nan (ambiguous or undefined)
                     return RealUnitedScalar(math.nan, dimension, display_unit) # type: ignore
-            case _:
+            case _: # type: ignore
                 raise ValueError(f"Cannot raise {base} to the power of {exp}: unexpected case")
 
     # Negation # ------------------------------------------
@@ -394,7 +393,7 @@ class ArithmeticMixin(RealUnitedScalarProtocol["RealUnitedScalar"]):
         if self._display_unit is not None:
             display_unit: Optional["Unit"] = self._display_unit.log()
         else:
-            display_unit: Optional["Unit"] = None
+            display_unit = None
 
         if self.canonical_value < 0:
             canonical_value = math.nan

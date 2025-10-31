@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, Union, TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
-    from .unit_element import UnitElement
+    from .unit.unit_element import UnitElement
     from .named_quantity import NamedQuantity
 
 @dataclass(frozen=True, slots=True)
@@ -56,8 +56,8 @@ class ProperExponents:
             Tuple of proper exponents
         """
 
-        from .unit_symbol import UnitSymbol, LogDimensionSymbol
-        from .unit_element import UnitElement
+        from .unit.unit_symbol import UnitSymbol, LogDimensionSymbol
+        from .unit.unit_element import UnitElement
         from .named_quantity import NamedQuantity
 
         exponents: list[float] = [0.0] * 8

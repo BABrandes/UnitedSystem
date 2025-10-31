@@ -8,10 +8,12 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
 from typing import TYPE_CHECKING, Sequence, Optional, Tuple, Mapping
-from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._units_and_dimension.unit import Unit
 import numpy as np
 import pandas as pd
+
+from united_system import Unit
+
+from .dataframe_protocol import UnitedDataframeProtocol, CK
 
 if TYPE_CHECKING:
     from ..._dataframe.united_dataframe import UnitedDataframe

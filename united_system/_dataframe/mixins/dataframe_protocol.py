@@ -13,11 +13,10 @@ import numpy as np
 from readerwriterlock import rwlock
 import h5py
 
-# Runtime imports needed for TypeVar definitions and protocol class
+from united_system import Unit, Dimension
+
 from ..._dataframe.column_type import ColumnType
 from ..._dataframe.internal_dataframe_name_formatter import InternalDataFrameColumnNameFormatter, SimpleInternalDataFrameNameFormatter
-from ..._units_and_dimension.unit import Unit
-from ..._units_and_dimension.dimension import Dimension
 from ..grouping._groups import Groups
 from ..._arrays.bool_array import BoolArray
 from ..accessors._row_accessor import RowAccessor

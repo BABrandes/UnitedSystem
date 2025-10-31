@@ -8,6 +8,7 @@ Now inherits from UnitedDataframeProtocol for full IDE support and type checking
 """
 
 from typing import TYPE_CHECKING
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 
 if TYPE_CHECKING:

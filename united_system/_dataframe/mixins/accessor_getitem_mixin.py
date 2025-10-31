@@ -293,21 +293,21 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
                     _slice: slice = _ensure_valid_slice(key_1)
                     return self._column_get_as_column_accessor(column_key, _slice)
                 elif isinstance(key_0, slice) and isinstance(key_1, ColumnKey|str):
-                    _slice: slice = _ensure_valid_slice(key_0)
+                    _slice = _ensure_valid_slice(key_0)
                     column_key: CK = key_1 # type: ignore
                     return self._column_get_as_column_accessor(column_key, _slice)
                 elif isinstance(key_0, int) and isinstance(key_1, Sequence):
                     column_keys: Sequence[CK] = _ensure_column_keys(key_1) # type: ignore
                     return self._row_get_as_row_accessor(key_0, column_keys)
                 elif isinstance(key_0, Sequence) and isinstance(key_1, int):
-                    column_keys: Sequence[CK] = _ensure_column_keys(key_0)
+                    column_keys = _ensure_column_keys(key_0)
                     return self._row_get_as_row_accessor(key_1, column_keys)
                 elif isinstance(key_0, Sequence) and isinstance(key_1, slice):
-                    column_keys: Sequence[CK] = _ensure_column_keys(key_0)
+                    column_keys = _ensure_column_keys(key_0)
                     return self._crop_dataframe(column_keys, key_1)
                 elif isinstance(key_0, slice) and isinstance(key_1, Sequence):
                     column_keys: Sequence[CK] = _ensure_column_keys(key_1) # type: ignore
-                    _slice: slice = _ensure_valid_slice(key_0)
+                    _slice = _ensure_valid_slice(key_0)
                     return self._crop_dataframe(column_keys, _slice)
                 else:
                     raise ValueError(f"Invalid key: {key}")
@@ -324,7 +324,7 @@ class AccessorGetitemMixin(UnitedDataframeProtocol[CK, "UnitedDataframe[CK]"]):
             elif isinstance(key, BoolArray):
                 if len(key) != self._number_of_rows():
                     raise ValueError(f"BoolArray must have the same length as the number of rows in the DataFrame. Got {len(key)} rows, expected {self._number_of_rows()}.")
-                row_indices: Sequence[int] = []
+                row_indices = []
                 for i in range(self._number_of_rows()):
                     if key[i]:
                         row_indices.append(i)

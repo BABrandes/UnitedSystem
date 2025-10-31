@@ -6,8 +6,9 @@ addition, removal, and row data manipulation.
 
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
-import pandas as pd
+
 from typing import TYPE_CHECKING, Sequence, Mapping
+import pandas as pd
 
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._utils.value_type import VALUE_TYPE, VALUE_TYPE_RUNTIME

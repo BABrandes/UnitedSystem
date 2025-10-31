@@ -7,9 +7,9 @@ including segmentation, aggregation, and segment-based operations.
 Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
-from typing import List, Callable, Union, Optional, TYPE_CHECKING
-from collections.abc import Sequence
+from typing import List, Callable, Union, Optional, TYPE_CHECKING, Sequence
 import numpy as np
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
 from ..._dataframe.column_type import SCALAR_TYPE
 from ..grouping._segments import Segments

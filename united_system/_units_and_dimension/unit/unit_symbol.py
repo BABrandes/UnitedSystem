@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Union, TYPE_CHECKING
-from .named_quantity import NamedQuantity
+from ..named_quantity import NamedQuantity
 from enum import Enum
 import math
 
 if TYPE_CHECKING:
-    from .dimension import Dimension
+    from ..dimension.dimension import Dimension
 
 class UNIT_SYMBOL_TAG(Enum):
     SI_BASE_UNIT = "SI_BASE_UNIT"
@@ -122,14 +122,14 @@ class UnitSymbol(Enum):
     @property
     def dimension(self) -> "Dimension":
         if not hasattr(self, '_dimension'):
-            from .dimension import Dimension
+            from ..dimension.dimension import Dimension
             self._dimension: Dimension = self.named_quantity.dimension
         return self._dimension
     
     @property
     def proper_exponents(self) -> tuple[float, float, float, float, float, float, float, float]:
         if not hasattr(self, '_proper_exponents'):
-            from .proper_exponents import ProperExponents
+            from ..proper_exponents import ProperExponents
             proper_exponents: ProperExponents = self.named_quantity.value[1]
             self._proper_exponents: tuple[float, float, float, float, float, float, float, float] = proper_exponents.proper_exponents
         return self._proper_exponents

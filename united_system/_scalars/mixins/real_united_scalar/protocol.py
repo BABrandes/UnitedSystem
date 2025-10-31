@@ -1,6 +1,6 @@
 from __future__ import annotations
 from ...united_scalar import UnitedScalar
-from ...._utils.general import JSONable, HDF5able
+from ...._utils.general import SerializationProtocol
 from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound="RealUnitedScalar")
 
-class RealUnitedScalarProtocol(UnitedScalar[T, float], JSONable[T], HDF5able[T]):
+class RealUnitedScalarProtocol(UnitedScalar[T, float], SerializationProtocol[T]):
     """
     Protocol for RealUnitedScalar.
     """

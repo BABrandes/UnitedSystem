@@ -3,9 +3,9 @@ from enum import Enum
 from .proper_exponents import ProperExponents   
 
 if TYPE_CHECKING:
-    from .unit_element import UnitElement
-    from .dimension import Dimension
-    from .unit import Unit
+    from .unit.unit_element import UnitElement
+    from .dimension.dimension import Dimension
+    from .unit.unit import Unit
 
 class QuantityTag(Enum):
     BASE_QUANTITY = "base_quantity"
@@ -154,14 +154,14 @@ class NamedQuantity(Enum):
     @property
     def dimension(self) -> "Dimension":
         if not hasattr(self, '_dimension') or self._dimension is None:
-            from .dimension import Dimension
+            from .dimension.dimension import Dimension
             self._dimension: Optional["Dimension"] = Dimension(self)
         return self._dimension
     
     @property
     def unit_element(self) -> Optional["UnitElement"]:
         if not hasattr(self, '_unit_element'):
-            from .unit_element import UnitElement
+            from .unit.unit_element import UnitElement
             unit_element_str = self.value[0]  # First element is the unit symbol string
             # Check if this quantity has tags and if it's marked as single element
             has_single_element_tag = (len(self.value) >= 3 and 
@@ -175,7 +175,7 @@ class NamedQuantity(Enum):
     @property
     def unit(self) -> "Unit":
         if not hasattr(self, '_unit') or self._unit is None:
-            from .unit import Unit
+            from .unit.unit import Unit
             self._unit: Optional[Unit] = Unit(self.value[0])
         return self._unit
     

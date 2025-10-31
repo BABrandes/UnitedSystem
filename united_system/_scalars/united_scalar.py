@@ -1,20 +1,20 @@
+from typing import TypeVar, Generic, Any, Union
 from dataclasses import dataclass
-from .._utils.general import JSONable, HDF5able
-from .._units_and_dimension.has_unit_protocol import HasUnit
 from abc import abstractmethod
-from .._units_and_dimension.unit import Unit
-from typing import TypeVar, Generic, TYPE_CHECKING, Any
-from .._scalars.base_scalar import BaseScalar
-from .._units_and_dimension.unit import Unit
 
-if TYPE_CHECKING:
-    pass
+from united_system import Unit, Dimension
+
+from .._utils.general import SerializationProtocol
+from .._units_and_dimension.has_unit_protocol import HasUnit
+
+from .._scalars.base_scalar import BaseScalar
+
 
 PT = TypeVar("PT", bound=float|complex)
 UST = TypeVar("UST", bound="UnitedScalar[Any, Any]")
 
 @dataclass(frozen=True, slots=True)
-class UnitedScalar(BaseScalar[PT], JSONable[UST], HDF5able[UST], HasUnit, Generic[UST, PT]):
+class UnitedScalar(BaseScalar[PT], SerializationProtocol[UST], HasUnit[UST], Generic[UST, PT]):
     
     @abstractmethod
     def __add__(self, other: UST) -> UST:
@@ -105,7 +105,7 @@ class UnitedScalar(BaseScalar[PT], JSONable[UST], HDF5able[UST], HasUnit, Generi
         ...
     
     @abstractmethod
-    def compatible_to(self, *args: UST) -> bool:
+    def compatible_to(self, *args: Union["Dimension", "Unit", "HasUnit[Any]"]) -> bool:
         ...
 
     def value_in_unit(self, unit: Unit|str) -> PT:

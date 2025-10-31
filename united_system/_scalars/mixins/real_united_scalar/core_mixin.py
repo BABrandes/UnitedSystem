@@ -1,12 +1,14 @@
 """Core functionality for RealUnitedScalar."""
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union, Any
+
+from united_system import Unit, Dimension
+
 from .protocol import RealUnitedScalarProtocol
+from ...._units_and_dimension.has_unit_protocol import HasUnit
 
 if TYPE_CHECKING:
     from ...._scalars.real_united_scalar import RealUnitedScalar
-    from ...._units_and_dimension.unit import Unit
-    from ...._units_and_dimension.dimension import Dimension
 
 class RealUnitedScalarCore(RealUnitedScalarProtocol["RealUnitedScalar"]):
     """Core functionality for RealUnitedScalar."""
@@ -18,7 +20,7 @@ class RealUnitedScalarCore(RealUnitedScalarProtocol["RealUnitedScalar"]):
 
 # dimension is provided by the dataclass field, no property needed
 
-    def compatible_to(self, *args: Union["RealUnitedScalar", "Unit", "Dimension"]) -> bool:
+    def compatible_to(self, *args: Union["RealUnitedScalar", "Unit", "Dimension", "HasUnit[Any]"]) -> bool:
         """
         Check if the dimension is compatible with other dimensions.
         Two dimensions are compatible if they have the same subscripts

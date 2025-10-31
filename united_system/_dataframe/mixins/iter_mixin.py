@@ -8,9 +8,10 @@ Now inherits from UnitedDataframeMixin for full IDE support and type checking.
 """
 
 from typing import Iterator, TYPE_CHECKING
+
+from united_system import Unit, Dimension
+
 from .dataframe_protocol import UnitedDataframeProtocol, CK
-from ..._units_and_dimension.unit import Unit
-from ..._units_and_dimension.dimension import Dimension
 from ..._dataframe.column_type import ColumnType
 
 if TYPE_CHECKING:

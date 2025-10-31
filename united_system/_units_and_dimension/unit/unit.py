@@ -49,30 +49,30 @@ Examples:
     assert dimensionless.is_dimensionless
 """
 
-from typing import TYPE_CHECKING, overload, Union, Optional, Tuple, List, Sequence, Any, cast, Literal
+from typing import TYPE_CHECKING, overload, Union, Optional, Sequence, Any, Literal, Tuple, List, cast
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from h5py import Group
 import numpy as np
 import pandas as pd
 
-from .named_quantity import NamedQuantity
+from ..named_quantity import NamedQuantity
 from .unit_element import UnitElement
-from .dimension import Dimension
+from ..dimension.dimension import Dimension
 from .unit_symbol import UnitSymbol
 from .unit_prefix import UnitPrefix
-from .utils import seperate_string
-from .has_unit_protocol import HasUnit
+from ..utils import seperate_string
+from ..has_unit_protocol import HasUnit
+from .mixins.serialization import SerializationMixin
 
 if TYPE_CHECKING:
-    from .._scalars.real_united_scalar import RealUnitedScalar
-    from .._arrays.real_united_array import RealUnitedArray
-    from .._scalars.complex_united_scalar import ComplexUnitedScalar
-    from .._arrays.complex_united_array import ComplexUnitedArray
+    from ..._scalars.real_united_scalar import RealUnitedScalar
+    from ..._arrays.real_united_array import RealUnitedArray
+    from ..._scalars.complex_united_scalar import ComplexUnitedScalar
+    from ..._arrays.complex_united_array import ComplexUnitedArray
 
 # Runtime imports for type checking
-from .._utils.value_type import VALUE_TYPE
-from .._utils.scalar_type import SCALAR_TYPE
+from ..._utils.value_type import VALUE_TYPE
+from ..._utils.scalar_type import SCALAR_TYPE
 
 EPSILON: float = 1e-12
 
@@ -85,7 +85,7 @@ def clear_unit_cache():
     _UNIT_CACHE.clear()
 
 @dataclass(frozen=True, slots=True)
-class Unit:
+class Unit(SerializationMixin):
     """
     A class representing physical units for scientific calculations.
     
@@ -210,7 +210,7 @@ class Unit:
         if value is None:
             # Create empty unit
             instance: Unit = object.__new__(cls)
-            empty_unit_elements: dict[str, Tuple[UnitElement, ...]] = {}
+            empty_unit_elements: dict[str, tuple[UnitElement, ...]] = {}
             object.__setattr__(instance, "_unit_elements", MappingProxyType(empty_unit_elements))
             object.__setattr__(instance, "_log_units", [])
             return instance
@@ -274,12 +274,12 @@ class Unit:
     ########################################################
 
     @property
-    def unit_elements(self) -> dict[str, Tuple[UnitElement, ...]]:
+    def unit_elements(self) -> dict[str, tuple[UnitElement, ...]]:
         """Get the unit elements dictionary."""
         return dict(self._unit_elements)
 
     @property
-    def log_units(self) -> List[Tuple[UnitElement, "Dimension"]]:
+    def log_units(self) -> list[tuple[UnitElement, "Dimension"]]:
         """Get the log units list."""
         return list(self._log_units)
 
@@ -287,7 +287,7 @@ class Unit:
     def dimension(self) -> Dimension:
         """Get the dimension of this unit."""
         # Start with dimensionless dimension
-        from .dimension import Dimension
+        from ..dimension.dimension import Dimension
         if hasattr(self, "_dimension"):
             return self._dimension
         else:
@@ -663,13 +663,13 @@ class Unit:
 ########################################################
 
     @classmethod
-    def are_compatible(cls, *others: Optional[Union["Unit", Dimension, HasUnit]]) -> bool:
+    def are_compatible(cls, *others: Optional[Union["Unit", Dimension, "HasUnit[Any]"]]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         """        
         return Dimension.are_compatible(*others)
 
-    def compatible_to(self, *others: Union["Unit", Dimension, HasUnit]) -> bool:
+    def compatible_to(self, *others: Union["Unit", Dimension, "HasUnit[Any]"]) -> bool:
         """
         Check if this unit is compatible with another unit or dimension.
         
@@ -929,7 +929,7 @@ class Unit:
                                     raise ValueError(f"Empty content in log unit: {part}")
                                 
                                 # Parse the inner content as a dimension
-                                from .dimension import Dimension
+                                from ..dimension.dimension import Dimension
                                 
                                 # Convert unit symbols in inner_content to dimension symbols
                                 # Note: Logarithmic units are always applied to canonical values,
@@ -946,7 +946,7 @@ class Unit:
                                     if log_symbol in log_symbol_enum.value.symbols:
                                         log_unit_symbol = log_symbol_enum
                                         break
-                                if log_unit_symbol is None:
+                                if log_unit_symbol is None: # type: ignore
                                     raise ValueError(f"Invalid log unit symbol: {log_symbol}")
                                 
                                 # Parse exponent from remaining part
@@ -1202,14 +1202,14 @@ class Unit:
         """
         
         if isinstance(other, (float, int)):
-            from .._scalars.real_united_scalar import RealUnitedScalar
+            from ..._scalars.real_united_scalar import RealUnitedScalar
             return RealUnitedScalar(other, self)
         elif isinstance(other, complex):
-            from .._scalars.complex_united_scalar import ComplexUnitedScalar # type: ignore
+            from ..._scalars.complex_united_scalar import ComplexUnitedScalar # type: ignore
             raise NotImplementedError("Complex multiplication is not supported for units.")
         elif isinstance(other, Sequence): # type: ignore
-            from .._arrays.real_united_array import RealUnitedArray
-            from .._arrays.complex_united_array import ComplexUnitedArray
+            from ..._arrays.real_united_array import RealUnitedArray
+            from ..._arrays.complex_united_array import ComplexUnitedArray
             numpy_array: np.ndarray = np.array(other)
             if np.iscomplexobj(numpy_array):
                 return ComplexUnitedArray(numpy_array, self) # type: ignore
@@ -1282,7 +1282,7 @@ class Unit:
                     return item
             case (_, _):
                 if isinstance(item, HasUnit):
-                    if item.compatible_to(unit):
+                    if item.compatible_to(unit): # type: ignore
                         return item.value_in_unit(unit)
                     else:
                         raise ValueError("Item is not compatible with the provided unit")
@@ -1290,98 +1290,6 @@ class Unit:
                     return item
             case _: # type: ignore
                 raise ValueError("Invalid item and unit")
-
-########################################################
-    # Serialization
-########################################################
-
-    #----------- JSON Serialization -----------
-    
-    def to_json(self) -> str:
-        """
-        Convert the unit to JSON string representation.
-        
-        Returns:
-            JSON string representation
-        
-        Examples:
-            Unit("m").to_json() -> '"m"'
-        """
-        return self.format_string()
-    
-    @classmethod
-    def from_json(cls, json_string: str) -> "Unit":
-        """
-        Create a unit from JSON string representation.
-        
-        Args:
-            json_string: The JSON string representation
-        
-        Returns:
-            A new Unit instance
-        
-        Examples:
-            Unit.from_json('"m"') -> Unit("m")
-        """
-        return cls(json_string)
-
-    #----------- HDF5 Serialization -----------
-
-    def to_hdf5(self, hdf5_group: Group) -> None:
-        """
-        Save the unit to an HDF5 group.
-        
-        Args:
-            hdf5_group: The HDF5 group to save to
-        """
-        hdf5_group["unit"] = self.format_string()
-
-    @classmethod
-    def from_hdf5(cls, hdf5_group: Group) -> "Unit":
-        """
-        Create a unit from an HDF5 group.
-        
-        Args:
-            hdf5_group: The HDF5 group to read from
-            
-        Returns:
-            A new Unit instance
-        """
-        unit_string: str = hdf5_group["unit"].asstr()[()] # type: ignore
-        if isinstance(unit_string, bytes):
-            unit_string = unit_string.decode("utf-8")
-        return cls(unit_string)
-    
-    #----------- For pickle compatibility -----------
-        
-    def __getstate__(self) -> dict[str, Any]:
-        """Custom pickle state management for slotted dataclass."""
-        # Ensure _dimension is computed before pickling
-        _ = self.dimension  # This will initialize _dimension if not already set
-        
-        # For slotted dataclasses, manually collect field values
-        # Convert MappingProxyType to dict for pickling
-        return {
-            "_unit_elements": dict(self._unit_elements),  # Convert MappingProxyType to dict
-            "_log_units": self._log_units,
-            "_dimension": self._dimension
-        }
-    
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        """Custom pickle state restoration for slotted dataclass."""
-        # Convert dict back to MappingProxyType
-        from types import MappingProxyType
-        if "_unit_elements" in state:
-            state["_unit_elements"] = MappingProxyType(state["_unit_elements"])
-        
-        # Restore all attributes
-        for key, value in state.items():
-            object.__setattr__(self, key, value)
-        
-        # Ensure _dimension is properly set (in case it wasn't in the state)
-        if not hasattr(self, "_dimension"):
-            from .dimension import Dimension
-            object.__setattr__(self, "_dimension", Dimension(self))
     
     def __copy__(self) -> "Unit":
         """Unit is immutable (frozen dataclass), so return self for shallow copy."""
@@ -1452,8 +1360,8 @@ class Unit:
             return unit
         
         # Import here to avoid circular imports
-        from .reduce_unit_elements import reduce_unit_elements
-        from .dimension_symbol import UnitSymbol
+        from ..unit.reduce_unit_elements import reduce_unit_elements
+        from ..dimension.dimension_symbol import UnitSymbol
 
         def consolidate_unit_elements(unit_elements: Sequence[UnitElement]) -> Sequence[UnitElement]:
             """
